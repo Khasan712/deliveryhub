@@ -22,9 +22,9 @@ const STYLES = {
   /** On a product card: takes the place of the round "+" button, its own "+" exactly where that one was. */
   pill: {
     root: 'h-11 rounded-full bg-brand text-brand-ink shadow-brand',
-    minus: cn('h-11 w-[38px] rounded-full', HOVER),
+    minus: cn('h-11 w-9 rounded-full', HOVER),
     plus: cn('size-11 rounded-full', HOVER),
-    value: 'min-w-[22px] text-[15px]',
+    value: 'min-w-5 text-[15px]',
     minusIcon: 'size-[18px]',
     plusIcon: 'size-5',
   },

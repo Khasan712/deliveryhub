@@ -1,7 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
-/** From here up a menu line has its "+" next to the price (phones: on the corner of the photo). */
-export const ROOMY_QUERY = '(min-width: 640px)'
 /** From here up popular dishes are a grid of cards (below: a swipeable row). */
 export const DESKTOP_QUERY = '(min-width: 768px)'
 /** From here up the menu search sits in the header (below: above the banner). */

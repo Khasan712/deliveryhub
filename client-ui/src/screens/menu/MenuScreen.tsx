@@ -203,7 +203,7 @@ export function MenuScreen() {
             ) : (
               <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pt-0.5 pb-1.5">
                 {catalog.popular.map((product) => (
-                  <FeaturedCard key={product.id} product={product} compact />
+                  <FeaturedCard key={product.id} product={product} className="w-[240px] shrink-0 snap-start" />
                 ))}
               </div>
             )}
