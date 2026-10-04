@@ -1,11 +1,13 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { resetTelegramForTests } from '../lib/telegram'
 import { resetDb } from './handlers'
 import { server } from './server'
 
 // --- jsdom gaps ----------------------------------------------------------------------------------
+// No WebGL: the map is a stand-in with a "move the map" button.
+vi.mock('../components/map/MapCanvas', () => import('./fakeMap'))
 // Reduced motion: sheets and toasts unmount without waiting for exit animations.
 window.matchMedia = (query: string) =>
   ({

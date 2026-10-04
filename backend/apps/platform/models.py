@@ -18,6 +18,10 @@ class Business(TenantMixin):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     tagline = models.CharField(max_length=200, blank=True)
     support_phone = models.CharField(max_length=30, blank=True)
+    # Where customers pick up their orders (picked on a map in our panel); the point also centres the shop's map.
+    address = models.CharField(max_length=255, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     delivery_time = models.CharField(max_length=20, blank=True, default='30–45')
     min_order = models.PositiveIntegerField(default=0)
     brand_color = models.CharField(max_length=7, blank=True)

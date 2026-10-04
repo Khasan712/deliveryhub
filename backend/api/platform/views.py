@@ -14,6 +14,7 @@ from apps.platform.bots import BotInUse, connect_bot, create_setup_link, release
 from apps.platform.models import Business, BusinessBot
 from apps.platform.overview import businesses, owner_of
 from apps.platform.telegram_api import TelegramError
+from ..common import geo
 from ..common.auth import BaseLoginView, SessionAuthentication, login_schema
 from ..common.errors import ApiError
 from ..common.permissions import IsPlatformStaff
@@ -207,3 +208,11 @@ class BotDisconnectView(PlatformView):
             release_bot(bot)
             bot.delete()
         return Response(status=204)
+
+
+class GeoReverseView(geo.GeoReverseMixin, PlatformView):
+    pass
+
+
+class GeoSearchView(geo.GeoSearchMixin, PlatformView):
+    pass

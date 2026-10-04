@@ -3,7 +3,7 @@
  * exercise real request/response shapes (including error bodies).
  */
 import { http, HttpResponse, type JsonBodyType } from 'msw'
-import type { Business, Category, Client, NewOrder, Order, Product } from '../api/types'
+import type { Business, Category, Client, NewOrder, Order, Place, Product } from '../api/types'
 import * as fixtures from './fixtures'
 
 export const API = '/api/v1'
@@ -17,8 +17,18 @@ export interface MockData {
   client: Client
   token: string
   orders: () => Order[]
+  /** The map server behind GET /geo/*: the address of any point, and the places any search finds. */
+  geo?: { address: string; places: Place[] }
   /** Demo mode: "Telegram orqali kirish" confirms itself a few seconds after the link is opened. */
   demo?: boolean
+}
+
+export const GEO = {
+  address: "Bunyodkor ko'chasi, 3, Chilonzor tumani, Toshkent",
+  places: [
+    { address: 'Chorsu bozori, Shayxontohur tumani, Toshkent', lat: 41.3266, lng: 69.2353 },
+    { address: 'Chorsu, Toshkent', lat: 41.3251, lng: 69.2369 },
+  ],
 }
 
 const testData: MockData = {
@@ -29,6 +39,7 @@ const testData: MockData = {
   client: fixtures.client,
   token: fixtures.TOKEN,
   orders: () => [fixtures.makeOrder()],
+  geo: GEO,
 }
 
 interface LoggedRequest {
@@ -44,6 +55,8 @@ interface Db {
   minOrder: number
   phoneAttempts: number
   telegramLogin: 'pending' | 'confirmed' | 'expired'
+  /** The map server is out of reach (GET /geo/* → 503). */
+  geoDown: boolean
   requests: LoggedRequest[]
   nextOrderId: number
 }
@@ -55,6 +68,7 @@ function createDb(data: MockData): Db {
     minOrder: data.business.min_order,
     phoneAttempts: 5,
     telegramLogin: 'pending',
+    geoDown: false,
     requests: [],
     nextOrderId: 200,
   }
@@ -195,6 +209,19 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
       if (!authorised(db, request)) return error(401, 'auth_required')
       const order = db.orders.find((item) => item.id === Number(params.id))
       return order ? HttpResponse.json({ order }) : error(404, 'not_found')
+    }),
+
+    http.get(`${API}/geo/reverse`, async ({ request }) => {
+      await log(db, request)
+      if (db.geoDown || !data.geo) return error(503, 'geocoder_unavailable')
+      return HttpResponse.json({ address: data.geo.address })
+    }),
+
+    http.get(`${API}/geo/search`, async ({ request }) => {
+      await log(db, request)
+      if (db.geoDown || !data.geo) return error(503, 'geocoder_unavailable')
+      const query = new URL(request.url).searchParams.get('q') ?? ''
+      return HttpResponse.json({ results: query.trim().length >= 2 ? data.geo.places : [] })
     }),
 
     http.post(`${API}/orders`, async ({ request }) => {

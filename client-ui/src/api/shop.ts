@@ -6,6 +6,7 @@ import type {
   NewOrder,
   Order,
   PhoneCodeRequested,
+  Place,
   ProfilePatch,
   ShopData,
   TelegramLoginCheck,
@@ -43,3 +44,10 @@ export const getOrder = (token: string, id: number, signal?: AbortSignal) =>
 
 export const createOrder = (token: string, body: NewOrder) =>
   api<{ order: Order }>('orders', { method: 'POST', token, body })
+
+// --- map -------------------------------------------------------------------------------------
+export const reverseGeocode = (lat: number, lng: number, lang: string, signal?: AbortSignal) =>
+  api<{ address: string }>('geo/reverse', { query: { lat, lng, lang }, signal })
+
+export const searchPlaces = (query: string, lang: string, signal?: AbortSignal) =>
+  api<{ results: Place[] }>('geo/search', { query: { q: query, lang }, signal })

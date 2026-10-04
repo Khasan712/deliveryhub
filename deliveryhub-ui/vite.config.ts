@@ -12,6 +12,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server,
   preview: server,
+  // The map (MapLibre, ~1 MB) is its own chunk, loaded only where a map is shown.
+  build: { chunkSizeWarningLimit: 1100 },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

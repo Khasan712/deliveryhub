@@ -126,6 +126,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResult'
           description: ''
+  /api/v1/geo/reverse:
+    get:
+      operationId: geo_reverse_retrieve
+      description: 'Errors: 503 geocoder_unavailable (out of reach or switched off:
+        the address is typed instead).'
+      summary: The address at a point of the map
+      parameters:
+      - in: query
+        name: lang
+        schema:
+          enum:
+          - uz
+          - ru
+          type: string
+          default: uz
+          minLength: 1
+        description: |-
+          * `uz` - uz
+          * `ru` - ru
+      - in: query
+        name: lat
+        schema:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        required: true
+      - in: query
+        name: lng
+        schema:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        required: true
+      tags:
+      - geo
+      security:
+      - customerToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReverseGeocode'
+          description: ''
+  /api/v1/geo/search:
+    get:
+      operationId: geo_search_retrieve
+      description: 'Errors: 503 geocoder_unavailable (out of reach or switched off:
+        the address is typed instead).'
+      summary: Places for a typed address (up to 5)
+      parameters:
+      - in: query
+        name: lang
+        schema:
+          enum:
+          - uz
+          - ru
+          type: string
+          default: uz
+          minLength: 1
+        description: |-
+          * `uz` - uz
+          * `ru` - ru
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 200
+        required: true
+      tags:
+      - geo
+      security:
+      - customerToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeoSearch'
+          description: ''
   /api/v1/me:
     get:
       operationId: me_retrieve
@@ -268,6 +353,17 @@ components:
           type: string
         support_phone:
           type: string
+        address:
+          type: string
+          description: Where pickup orders are collected
+        lat:
+          type: number
+          format: double
+          nullable: true
+        lng:
+          type: number
+          format: double
+          nullable: true
         delivery_time:
           type: string
         min_order:
@@ -278,8 +374,11 @@ components:
           type: string
           nullable: true
       required:
+      - address
       - brand_color
       - delivery_time
+      - lat
+      - lng
       - logo
       - min_order
       - name
@@ -348,6 +447,15 @@ components:
       description: |-
         * `delivery` - delivery
         * `pickup` - pickup
+    GeoSearch:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
+      required:
+      - results
     InitDataRequest:
       type: object
       properties:
@@ -580,6 +688,21 @@ components:
       required:
       - code
       - phone
+    Place:
+      type: object
+      properties:
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+      required:
+      - address
+      - lat
+      - lng
     PlatformEnum:
       enum:
       - web
@@ -624,6 +747,14 @@ components:
       - price
       - unit_ru
       - unit_uz
+    ReverseGeocode:
+      type: object
+      properties:
+        address:
+          type: string
+          description: ''''' when the map knows no address there'
+      required:
+      - address
     Shop:
       type: object
       properties:

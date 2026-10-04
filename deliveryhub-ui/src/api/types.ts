@@ -38,6 +38,10 @@ export interface BusinessCard {
 
 export interface BusinessDetail extends BusinessCard {
   support_phone: string
+  /** Where customers pick up their orders; '' and null coordinates until the business is put on the map. */
+  address: string
+  lat: number | null
+  lng: number | null
   delivery_time: string
   min_order: number
   owner: { name: string; phone: string } | null
@@ -78,10 +82,17 @@ export interface BusinessProfileInput {
   brand_color: string
 }
 
-/** PATCH body: any profile fields; `logo: null` removes the logo (a new logo goes as a file, multipart). */
-export type BusinessProfilePatch = Partial<BusinessProfileInput> & { logo?: null }
+/** The place on the map: the shop's pickup address. `lat` and `lng` always go together. */
+export interface BusinessLocation {
+  address: string
+  lat: number
+  lng: number
+}
 
-export interface BusinessCreateInput extends BusinessProfileInput {
+/** PATCH body: any profile fields; `logo: null` removes the logo (a new logo goes as a file, multipart). */
+export type BusinessProfilePatch = Partial<BusinessProfileInput & BusinessLocation> & { logo?: null }
+
+export interface BusinessCreateInput extends BusinessProfileInput, BusinessLocation {
   slug: string
   owner_name: string
   owner_phone: string
@@ -91,6 +102,13 @@ export interface BusinessCreateInput extends BusinessProfileInput {
 export interface BusinessCreated {
   business: BusinessDetail
   credentials: Credentials
+}
+
+/** A geocoder result (GET /geo/search). */
+export interface Place {
+  address: string
+  lat: number
+  lng: number
 }
 
 export interface SetupLink {

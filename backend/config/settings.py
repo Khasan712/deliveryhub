@@ -191,6 +191,16 @@ CSRF_TRUSTED_ORIGINS += [f'https://*.{PLATFORM_DOMAIN}']
 TUNNELS_FILE = Path(env('TUNNELS_FILE')) if env('TUNNELS_FILE') else None
 
 # ---------------------------------------------------------------------------
+# Maps: addresses ⇄ points for the shops' checkout and our panel (apps/platform/geocoding.py) — a Nominatim
+# server (OpenStreetMap data). The public one asks for a User-Agent naming the application. An empty
+# GEOCODER_URL switches it off: the map still works, the address is typed.
+# ---------------------------------------------------------------------------
+GEOCODER_URL = env('GEOCODER_URL', 'https://nominatim.openstreetmap.org')
+GEOCODER_COUNTRIES = env('GEOCODER_COUNTRIES', 'uz')
+GEOCODER_USER_AGENT = env('GEOCODER_USER_AGENT',
+                          f'DeliveryHub/1.0 (+https://{PLATFORM_HUB_SUBDOMAIN}.{PLATFORM_DOMAIN})')
+
+# ---------------------------------------------------------------------------
 # Shops: phone sign-in codes. SMS_BACKEND: console | eskiz | telegram_gateway
 # ---------------------------------------------------------------------------
 SMS_BACKEND = env('SMS_BACKEND', 'console')

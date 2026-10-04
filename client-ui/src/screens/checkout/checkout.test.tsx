@@ -1,9 +1,11 @@
+import { act, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { TOKEN } from '../../test/fixtures'
-import { requestsTo } from '../../test/handlers'
+import { business, TOKEN } from '../../test/fixtures'
+import { db, GEO, requestsTo } from '../../test/handlers'
 import { location, pattern, renderApp, screen, som, uz, within } from '../../test/render'
 import { server } from '../../test/server'
+import { installTelegram } from '../../test/telegram'
 
 const storedCart = () => JSON.parse(localStorage.getItem(`dh:${window.location.host}:cart`) ?? 'null')
 
@@ -77,11 +79,118 @@ describe('checkout', () => {
     expect(screen.queryByText(uz.required)).not.toBeInTheDocument()
   })
 
-  it('does not ask for an address for pickup', async () => {
+  it('does not ask for an address for pickup and shows where to come', async () => {
     const { user } = await open()
     await user.click(await screen.findByRole('radio', { name: uz.pickup }))
     expect(screen.queryByLabelText(uz.address)).not.toBeInTheDocument()
     expect(screen.getByText(uz.pickupNote)).toBeInTheDocument()
+    expect(screen.getByText(uz.pickupFrom)).toBeInTheDocument()
+    expect(screen.getByText(business.address)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: pattern(uz.onMap) })).toHaveAttribute(
+      'href',
+      'https://maps.google.com/?q=41.311081,69.279737',
+    )
+  })
+
+  describe('the map', () => {
+    const openMap = async (user: Awaited<ReturnType<typeof open>>['user']) => {
+      await user.click(screen.getByRole('button', { name: pattern(uz.pickOnMap) }))
+      return within(await screen.findByRole('dialog', { name: uz.mapTitle }))
+    }
+
+    it('puts the delivery point on the map; an empty address takes the map’s', async () => {
+      const { user } = await open()
+      await user.clear(screen.getByLabelText(uz.address))
+      const map = await openMap(user)
+
+      // The map opens around the business and names the address under its pin.
+      expect(await map.findByText(GEO.address)).toBeInTheDocument()
+      await user.click(map.getByRole('button', { name: 'Xaritani surish' }))
+      expect(await map.findByText(GEO.address)).toBeInTheDocument()
+      await waitFor(() => expect(requestsTo('GET', 'geo/reverse')).toHaveLength(2))
+      // A move that ends where it started (a resize) does not ask again.
+      await user.click(map.getByRole('button', { name: 'Xaritani surish' }))
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      expect(requestsTo('GET', 'geo/reverse')).toHaveLength(2)
+      await user.click(map.getByRole('button', { name: uz.pickThisPlace }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: uz.mapTitle })).not.toBeInTheDocument())
+      expect(screen.getByText(uz.locationOnMap)).toBeInTheDocument()
+      expect(screen.getByLabelText(uz.address)).toHaveValue(GEO.address)
+
+      await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
+      await screen.findByRole('heading', { name: uz.orderPlaced })
+      expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({ address: GEO.address, lat: 41.2856, lng: 69.2035 })
+    })
+
+    it('keeps an address the customer wrote and offers the map’s with one tap', async () => {
+      const { user } = await open()
+      const map = await openMap(user)
+      await user.click(map.getByRole('button', { name: 'Xaritani surish' }))
+      expect(await map.findByText(GEO.address)).toBeInTheDocument()
+      await user.click(map.getByRole('button', { name: uz.pickThisPlace }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: uz.mapTitle })).not.toBeInTheDocument())
+      expect(screen.getByLabelText(uz.address)).toHaveValue('Chilonzor 9, 12-uy')
+      expect(screen.getByText(`Xaritadagi manzil: ${GEO.address}`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: uz.useIt }))
+      expect(screen.getByLabelText(uz.address)).toHaveValue(GEO.address)
+      expect(screen.queryByText(`Xaritadagi manzil: ${GEO.address}`)).not.toBeInTheDocument()
+
+      // The point can be taken back.
+      await user.click(screen.getByRole('button', { name: uz.removeLocation }))
+      expect(screen.getByRole('button', { name: pattern(uz.pickOnMap) })).toBeInTheDocument()
+    })
+
+    it('finds a place by its name', async () => {
+      const { user } = await open()
+      await user.clear(screen.getByLabelText(uz.address))
+      const map = await openMap(user)
+      await user.type(map.getByRole('searchbox', { name: uz.mapSearch }), 'Chorsu{Enter}')
+
+      const results = await map.findByRole('list', { name: uz.mapSearchResults })
+      await user.click(within(results).getByRole('button', { name: GEO.places[0]!.address }))
+      // A search result brings its own address: the map is not asked again for it.
+      expect(await map.findByText(GEO.places[0]!.address)).toBeInTheDocument()
+      const lookups = requestsTo('GET', 'geo/reverse').length
+      await user.click(map.getByRole('button', { name: uz.pickThisPlace }))
+      expect(requestsTo('GET', 'geo/reverse')).toHaveLength(lookups)
+
+      await waitFor(() => expect(screen.getByLabelText(uz.address)).toHaveValue(GEO.places[0]!.address))
+      await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
+      await screen.findByRole('heading', { name: uz.orderPlaced })
+      expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({ lat: 41.3266, lng: 69.2353 })
+    })
+
+    it('still sets the point when the map server is out of reach', async () => {
+      db.geoDown = true
+      const { user } = await open()
+      const map = await openMap(user)
+      expect(await map.findByText(uz.noAddressHere)).toBeInTheDocument()
+      await user.type(map.getByRole('searchbox', { name: uz.mapSearch }), 'Chorsu{Enter}')
+      expect(await map.findByText(uz.mapSearchFailed)).toBeInTheDocument()
+      await user.click(map.getByRole('button', { name: uz.pickThisPlace }))
+
+      expect(await screen.findByText(uz.locationOnMap)).toBeInTheDocument()
+      expect(screen.getByLabelText(uz.address)).toHaveValue('Chilonzor 9, 12-uy')
+    })
+
+    it('in Telegram, the MainButton picks the place and the BackButton closes the map', async () => {
+      const telegram = installTelegram()
+      const { user } = await open()
+      const map = await openMap(user)
+      await waitFor(() => expect(telegram.mainButton.text).toBe(uz.pickThisPlace))
+      expect(map.queryByRole('button', { name: uz.pickThisPlace })).not.toBeInTheDocument()
+
+      act(() => telegram.backButton.click())
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: uz.mapTitle })).not.toBeInTheDocument())
+      await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.placeOrder)))
+
+      await openMap(user)
+      await waitFor(() => expect(telegram.mainButton.text).toBe(uz.pickThisPlace))
+      act(() => telegram.mainButton.click())
+      expect(await screen.findByText(uz.locationOnMap)).toBeInTheDocument()
+    })
   })
 
   it('maps server validation errors to the fields', async () => {

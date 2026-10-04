@@ -24,6 +24,8 @@ browser / Telegram ──► web (Caddy) ──┬── client-ui / admin-ui / 
 
 bot service ──► PostgreSQL (direct, async)      backend ──► PostgreSQL, Redis (cache, rate limits)
 bot service ──► Telegram Bot API (long polling of every bot), Gemini (staff voice orders)
+backend ──► Nominatim (addresses ⇄ map points; cached, one request a second)
+browsers ──► OpenFreeMap (map tiles of the checkout and our panel)
 ```
 
 * **One database, one schema per business** (django-tenants). The public schema holds the platform:

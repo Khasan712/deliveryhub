@@ -6,6 +6,10 @@ export interface Business {
   name: string
   tagline: string
   support_phone: string
+  /** Where pickup orders are collected; '' and null coordinates until the business is put on the map. */
+  address: string
+  lat: number | null
+  lng: number | null
   /** Free text such as "30–45" (minutes). */
   delivery_time: string
   min_order: number
@@ -133,4 +137,11 @@ export interface ProfilePatch {
   first_name?: string
   last_name?: string
   lang?: Lang
+}
+
+/** A place found by the map's search (GET /geo/search). */
+export interface Place {
+  address: string
+  lat: number
+  lng: number
 }

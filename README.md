@@ -31,6 +31,7 @@ brauzer / Telegram ──► web (Caddy) ──┬── client-ui / admin-ui / 
                                       └── /media/* ──► rasmlar (volume)
 bot ──► PostgreSQL (to'g'ridan-to'g'ri)      backend ──► PostgreSQL, Redis
 bot ──► Telegram Bot API (long polling), Gemini
+backend ──► Nominatim (manzil ⇄ xarita nuqtasi)      brauzer ──► OpenFreeMap (xarita)
 ```
 
 Host hamma narsani hal qiladi: `food.<domen>` → `food` biznesi, do'kon API; `food-admin.<domen>` → o'sha biznes,

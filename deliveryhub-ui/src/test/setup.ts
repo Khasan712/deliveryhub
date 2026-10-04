@@ -16,7 +16,8 @@ if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
     this.dispatchEvent(new Event('close'))
   }
 }
-// Not in jsdom: scrolling (ScrollRestoration).
+// Not in jsdom: WebGL for the map (a stand-in with a "click" button) and scrolling (ScrollRestoration).
+vi.mock('../components/map/MapCanvas', () => import('./fakeMap'))
 window.scrollTo = vi.fn<() => void>() as typeof window.scrollTo
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))

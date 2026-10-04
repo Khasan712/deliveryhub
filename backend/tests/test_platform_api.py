@@ -162,13 +162,15 @@ class BusinessesTests(PlatformTestCase):
         response = self.hub.post('/api/v1/businesses', {'name': 'X', 'slug': 'test-shop', 'owner_name': 'A',
                                                         'owner_phone': '12', 'brand_color': 'red'}, format='json')
         self.assertEqual(response.json(), {'error': 'validation', 'fields': {
-            'slug': ['slug_taken'], 'owner_phone': ['invalid'], 'brand_color': ['invalid']}})
+            'slug': ['slug_taken'], 'owner_phone': ['invalid'], 'brand_color': ['invalid'],
+            # A business opens with its place on the map.
+            'address': ['required'], 'lat': ['required'], 'lng': ['required']}})
 
     def test_open_a_business_and_use_it(self):
         response = self.hub.post('/api/v1/businesses', {
             'name': 'Burger House', 'slug': 'burger-house', 'owner_name': 'Aziz', 'owner_phone': '90 111 22 33',
             'owner_password': '', 'support_phone': '+998712001122', 'min_order': 30000, 'brand_color': '#FF6B00',
-            'logo': png('logo.png'),
+            'logo': png('logo.png'), 'address': "Amir Temur ko'chasi, 15", 'lat': '41.31108123', 'lng': '69.2797374',
         }, format='multipart')
         self.assertEqual(response.status_code, 201, response.content)
         body = response.json()
@@ -179,6 +181,8 @@ class BusinessesTests(PlatformTestCase):
         self.assertEqual((detail['slug'], detail['min_order'], detail['brand_color']),
                          ('burger-house', 30000, '#ff6b00'))
         self.assertEqual(detail['owner'], {'name': 'Aziz', 'phone': '+998901112233'})
+        self.assertEqual((detail['address'], detail['lat'], detail['lng']),
+                         ("Amir Temur ko'chasi, 15", 41.311081, 69.279737))
         self.assertEqual(detail['missing_roles'], ['client', 'admin'])
         self.assertTrue(detail['logo'].startswith('/media/public/logos/'))
         self.assertIsNone(detail['platform_bot'])
@@ -196,6 +200,8 @@ class BusinessesTests(PlatformTestCase):
         # The new business answers on its own hosts, with its own data and its own logo address.
         shop = self.make_client('burger-house.localhost').get('/api/v1/shop').json()
         self.assertEqual((shop['business']['name'], shop['business']['logo']), ('Burger House', detail['logo']))
+        self.assertEqual((shop['business']['address'], shop['business']['lat'], shop['business']['lng']),
+                         ("Amir Temur ko'chasi, 15", 41.311081, 69.279737))
         self.assertEqual(self.make_client('burger-house.localhost').get(detail['logo']).status_code, 200)
         admin = self.make_client('burger-house-admin.localhost')
         response = admin.post('/api/v1/auth/login', {'phone': '+998901112233', 'password': password}, format='json')
@@ -211,6 +217,22 @@ class BusinessesTests(PlatformTestCase):
         self.assertEqual((body['tagline'], body['delivery_time'], body['min_order']), ('Eng mazali', '30–45', 20000))
         response = self.hub.patch('/api/v1/businesses/test-shop', {'name': ''}, format='json')
         self.assertEqual(response.json(), {'error': 'validation', 'fields': {'name': ['blank']}})
+
+    def test_place_on_the_map(self):
+        body = self.hub.get('/api/v1/businesses/test-shop').json()
+        self.assertEqual((body['address'], body['lat'], body['lng']), ('', None, None))  # opened before maps
+        self.assertEqual(self.shop.get('/api/v1/shop').json()['business']['lat'], None)
+        place = {'address': 'Chilonzor 9', 'lat': 41.2856, 'lng': 69.2035}
+        body = self.hub.patch('/api/v1/businesses/test-shop', place, format='json').json()
+        self.assertEqual((body['address'], body['lat'], body['lng']), ('Chilonzor 9', 41.2856, 69.2035))
+        shop = self.shop.get('/api/v1/shop').json()['business']
+        self.assertEqual((shop['address'], shop['lat'], shop['lng']), ('Chilonzor 9', 41.2856, 69.2035))
+        # A point is both of its coordinates, on the Earth.
+        for change, fields in (({'lat': 41.3}, {'lng': ['required']}), ({'lng': 69.2}, {'lat': ['required']}),
+                               ({'lat': 91, 'lng': 181}, {'lat': ['max_value'], 'lng': ['max_value']}),
+                               ({'lat': None, 'lng': None}, {'lat': ['null'], 'lng': ['null']})):
+            response = self.hub.patch('/api/v1/businesses/test-shop', change, format='json')
+            self.assertEqual(response.json(), {'error': 'validation', 'fields': fields})
         self.assertEqual(self.hub.get('/api/v1/businesses/nope').json(), {'error': 'not_found'})
 
     def test_suspend_and_activate(self):

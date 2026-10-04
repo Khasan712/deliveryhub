@@ -332,6 +332,10 @@
     animation: none;
     transition: transform 0.26s cubic-bezier(0.4, 0, 1, 1);
   }
+  /* The checkout's map: the whole screen on phones, a large dialog on wider screens. */
+  .sheet-panel.sheet-map {
+    height: calc(100dvh - var(--safe-top) - 24px);
+  }
   @media (min-width: 640px) {
     .sheet-layer {
       align-items: center;
@@ -351,6 +355,10 @@
     }
     .sheet-panel.sheet-wide {
       width: min(720px, 100%);
+    }
+    .sheet-panel.sheet-map {
+      width: min(760px, 100%);
+      height: min(86dvh, 820px);
     }
   }
 
@@ -499,5 +507,33 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* The map's own controls (MapLibre) in the app's colours. Unlayered and specific: maplibre-gl.css is unlayered
+   and loads after this file. Phones zoom with two fingers, so the +/− buttons are for wider screens. */
+.sheet-map .maplibregl-map .maplibregl-ctrl-group {
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--sh-card);
+}
+.sheet-map .maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--line);
+}
+.sheet-map .maplibregl-map .maplibregl-ctrl-attrib {
+  background-color: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--muted);
+}
+.sheet-map .maplibregl-map .maplibregl-ctrl-attrib a {
+  color: var(--ink-2);
+}
+:root[data-theme='dark'] .sheet-map .maplibregl-map .maplibregl-ctrl-icon,
+:root[data-theme='dark'] .sheet-map .maplibregl-map .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+@media (max-width: 639px) {
+  .sheet-map .maplibregl-map .maplibregl-ctrl-top-right {
+    display: none;
   }
 }

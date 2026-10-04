@@ -1,7 +1,7 @@
 // A small in-memory Platform API that follows docs/api.md (session + CSRF, error shapes, every endpoint the
 // panel uses). Tests arrange `backend.state` and inspect `backend.state.requests`.
 import { http, HttpResponse } from 'msw'
-import type { Bot, BotRole, BusinessCard, BusinessDetail, PlatformUser } from '../api/types'
+import type { Bot, BotRole, BusinessCard, BusinessDetail, Place, PlatformUser } from '../api/types'
 import { DOMAIN, STAFF, STAFF_PASSWORD } from './fixtures'
 
 export interface RecordedRequest {
@@ -24,6 +24,8 @@ interface State {
   telegramBots: Record<string, string>
   /** Tokens of bots that already serve another business. */
   botsInUse: string[]
+  /** The map server behind GET /geo/*: what it finds, or out of reach. */
+  geo: { address: string; places: Place[]; down: boolean }
   requests: RecordedRequest[]
 }
 
@@ -37,6 +39,14 @@ function initialState(): State {
     platformBot: { username: 'deliveryhub_bot' },
     telegramBots: {},
     botsInUse: [],
+    geo: {
+      address: "Bunyodkor ko'chasi, 3, Chilonzor tumani, Toshkent",
+      places: [
+        { address: 'Chorsu bozori, Shayxontohur tumani, Toshkent', lat: 41.3266, lng: 69.2353 },
+        { address: 'Chorsu, Toshkent', lat: 41.3251, lng: 69.2369 },
+      ],
+      down: false,
+    },
     requests: [],
   }
 }
@@ -153,9 +163,20 @@ function withBusiness(handler: (business: BusinessDetail, input: Parameters<Hand
   }
 }
 
+/** A coordinate as JSON or multipart sends it; null when missing or not a number. */
+function coordinate(value: unknown): number | null {
+  const number = value === null || value === undefined || value === '' ? NaN : Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
 function profileErrors(body: Body, { create }: { create: boolean }): Record<string, string[]> {
   const fields: Record<string, string[]> = {}
   if ((create || 'name' in body) && !String(body.name ?? '').trim()) fields.name = ['blank']
+  // A business opens with its place on the map; a point always comes as both coordinates.
+  if (create && !String(body.address ?? '').trim()) fields.address = ['required']
+  for (const [field, other] of [['lat', 'lng'], ['lng', 'lat']] as const) {
+    if ((create || other in body) && coordinate(body[field]) === null) fields[field] = ['required']
+  }
   if ('brand_color' in body && body.brand_color !== '' && !/^#[0-9a-f]{6}$/.test(String(body.brand_color))) {
     fields.brand_color = ['invalid']
   }
@@ -169,6 +190,9 @@ function applyProfile(business: BusinessDetail, body: Body) {
     if (field in body) business[field] = String(body[field])
   }
   if ('min_order' in body) business.min_order = Number(body.min_order)
+  if ('address' in body) business.address = String(body.address)
+  if ('lat' in body) business.lat = coordinate(body.lat)
+  if ('lng' in body) business.lng = coordinate(body.lng)
   // A file sets the logo; `logo: null` (JSON) or an empty multipart field removes it.
   const logo = body.logo as { name?: string } | string | null | undefined
   if (logo === null || logo === '') business.logo = null
@@ -256,6 +280,9 @@ export const handlers = [
       stats: { orders_today: 0, revenue_today: 0, orders_total: 0, customers: 0 },
       bots: { client: null, admin: null },
       support_phone: '',
+      address: '',
+      lat: null,
+      lng: null,
       delivery_time: '30–45',
       min_order: 0,
       owner: { name: String(body.owner_name), phone: ownerPhone ?? '' },
@@ -305,6 +332,14 @@ export const handlers = [
         ? HttpResponse.json({ phone: business.owner.phone, password: 'Fresh-Pass-42' })
         : error(400, 'owner_missing'),
     ),
+  ),
+
+  // --- map ------------------------------------------------------------------------------------------------
+  route('get', '/geo/reverse', () =>
+    backend.state.geo.down ? error(503, 'geocoder_unavailable') : HttpResponse.json({ address: backend.state.geo.address }),
+  ),
+  route('get', '/geo/search', () =>
+    backend.state.geo.down ? error(503, 'geocoder_unavailable') : HttpResponse.json({ results: backend.state.geo.places }),
   ),
 
   // --- bots -------------------------------------------------------------------------------------------------

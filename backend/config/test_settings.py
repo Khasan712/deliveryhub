@@ -1,5 +1,6 @@
 """Settings of the test suite (pytest.ini). The database comes from POSTGRES_* (default: the throwaway
-PostgreSQL on localhost:55433 described in README.md); nothing reaches Telegram, Gemini or an SMS provider."""
+PostgreSQL on localhost:55433 described in README.md); nothing reaches Telegram, Gemini, an SMS provider or a
+map server."""
 import os
 import tempfile
 
@@ -20,6 +21,7 @@ PLATFORM_DOMAIN = 'example.uz'
 PLATFORM_HUB_SUBDOMAIN = 'deliveryhub'
 PLATFORM_BOT_TOKEN = ''
 TELEGRAM_API_URL = 'http://telegram.invalid'
+GEOCODER_URL = 'http://geocoder.invalid'
 TUNNELS_FILE = None
 SMS_BACKEND = 'console'
 SHOP_OTP_DEBUG = False

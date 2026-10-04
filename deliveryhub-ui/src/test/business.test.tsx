@@ -320,6 +320,51 @@ describe('business page', () => {
     expect(screen.queryByRole('button', { name: 'Olib tashlash' })).not.toBeInTheDocument()
   })
 
+  it('puts a business opened before maps on the map', async () => {
+    backend.state.businesses = sampleBusinesses()
+    const { user } = renderApp('/b/sushi-bar')
+
+    const card = within(await screen.findByRole('region', { name: 'Joylashuv' }))
+    expect(card.getByText(/Biznes hali xaritada belgilanmagan/)).toBeInTheDocument()
+    expect(card.getByRole('button', { name: 'Joylashuvni saqlash' })).toBeDisabled()
+
+    await user.click(await card.findByRole('button', { name: 'Xaritaga bosish' }))
+    await waitFor(() =>
+      expect(card.getByLabelText('Biznes manzili')).toHaveValue("Bunyodkor ko'chasi, 3, Chilonzor tumani, Toshkent"),
+    )
+    await user.click(card.getByRole('button', { name: 'Joylashuvni saqlash' }))
+
+    expect(await screen.findByText('Joylashuv saqlandi')).toBeInTheDocument()
+    const [patch] = backend.requests('PATCH', '/businesses/sushi-bar')
+    expect(patch?.body).toEqual({ address: "Bunyodkor ko'chasi, 3, Chilonzor tumani, Toshkent", lat: 41.2856, lng: 69.2035 })
+    expect(backend.business('sushi-bar')).toMatchObject({ lat: 41.2856, lng: 69.2035 })
+    expect(card.queryByText(/Biznes hali xaritada belgilanmagan/)).not.toBeInTheDocument()
+    expect(card.getByRole('button', { name: 'Joylashuvni saqlash' })).toBeDisabled()
+  })
+
+  it('moves a business on the map and keeps its own address text', async () => {
+    backend.state.businesses = [makeBusiness()]
+    const { user } = renderApp('/b/burger-house')
+
+    const card = within(await screen.findByRole('region', { name: 'Joylashuv' }))
+    expect(card.getByText('41.311081, 69.279737')).toBeInTheDocument()
+    expect(card.getByLabelText('Biznes manzili')).toHaveValue("Amir Temur ko'chasi, 15")
+
+    await user.click(await card.findByRole('button', { name: 'Xaritaga bosish' }))
+    expect(card.getByText('41.285600, 69.203500')).toBeInTheDocument()
+    await waitFor(() => expect(backend.requests('GET', '/geo/reverse')).toHaveLength(1))
+    // The saved address was not filled in by the map: it stays until changed by hand.
+    expect(card.getByLabelText('Biznes manzili')).toHaveValue("Amir Temur ko'chasi, 15")
+
+    await user.click(card.getByRole('button', { name: 'Bekor qilish' }))
+    expect(card.getByText('41.311081, 69.279737')).toBeInTheDocument()
+    await user.clear(card.getByLabelText('Biznes manzili'))
+    await user.click(card.getByRole('button', { name: 'Joylashuvni saqlash' }))
+    expect(card.getByText('Biznes manzilini kiriting')).toBeInTheDocument()
+    expect(card.getByLabelText('Biznes manzili')).toHaveFocus()
+    expect(backend.requests('PATCH', '/businesses/burger-house')).toHaveLength(0)
+  })
+
   it('focuses the business heading once it has loaded after navigating to it', async () => {
     backend.state.businesses = sampleBusinesses()
     const { user } = renderApp('/')

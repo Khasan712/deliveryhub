@@ -18,8 +18,13 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   cached so the next visit paints in the right colour.
 - Cart: persisted per shop host, synced between tabs, minimum-order progress, "clear" with undo; always-open side
   panel on desktop (lines with unit price, delivery time, total), bottom sheet + floating bar on phones.
-- Checkout: delivery/pickup, address + "use my location" (Telegram `LocationManager` inside Telegram, browser
-  geolocation elsewhere), name, phone (`+998` mask, "share my Telegram number" in the Mini App), cash/card, comment.
+- Checkout: delivery/pickup. Delivery: the point on a **map** (a full-screen sheet; the pin stays in the middle
+  while the map moves under it, like in taxi apps — OpenFreeMap tiles, MapLibre GL loaded only then; search by
+  street/landmark and the address under the pin through `GET /geo/*`; "my location": Telegram `LocationManager`
+  inside Telegram, browser geolocation elsewhere; in Telegram the MainButton picks the place) and the address text
+  (an empty one takes the map's address, a typed one stays and the map's is offered with one tap). Pickup: the
+  business's address with a map link. Name, phone (`+998` mask, "share my Telegram number" in the Mini App),
+  cash/card, comment.
   Client-side validation, server `validation` errors mapped to fields, `min_order`, `product_not_found` (removed
   from the cart), `401` (sign-in again). Contact details are remembered for the next order.
 - Sign-in: automatic in Telegram (`initData`); on the website phone + SMS code (resend timer, attempts left,

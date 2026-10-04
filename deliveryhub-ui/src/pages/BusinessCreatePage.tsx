@@ -11,6 +11,7 @@ import {
   ErrorCircleIcon,
   InfoIcon,
   KeyIcon,
+  MapPinIcon,
   PaletteIcon,
   PhoneIcon,
   RefreshIcon,
@@ -20,6 +21,7 @@ import {
   WalletIcon,
 } from '../components/icons'
 import { LogoField } from '../components/LogoField'
+import { LocationPicker } from '../components/map/LocationPicker'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ColorField } from '../components/ui/ColorField'
@@ -33,6 +35,7 @@ import { cx } from '../lib/cx'
 import { platformDomain } from '../lib/domain'
 import { errorMessage, fieldErrors, fieldMessage } from '../lib/errors'
 import { formatPrice } from '../lib/format'
+import type { Point } from '../lib/map'
 import { useDebouncedValue, useFilePreview } from '../lib/hooks'
 import { businessPath } from '../lib/paths'
 import { formatPhone, normalizePhone } from '../lib/phone'
@@ -43,6 +46,7 @@ const INITIAL = {
   name: '',
   slug: '',
   tagline: '',
+  address: '',
   support_phone: '',
   delivery_time: '30–45',
   min_order: '0',
@@ -53,7 +57,7 @@ const INITIAL = {
 }
 
 type Values = typeof INITIAL
-type FieldName = keyof Values | 'logo'
+type FieldName = keyof Values | 'logo' | 'location'
 type Errors = Partial<Record<FieldName, string>>
 
 /** Error focus order = the order of the fields on the page. */
@@ -61,6 +65,8 @@ const FIELDS: FieldName[] = [
   'name',
   'slug',
   'tagline',
+  'location',
+  'address',
   'support_phone',
   'delivery_time',
   'min_order',
@@ -92,12 +98,16 @@ function useSlugAvailability(slug: string): SlugState {
   return 'checking'
 }
 
-function validate(values: Values, slugState: SlugState): Errors {
+const NO_LOCATION = 'Xaritada biznes joyini belgilang'
+
+function validate(values: Values, slugState: SlugState, point: Point | null): Errors {
   const errors: Errors = {}
   if (!values.name.trim()) errors.name = 'Biznes nomini kiriting'
   if (!values.slug) errors.slug = 'Manzilni kiriting'
   else if (!isSlugShapeValid(values.slug)) errors.slug = fieldMessage('slug', 'slug_invalid')
   else if (slugState.startsWith('slug_')) errors.slug = fieldMessage('slug', slugState)
+  if (!point) errors.location = NO_LOCATION
+  if (!values.address.trim()) errors.address = 'Biznes manzilini kiriting'
   if (!isHexColor(values.brand_color)) errors.brand_color = fieldMessage('brand_color', 'invalid')
   if (!values.owner_name.trim()) errors.owner_name = 'Egasining ismini kiriting'
   if (!values.owner_phone.trim()) errors.owner_phone = 'Telefon raqamini kiriting'
@@ -118,13 +128,15 @@ export function BusinessCreatePage() {
   const [values, setValues] = useState(INITIAL)
   const [slugEdited, setSlugEdited] = useState(false)
   const [logo, setLogo] = useState<File | null>(null)
+  const [point, setPoint] = useState<Point | null>(null)
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const formErrorRef = useRef<HTMLDivElement>(null)
   const created = useRef(false)
   const slugState = useSlugAvailability(values.slug)
 
-  const dirty = logo !== null || (Object.keys(INITIAL) as (keyof Values)[]).some((key) => values[key] !== INITIAL[key])
+  const dirty =
+    logo !== null || point !== null || (Object.keys(INITIAL) as (keyof Values)[]).some((key) => values[key] !== INITIAL[key])
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && !created.current && currentLocation.pathname !== nextLocation.pathname,
@@ -180,11 +192,11 @@ export function BusinessCreatePage() {
     if (create.isPending) return
     const slug = values.slug.replace(/^-+|-+$/g, '')
     const ready = { ...values, slug }
-    const found = validate(ready, slugState)
+    const found = validate(ready, slugState, point)
     setValues(ready)
     setErrors(found)
     setFormError(null)
-    if (Object.keys(found).length > 0) {
+    if (Object.keys(found).length > 0 || !point) {
       focusFirst(found)
       return
     }
@@ -195,6 +207,9 @@ export function BusinessCreatePage() {
           name: ready.name.trim(),
           slug,
           tagline: ready.tagline.trim(),
+          address: ready.address.trim(),
+          lat: point.lat,
+          lng: point.lng,
           support_phone: ready.support_phone.trim(),
           delivery_time: ready.delivery_time.trim(),
           min_order: Number(ready.min_order || '0'),
@@ -210,7 +225,13 @@ export function BusinessCreatePage() {
       // The credentials travel in the history state: shown once on the business page, gone after a reload.
       navigate(businessPath(business.slug), { state: { credentials } })
     } catch (error) {
-      const fields = fieldErrors(error) as Errors
+      const fields = fieldErrors(error) as Errors & { lat?: string; lng?: string }
+      // The point is one control here: a missing coordinate means "put the business on the map".
+      if (fields.lat || fields.lng) {
+        fields.location = NO_LOCATION
+        delete fields.lat
+        delete fields.lng
+      }
       const known = Object.fromEntries(Object.entries(fields).filter(([field]) => FIELDS.includes(field as FieldName)))
       if (Object.keys(known).length > 0) {
         setErrors(known)
@@ -299,6 +320,27 @@ export function BusinessCreatePage() {
                 )}
               </Field>
             </div>
+          </Card>
+
+          <Card
+            title="Joylashuv"
+            titleId="new-section-location"
+            description="Mijozlar buyurtmani shu yerdan olib ketadi; yetkazishda ham xarita shu atrofdan ochiladi."
+            icon={<MapPinIcon size={18} />}
+          >
+            <LocationPicker
+              id={fieldId('location')}
+              addressId={fieldId('address')}
+              point={point}
+              address={values.address}
+              onPointChange={(next) => {
+                setPoint(next)
+                clearError('location')
+              }}
+              onAddressChange={set('address')}
+              locationError={errors.location}
+              addressError={errors.address}
+            />
           </Card>
 
           <Card
@@ -599,6 +641,7 @@ function Preview({ values, logo, domain, minOrder }: { values: Values; logo: Fil
   const rows = [
     { icon: <StoreIcon size={15} />, label: "Do'kon", value: `${slug}.${domain}`, mono: true },
     { icon: <DashboardIcon size={15} />, label: 'Admin panel', value: `${slug}-admin.${domain}`, mono: true },
+    { icon: <MapPinIcon size={15} />, label: 'Manzil', value: values.address.trim() || '—' },
     { icon: <ClockIcon size={15} />, label: 'Yetkazish', value: values.delivery_time ? `${values.delivery_time} daqiqa` : '—' },
     { icon: <WalletIcon size={15} />, label: 'Min. buyurtma', value: minOrder ? formatPrice(minOrder) : "yo'q" },
     { icon: <PhoneIcon size={15} />, label: 'Aloqa', value: values.support_phone || '—' },

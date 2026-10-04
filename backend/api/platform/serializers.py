@@ -1,4 +1,6 @@
 """Platform API data (docs/api.md, Platform API)."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.platform import provisioning
@@ -7,7 +9,7 @@ from apps.platform.current import url_for
 from apps.platform.models import Business, BusinessBot, Domain
 from apps.platform.overview import business_stats, owner_of
 from ..common.fields import ColorField, LimitedImageField, PhoneField
-from ..common.representations import file_url, iso, person_name
+from ..common.representations import business_point, file_url, iso, person_name
 
 
 class BotSerializer(serializers.Serializer):
@@ -79,6 +81,9 @@ class PlatformBotSerializer(serializers.Serializer):
 
 class BusinessDetailSerializer(BusinessCardSerializer):
     support_phone = serializers.CharField()
+    address = serializers.CharField()
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
     delivery_time = serializers.CharField()
     min_order = serializers.IntegerField()
     owner = OwnerSerializer(allow_null=True)
@@ -91,6 +96,8 @@ class BusinessDetailSerializer(BusinessCardSerializer):
         return {
             **super().to_representation(business),
             'support_phone': business.support_phone,
+            'address': business.address,
+            **business_point(business),
             'delivery_time': business.delivery_time,
             'min_order': business.min_order,
             'owner': {'name': person_name(owner), 'phone': owner.phone_number} if owner else None,
@@ -104,10 +111,14 @@ class BusinessDetailSerializer(BusinessCardSerializer):
 # ---------------------------------------------------------------------------
 
 class BusinessProfileSerializer(serializers.Serializer):
-    """Editable profile; `logo: null` (or empty) removes the logo."""
+    """Editable profile; `logo: null` (or empty) removes the logo. The point on the map comes as both `lat` and
+    `lng`."""
     name = serializers.CharField(max_length=120)
     tagline = serializers.CharField(max_length=200, required=False, allow_blank=True)
     support_phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    lat = serializers.FloatField(min_value=-90, max_value=90, required=False, source='latitude')
+    lng = serializers.FloatField(min_value=-180, max_value=180, required=False, source='longitude')
     delivery_time = serializers.CharField(max_length=20, required=False, allow_blank=True)
     min_order = serializers.IntegerField(min_value=0, max_value=100_000_000, required=False)
     brand_color = ColorField(required=False)
@@ -115,6 +126,15 @@ class BusinessProfileSerializer(serializers.Serializer):
 
     def validate_delivery_time(self, value):
         return value or '30–45'
+
+    def validate(self, attrs):
+        if ('latitude' in attrs) != ('longitude' in attrs):
+            raise serializers.ValidationError({'lng' if 'latitude' in attrs else 'lat': ['required']},
+                                              code='required')
+        for field in ('latitude', 'longitude'):
+            if field in attrs:
+                attrs[field] = Decimal(f'{attrs[field]:.6f}')
+        return attrs
 
     def apply(self, business):
         for field, value in self.validated_data.items():
@@ -142,6 +162,10 @@ class SlugField(serializers.CharField):
 
 class BusinessCreateSerializer(BusinessProfileSerializer):
     slug = SlugField(help_text='3–30 characters: a-z, 0-9, "-"')
+    # A business opens with its place on the map (the pickup address of the shop).
+    address = serializers.CharField(max_length=255)
+    lat = serializers.FloatField(min_value=-90, max_value=90, source='latitude')
+    lng = serializers.FloatField(min_value=-180, max_value=180, source='longitude')
     owner_name = serializers.CharField(max_length=120)
     owner_phone = PhoneField()
     owner_password = serializers.CharField(min_length=8, max_length=128, required=False, allow_blank=True,

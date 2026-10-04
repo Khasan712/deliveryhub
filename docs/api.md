@@ -54,6 +54,7 @@ Business profile and the whole catalog in one call.
 ```json
 {
   "business": {"name": "Burger House", "tagline": "", "support_phone": "+998712001122",
+               "address": "Amir Temur ko'chasi, 15", "lat": 41.311081, "lng": 69.279737,
                "delivery_time": "30–45", "min_order": 0, "brand_color": "#ff6b00", "logo": "/media/burger_house/logos/a.png"},
   "bot_username": "burger_house_bot",
   "categories": [{"id": 1, "name_uz": "Burgerlar", "name_ru": "Бургеры"}],
@@ -64,6 +65,8 @@ Business profile and the whole catalog in one call.
 ```
 `Product`: `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit_uz", "unit_ru", "category_id", "image"}`
 (`image`: URL or `null`). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
+`business.address` / `lat` / `lng`: where pickup orders are collected (`""` / `null` for a business not yet put on the
+map).
 
 `Client`: `{"id", "first_name", "last_name", "phone", "telegram": bool, "tg_nick", "lang": "uz"|"ru"|"", "address", "lat", "lng"}`
 (`address`/`lat`/`lng` — last delivery address, to prefill checkout).
@@ -108,6 +111,19 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
 ```
 Status meaning for customers: `ordered` — accepted, being prepared; `on_the_way` (delivery only); `completed` —
 delivered / handed over (pickup); `rejected` — cancelled.
+
+### Map: addresses ⇄ points
+The checkout's map asks the backend, which asks a Nominatim server (OpenStreetMap data, `GEOCODER_URL`); answers are
+cached and the public server's limit (one request a second) is kept for all businesses together. The map tiles
+themselves come straight from OpenFreeMap.
+* `GET /api/v1/geo/reverse?lat=41.311081&lng=69.279737&lang=uz|ru` → `{"address": "Amir Temur ko'chasi, 15, Yunusobod
+  tumani, Toshkent"}` (`""` when the map knows no address there).
+* `GET /api/v1/geo/search?q=Chilonzor&lang=uz|ru` → `{"results": [{"address", "lat", "lng"}]}` — up to 5, in
+  Uzbekistan (`GEOCODER_COUNTRIES`), the surroundings of the business first. Search on Enter, not on every keystroke.
+
+Errors: `validation` (`lat`/`lng` out of range, `q` shorter than 2), `429 too_many_requests` (per visitor: 60
+addresses / 20 searches in 5 minutes), `503 geocoder_unavailable` (out of reach or switched off — the address is
+typed instead).
 
 ---
 
@@ -225,13 +241,16 @@ Our staff only (superusers of the platform; session auth).
 * `POST /api/v1/businesses` (JSON, or multipart with `logo`) →  `201 {"business": BusinessDetail, "credentials": {"phone", "password"}}`
   ```json
   {"name": "Burger House", "slug": "burger-house", "owner_name": "Aziz", "owner_phone": "+998901112233",
-   "owner_password": "" , "tagline": "", "support_phone": "", "delivery_time": "30–45", "min_order": 0, "brand_color": "#ff6b00"}
+   "owner_password": "" , "tagline": "", "support_phone": "", "delivery_time": "30–45", "min_order": 0, "brand_color": "#ff6b00",
+   "address": "Amir Temur ko'chasi, 15", "lat": 41.311081, "lng": 69.279737}
   ```
   Creates the business schema, its domains and the owner's admin account (`owner_password` empty → generated; the
-  password is returned only here). Slug: 3–30 chars, `a-z`, `0-9`, `-`. Errors: `validation` (`fields.slug`:
-  `slug_invalid` / `slug_reserved` / `slug_taken`; `fields.owner_phone`: `invalid`).
+  password is returned only here). Slug: 3–30 chars, `a-z`, `0-9`, `-`. The place on the map (`address`, `lat`,
+  `lng` — the shop's pickup address) is required. Errors: `validation` (`fields.slug`: `slug_invalid` /
+  `slug_reserved` / `slug_taken`; `fields.owner_phone`: `invalid`; `fields.address` / `lat` / `lng`: `required`).
 * `GET /api/v1/businesses/{slug}` → `BusinessDetail`.
-* `PATCH /api/v1/businesses/{slug}` (`name`, `tagline`, `support_phone`, `delivery_time`, `min_order`, `brand_color`, `logo`) → `BusinessDetail`.
+* `PATCH /api/v1/businesses/{slug}` (`name`, `tagline`, `support_phone`, `address`, `lat` + `lng` (always together),
+  `delivery_time`, `min_order`, `brand_color`, `logo`) → `BusinessDetail`.
 * `POST /api/v1/businesses/{slug}/status` `{"status": "active" | "suspended"}` → `BusinessDetail`.
 * `DELETE /api/v1/businesses/{slug}` `{"confirm": "<slug>"}` → `204` — deletes the business for good: its schema (staff,
   catalog, customers, orders), domains, bots, setup links and uploaded files; its bots are released first (Mini App
@@ -250,8 +269,13 @@ Our staff only (superusers of the platform; session auth).
  "bots": {"client": Bot | null, "admin": Bot | null}}
 ```
 `Bot`: `{"username", "alive": bool, "created_via": "managed" | "token"}` (`alive` — the bot service polls it now).
-`BusinessDetail` = BusinessCard + `{"support_phone", "delivery_time", "min_order", "owner": {"name", "phone"} | null,
-"platform_bot": {"username"} | null, "missing_roles": ["client", "admin"]}`.
+`BusinessDetail` = BusinessCard + `{"support_phone", "address", "lat", "lng", "delivery_time", "min_order",
+"owner": {"name", "phone"} | null, "platform_bot": {"username"} | null, "missing_roles": ["client", "admin"]}`
+(`lat`/`lng` are `null` for a business opened before it was put on the map).
+
+### Map
+`GET /api/v1/geo/reverse` and `GET /api/v1/geo/search` — the same as in the [Shop API](#map-addresses--points)
+(without the preference for a business's surroundings).
 
 ### Bots of a business
 * `POST /api/v1/businesses/{slug}/bots/setup-link` → `{"url": "https://t.me/<platform bot>?start=setup_...", "qr_svg", "expires_at"}`

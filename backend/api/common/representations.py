@@ -12,6 +12,13 @@ def iso(value):
     return timezone.localtime(value).isoformat() if value else None
 
 
+def business_point(business):
+    """{'lat': 41.311081, 'lng': 69.279737} — or nulls while the business has not been put on the map."""
+    if business.latitude is None or business.longitude is None:
+        return {'lat': None, 'lng': None}
+    return {'lat': float(business.latitude), 'lng': float(business.longitude)}
+
+
 def product_image_url(product):
     """The uploaded image (media/<business>/products/…), or the image an old product keeps in the database."""
     if product.img and product.img.name:

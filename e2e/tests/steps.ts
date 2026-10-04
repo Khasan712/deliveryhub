@@ -20,6 +20,11 @@ export async function openBusiness(page: Page, business: Business) {
   await form.getByLabel('Ismi').fill(business.owner.name)
   await form.getByLabel('Telefoni (login)').fill(business.owner.phone)
   await form.getByLabel(/^Parol/).fill(business.owner.password)
+  // Its place on the map: a point typed into the search (this stack has no map server), then the address.
+  await form.getByLabel('Xaritadan qidirish').fill(business.place.point)
+  await form.getByRole('button', { name: 'Topish' }).click()
+  await expect(form.getByText(business.place.point, { exact: true })).toBeVisible()
+  await form.getByLabel('Biznes manzili').fill(business.place.address)
   await form.getByRole('button', { name: 'Biznesni ochish' }).click()
 
   // Opening a business creates its schema (migrations): a few seconds.
@@ -54,6 +59,8 @@ export async function placeOrder(page: Page, business: Business, product: string
 
   await expect(page).toHaveURL(/\/checkout$/)
   await page.getByText('Olib ketish', { exact: true }).click()
+  // Where to come: the place our panel put the business on.
+  await expect(page.getByText(business.place.address)).toBeVisible()
   await page.getByRole('button', { name: /Buyurtma berish/ }).click()
   await expect(page.getByText('Buyurtma qabul qilindi!')).toBeVisible()
   const heading = await page.getByRole('heading', { name: /Buyurtma #\d+/ }).textContent()

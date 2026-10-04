@@ -14,4 +14,6 @@ urlpatterns = [
     path('me', views.MeView.as_view(), name='me'),
     path('orders', views.OrdersView.as_view(), name='orders'),
     path('orders/<int:pk>', views.OrderDetailView.as_view(), name='order'),
+    path('geo/reverse', views.GeoReverseView.as_view(), name='geo-reverse'),
+    path('geo/search', views.GeoSearchView.as_view(), name='geo-search'),
 ]

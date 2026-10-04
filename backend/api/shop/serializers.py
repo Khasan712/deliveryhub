@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.core.enums import DeliveryTypeEnum, LanguageEnum, OrderSourceEnum, PaymentMethodEnum
 from apps.core.utils import parse_price, parse_quantity
-from ..common.representations import file_url, iso, order_address, product_image_url
+from ..common.representations import business_point, file_url, iso, order_address, product_image_url
 
 LANGS = tuple(lang.value for lang in LanguageEnum)
 
@@ -13,6 +13,9 @@ class BusinessSerializer(serializers.Serializer):
     name = serializers.CharField()
     tagline = serializers.CharField()
     support_phone = serializers.CharField()
+    address = serializers.CharField(help_text='Where pickup orders are collected')
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
     delivery_time = serializers.CharField()
     min_order = serializers.IntegerField()
     brand_color = serializers.CharField()
@@ -23,6 +26,8 @@ class BusinessSerializer(serializers.Serializer):
             'name': business.name,
             'tagline': business.tagline,
             'support_phone': business.support_phone,
+            'address': business.address,
+            **business_point(business),
             'delivery_time': business.delivery_time,
             'min_order': business.min_order,
             'brand_color': business.brand_color,

@@ -5,6 +5,7 @@ import { brandColor, prefersLightText } from './color'
 import { platformDomain } from './domain'
 import { errorMessage, fieldErrors } from './errors'
 import { formatDateTime, formatPrice, hostOf, initialOf } from './format'
+import { parsePoint } from './map'
 import { loginPath, safeNext } from './paths'
 import { formatPhone, normalizePhone } from './phone'
 import { svgDataUrl } from './svg'
@@ -98,5 +99,22 @@ describe('platformDomain', () => {
   })
   it('falls back to the shop link of an existing business', () => {
     expect(platformDomain([card])).toBe('example.uz')
+  })
+})
+
+describe('map', () => {
+  it('reads a point typed or pasted into the search', () => {
+    expect(parsePoint('41.311081, 69.279737')).toEqual({ lat: 41.311081, lng: 69.279737 })
+    expect(parsePoint(' 41.3111 69.2797 ')).toEqual({ lat: 41.3111, lng: 69.2797 })
+    expect(parsePoint('https://www.google.com/maps/@41.2995,69.2401,17z')).toEqual({ lat: 41.2995, lng: 69.2401 })
+    expect(parsePoint('https://maps.google.com/?q=41.2995,69.2401')).toEqual({ lat: 41.2995, lng: 69.2401 })
+    // Yandex writes the longitude first.
+    expect(parsePoint('https://yandex.uz/maps/?ll=69.240562%2C41.299496&z=16')).toEqual({ lat: 41.299496, lng: 69.240562 })
+    expect(parsePoint('https://yandex.uz/maps/?pt=69.24,41.29&z=17')).toEqual({ lat: 41.29, lng: 69.24 })
+  })
+  it('leaves addresses and impossible points to the geocoder', () => {
+    expect(parsePoint('Chilonzor 9')).toBeNull()
+    expect(parsePoint('Amir Temur 15, 2')).toBeNull()
+    expect(parsePoint('91.5, 69.2')).toBeNull()
   })
 })

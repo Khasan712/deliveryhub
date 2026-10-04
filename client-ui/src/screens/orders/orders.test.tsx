@@ -96,6 +96,14 @@ describe('orders', () => {
     expect(screen.getAllByText(som(82000)).length).toBeGreaterThan(0)
   })
 
+  it('shows where to collect a pickup order', async () => {
+    db.orders = [makeOrder({ delivery_type: 'pickup', address: '', lat: null, lng: null })]
+    renderApp({ route: '/orders/131', signedIn: true })
+    expect(await screen.findByRole('heading', { level: 1, name: 'Buyurtma #131' })).toBeInTheDocument()
+    expect(await screen.findByText("Amir Temur ko'chasi, 15, Toshkent")).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: uz.onMap })).toHaveAttribute('href', 'https://maps.google.com/?q=41.311081,69.279737')
+  })
+
   it('shows a banner instead of the tracker for a rejected order', async () => {
     db.orders = [makeOrder({ status: 'rejected' })]
     renderApp({ route: '/orders/131', signedIn: true })

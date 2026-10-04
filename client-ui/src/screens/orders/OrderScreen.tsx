@@ -129,21 +129,29 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
   // A finished order is repeated with one tap (Telegram: the MainButton); an active one keeps it secondary.
   useMainButton(active ? null : { text: t('reorder'), onClick: reorder })
 
+  // Pickup: where to come (the business's place); delivery: where the order goes.
+  const place = pickup
+    ? { address: business?.address ?? '', lat: business?.lat ?? null, lng: business?.lng ?? null }
+    : { address: order.address, lat, lng }
   const details: { icon: IconName; label: string; value: ReactNode }[] = [
     {
       icon: pickup ? 'store' : 'pin',
       label: pickup ? t('pickup') : t('delivery'),
-      value: pickup ? null : (
-        <>
-          {order.address || (lat !== null ? t('locationSet') : '—')}
-          {lat !== null && lng !== null && (
-            <ExternalLink href={mapUrl(lat, lng)} className="ml-1.5 inline-flex items-center gap-1 font-bold text-brand-text hover:underline">
-              <Icon name="map" className="size-3.5" />
-              {t('onMap')}
-            </ExternalLink>
-          )}
-        </>
-      ),
+      value:
+        pickup && !place.address ? null : (
+          <>
+            {place.address || (place.lat !== null ? t('locationSet') : '—')}
+            {place.lat !== null && place.lng !== null && (
+              <ExternalLink
+                href={mapUrl(place.lat, place.lng)}
+                className="ml-1.5 inline-flex items-center gap-1 font-bold text-brand-text hover:underline"
+              >
+                <Icon name="map" className="size-3.5" />
+                {t('onMap')}
+              </ExternalLink>
+            )}
+          </>
+        ),
     },
   ]
   if (order.phone) details.push({ icon: 'phone', label: t('phone'), value: displayPhone(order.phone) })

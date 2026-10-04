@@ -23,6 +23,7 @@ const MESSAGES: Record<string, string> = {
   business_active: "Avval biznesni to'xtating — faqat to'xtatilgan biznes o'chiriladi.",
   confirmation_required: 'Tasdiqlash uchun biznes manzilini aynan yozing.',
   unknown_host: "Bu manzil platformada ro'yxatdan o'tmagan. Panel manzilini tekshiring.",
+  geocoder_unavailable: "Manzil qidiruvi hozir ishlamayapti — joyni xaritada o'zingiz belgilang.",
 }
 
 const FIELD_CODES: Record<string, string> = {

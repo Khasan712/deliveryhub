@@ -18,7 +18,7 @@ import { useI18n } from '../../i18n/i18n'
 import { cn } from '../../lib/cn'
 import { errorMessageKey, fieldErrorKey } from '../../lib/errors'
 import { mapUrl } from '../../lib/format'
-import { currentLocation, LocationError, openLocationSettings } from '../../lib/geo'
+import type { Coordinates } from '../../lib/geo'
 import { confirmClosing, haptic, telegram } from '../../lib/telegram'
 import { useMainButton } from '../../lib/useTelegram'
 import { clientName, useAuth } from '../../state/auth'
@@ -39,8 +39,7 @@ import {
   type CheckoutField,
   type CheckoutForm,
 } from './form'
-
-const round6 = (value: number) => Math.round(value * 1e6) / 1e6
+import { MapSheet } from './MapSheet'
 
 export function CheckoutScreen() {
   const { t } = useI18n()
@@ -114,15 +113,17 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const cart = useCart()
   const toast = useToast()
   const queryClient = useQueryClient()
-  const { go, openSheet } = useNav()
+  const { go, openSheet, closeSheet, sheet } = useNav()
   const webApp = telegram()
   const inTelegram = webApp !== null
 
   const [form, setForm] = useState<CheckoutForm>(initialForm)
   const [errors, setErrors] = useState<CheckoutErrors>({})
   const [placing, setPlacing] = useState(false)
-  const [locating, setLocating] = useState(false)
   const [formError, setFormErrorState] = useState('')
+  // The map's address for the chosen point when the customer's own text was kept (one tap puts it in).
+  const [mapAddress, setMapAddress] = useState('')
+  const filledByMap = useRef('')
   const filledFromClient = useRef(false)
   const touched = useRef(new Set<keyof CheckoutForm>())
   const fields = useRef<Partial<Record<CheckoutField, HTMLElement | null>>>({})
@@ -159,28 +160,21 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
     element?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
   }
 
-  const locate = async () => {
-    setLocating(true)
-    try {
-      const { lat, lng } = await currentLocation()
-      touched.current.add('lat')
-      setForm((current) => ({ ...current, lat: round6(lat), lng: round6(lng) }))
-      setErrors((current) => ({ ...current, address: undefined }))
-      haptic('success')
-      toast(t('locationSet'), { type: 'success' })
-    } catch (caught) {
-      const denied = caught instanceof LocationError && caught.code === 'denied'
-      haptic('error')
-      toast(t(denied ? 'locationDenied' : 'locationFailed'), {
-        type: 'error',
-        action:
-          caught instanceof LocationError && caught.canOpenSettings
-            ? { label: t('openSettings'), onClick: openLocationSettings }
-            : undefined,
-      })
-    } finally {
-      setLocating(false)
-    }
+  /** A point from the map: an empty address (or one the map filled in) takes the map's; typed text stays. */
+  const pickOnMap = (point: Coordinates, address: string) => {
+    const replace = address !== '' && (!form.address.trim() || form.address === filledByMap.current)
+    if (replace) filledByMap.current = address
+    touched.current.add('lat')
+    setForm((current) => ({ ...current, lat: point.lat, lng: point.lng, ...(replace ? { address } : {}) }))
+    setMapAddress(replace || address === form.address.trim() ? '' : address)
+    setErrors((current) => ({ ...current, address: undefined }))
+    setFormErrorState('')
+    closeSheet()
+  }
+
+  const removeLocation = () => {
+    setForm((current) => ({ ...current, lat: null, lng: null }))
+    setMapAddress('')
   }
 
   const canShareContact = Boolean(webApp?.requestContact) && Boolean(webApp?.isVersionAtLeast('6.9'))
@@ -300,55 +294,113 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
               ]}
             />
             {delivery ? (
-              <Field id="checkout-address" label={t('address')} error={errors.address && t(errors.address)} className="mt-4 mb-0">
-                <TextArea
-                  id="checkout-address"
-                  ref={(element) => {
-                    fields.current.address = element
-                  }}
-                  value={form.address}
-                  onChange={(event) => set('address', event.target.value)}
-                  invalid={Boolean(errors.address)}
-                  placeholder={t('addressPlaceholder')}
-                  autoComplete="street-address"
-                  maxLength={255}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {hasLocation ? (
-                    <span className="inline-flex h-9 animate-pop-in items-center gap-1.5 rounded-full bg-green-soft pr-1 pl-3 text-[13px] font-extrabold text-green">
-                      <Icon name="pin" className="size-4" />
-                      {t('locationSet')}
-                      <span aria-hidden="true">·</span>
-                      <ExternalLink href={mapUrl(form.lat!, form.lng!)} className="underline underline-offset-2">
-                        {t('onMap')}
-                      </ExternalLink>
-                      <button
-                        type="button"
-                        aria-label={t('removeLocation')}
-                        onClick={() => setForm((current) => ({ ...current, lat: null, lng: null }))}
-                        className="grid size-[26px] place-items-center rounded-full hover:bg-green/15"
-                      >
-                        <Icon name="x" className="size-4" />
-                      </button>
+              <>
+                {hasLocation ? (
+                  <div className="mt-4 flex animate-pop-in items-center gap-3 rounded-2xl bg-green-soft py-2.5 pr-1.5 pl-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-green/15 text-green">
+                      <Icon name="pin" className="size-5" />
                     </span>
-                  ) : (
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14.5px] font-extrabold text-green">{t('locationOnMap')}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12.5px] font-bold text-ink-2">
+                        <button
+                          type="button"
+                          onClick={() => openSheet({ type: 'map' })}
+                          className="underline underline-offset-2 hover:text-ink"
+                        >
+                          {t('edit')}
+                        </button>
+                        <span aria-hidden="true">·</span>
+                        <ExternalLink href={mapUrl(form.lat!, form.lng!)} className="underline underline-offset-2 hover:text-ink">
+                          {t('onMap')}
+                        </ExternalLink>
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={locate}
-                      disabled={locating}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-soft px-3 text-[13px] font-extrabold text-brand-text transition-opacity disabled:opacity-70"
+                      aria-label={t('removeLocation')}
+                      onClick={removeLocation}
+                      className="grid size-9 shrink-0 place-items-center rounded-full text-green hover:bg-green/15"
                     >
-                      {locating ? <span className="spinner size-3.5! border-2!" aria-hidden="true" /> : <Icon name="locate" className="size-4" />}
-                      {locating ? t('locating') : t('locate')}
+                      <Icon name="x" className="size-4" />
                     </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openSheet({ type: 'map' })}
+                    className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-brand-soft p-3 text-left transition-transform active:scale-[0.99]"
+                  >
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-ink">
+                      <Icon name="map" className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-extrabold text-brand-text">{t('pickOnMap')}</span>
+                      <span className="block text-[12.5px] font-semibold text-muted">{t('pickOnMapHint')}</span>
+                    </span>
+                    <Icon name="chevron-right" className="size-5 shrink-0 text-brand-text" />
+                  </button>
+                )}
+                <Field id="checkout-address" label={t('address')} error={errors.address && t(errors.address)} className="mt-4 mb-0">
+                  <TextArea
+                    id="checkout-address"
+                    ref={(element) => {
+                      fields.current.address = element
+                    }}
+                    value={form.address}
+                    onChange={(event) => set('address', event.target.value)}
+                    invalid={Boolean(errors.address)}
+                    placeholder={t('addressPlaceholder')}
+                    autoComplete="street-address"
+                    maxLength={255}
+                  />
+                  {mapAddress && (
+                    <div className="mt-2 flex animate-pop-in items-center gap-2 rounded-xl bg-surface-2 py-1.5 pr-1.5 pl-3">
+                      <span className="min-w-0 flex-1 text-[13px] font-semibold text-ink-2">
+                        {t('mapAddressSuggestion', { address: mapAddress })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          filledByMap.current = mapAddress
+                          set('address', mapAddress)
+                          setMapAddress('')
+                        }}
+                        className="h-8 shrink-0 rounded-full bg-surface px-3 text-[13px] font-extrabold text-brand-text shadow-sm"
+                      >
+                        {t('useIt')}
+                      </button>
+                    </div>
                   )}
-                </div>
-              </Field>
+                </Field>
+              </>
             ) : (
-              <p className="mt-4 flex items-start gap-2 rounded-xl bg-blue-soft px-3 py-2.5 text-[13px] font-bold text-blue">
-                <Icon name="info" className="mt-px size-4" />
-                {t('pickupNote')}
-              </p>
+              <>
+                {catalog.business?.address && (
+                  <div className="mt-4 flex items-start gap-3 rounded-2xl bg-surface-2 p-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
+                      <Icon name="store" className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12.5px] font-bold text-muted">{t('pickupFrom')}</p>
+                      <p className="text-[15px] leading-snug font-extrabold">{catalog.business.address}</p>
+                      {catalog.business.lat !== null && catalog.business.lng !== null && (
+                        <ExternalLink
+                          href={mapUrl(catalog.business.lat, catalog.business.lng)}
+                          className="mt-1 inline-flex items-center gap-1 text-[13px] font-extrabold text-brand-text hover:underline"
+                        >
+                          <Icon name="map" className="size-3.5" />
+                          {t('onMap')}
+                        </ExternalLink>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <p className="mt-3 flex items-start gap-2 rounded-xl bg-blue-soft px-3 py-2.5 text-[13px] font-bold text-blue">
+                  <Icon name="info" className="mt-px size-4" />
+                  {t('pickupNote')}
+                </p>
+              </>
             )}
           </Card>
 
@@ -447,6 +499,13 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
           </Card>
         </aside>
       </div>
+
+      <MapSheet
+        open={sheet?.type === 'map'}
+        value={hasLocation ? { lat: form.lat!, lng: form.lng! } : null}
+        onClose={closeSheet}
+        onPick={pickOnMap}
+      />
 
       {!inTelegram && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-4 pt-3 pb-[calc(12px+var(--safe-bottom))] backdrop-blur-xl lg:hidden">

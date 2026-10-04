@@ -22,10 +22,12 @@ from apps.core.utils import normalize_phone, parse_price
 from apps.platform.current import business_bot
 from apps.platform.models import BusinessBot
 from apps.telegram.outbox import queue_order_created
+from ..common import geo
 from ..common.errors import ApiError
 from ..common.fields import UZ_PHONE_RE
 from ..common.permissions import IsCustomer
 from ..common.ratelimit import client_ip, rate_limited, throttle
+from ..common.representations import business_point
 from ..common.telegram import telegram_user
 from . import serializers as s
 from .authentication import CustomerTokenAuthentication, issue_token
@@ -417,6 +419,16 @@ def remember_contacts(client, name, phone, is_delivery, address, latitude, longi
         changed.append('lang')
     if changed:
         client.save(update_fields=changed + ['updated_at'])
+
+
+class GeoReverseView(geo.GeoReverseMixin, ShopView):
+    pass
+
+
+class GeoSearchView(geo.GeoSearchMixin, ShopView):
+    def near(self, request):
+        point = business_point(request.tenant)
+        return (point['lat'], point['lng']) if point['lat'] is not None else None
 
 
 class OrderDetailView(CustomerView):

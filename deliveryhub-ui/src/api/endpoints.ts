@@ -9,6 +9,7 @@ import type {
   BusinessProfilePatch,
   BusinessStatus,
   Credentials,
+  Place,
   PlatformUser,
   SetupLink,
   SlugCheck,
@@ -32,6 +33,14 @@ export const authApi = {
   login: (phone: string, password: string) =>
     request<{ user: PlatformUser }>('POST', '/auth/login', { json: { phone, password } }),
   logout: () => request<void>('POST', '/auth/logout'),
+}
+
+/** Addresses ⇄ points (a Nominatim server behind our API); answers in Uzbek. */
+export const geoApi = {
+  reverse: (lat: number, lng: number, signal?: AbortSignal) =>
+    request<{ address: string }>('GET', `/geo/reverse?lat=${lat}&lng=${lng}&lang=uz`, { signal }),
+  search: (query: string, signal?: AbortSignal) =>
+    request<{ results: Place[] }>('GET', `/geo/search?q=${encodeURIComponent(query)}&lang=uz`, { signal }),
 }
 
 export const businessesApi = {

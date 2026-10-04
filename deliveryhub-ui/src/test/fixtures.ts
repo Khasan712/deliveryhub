@@ -2,6 +2,9 @@ import type { BusinessDetail, PlatformUser } from '../api/types'
 
 export const DOMAIN = 'portex.uz'
 
+/** Where a click on the test map lands (Chilonzor): src/test/fakeMap.tsx. */
+export const MAP_CLICK = { lat: 41.2856, lng: 69.2035 }
+
 export const STAFF: PlatformUser = { id: 1, phone_number: '+998901234567', first_name: 'Xasan' }
 export const STAFF_PASSWORD = 'platform-secret'
 
@@ -19,6 +22,9 @@ export function makeBusiness(overrides: Partial<BusinessDetail> = {}): BusinessD
     stats: { orders_today: 2, revenue_today: 505000, orders_total: 11, customers: 7 },
     bots: { client: { username: 'burger_house_bot', alive: true, created_via: 'managed' }, admin: null },
     support_phone: '+998712001122',
+    address: "Amir Temur ko'chasi, 15",
+    lat: 41.311081,
+    lng: 69.279737,
     delivery_time: '30–45',
     min_order: 0,
     owner: { name: 'Aziz', phone: '+998901112233' },
@@ -49,6 +55,10 @@ export function sampleBusinesses(): BusinessDetail[] {
       slug: 'sushi-bar',
       name: 'Sushi Bar',
       status: 'suspended',
+      // Opened before businesses were put on the map.
+      address: '',
+      lat: null,
+      lng: null,
       brand_color: '',
       stats: { orders_today: 0, revenue_today: 0, orders_total: 3, customers: 2 },
       bots: { client: null, admin: null },

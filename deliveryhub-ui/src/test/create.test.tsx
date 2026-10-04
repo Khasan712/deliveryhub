@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
+import type { UserEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { backend } from './backend'
 import { sampleBusinesses } from './fixtures'
@@ -6,6 +7,13 @@ import { renderApp } from './render'
 
 const slugField = () => screen.getByLabelText('Manzil (subdomen)')
 const checkedSlugs = () => backend.requests('GET', '/businesses/check-slug').map((request) => request.search.get('slug'))
+const MAP_ADDRESS = "Bunyodkor ko'chasi, 3, Chilonzor tumani, Toshkent"
+
+/** A click on the (fake) map: the pin lands in Chilonzor and the map server names the address. */
+async function putOnMap(user: UserEvent) {
+  await user.click(await screen.findByRole('button', { name: 'Xaritaga bosish' }))
+  await waitFor(() => expect(screen.getByLabelText('Biznes manzili')).toHaveValue(MAP_ADDRESS))
+}
 
 describe('new business', () => {
   it('generates the address from a Cyrillic name and checks it live (debounced)', async () => {
@@ -82,6 +90,7 @@ describe('new business', () => {
     await user.click(screen.getByRole('radio', { name: 'Yashil' }))
     await user.type(screen.getByLabelText('Ismi'), 'Aziz')
     await user.type(screen.getByLabelText('Telefoni (login)'), '90 111 22 33')
+    await putOnMap(user)
     await screen.findByText("Manzil bo'sh")
 
     await user.click(screen.getByRole('button', { name: 'Biznesni ochish' }))
@@ -96,6 +105,9 @@ describe('new business', () => {
       name: 'Ёқимли Таом',
       slug: 'yoqimli-taom',
       tagline: 'Uy taomlari',
+      address: MAP_ADDRESS,
+      lat: 41.2856,
+      lng: 69.2035,
       support_phone: '+998 71 200 11 22',
       delivery_time: '40–60',
       min_order: 50000,
@@ -132,6 +144,8 @@ describe('new business', () => {
 
     expect(screen.getByText('Biznes nomini kiriting')).toBeInTheDocument()
     expect(screen.getByText('Manzilni kiriting')).toBeInTheDocument()
+    expect(screen.getByText('Xaritada biznes joyini belgilang')).toBeInTheDocument()
+    expect(screen.getByText('Biznes manzilini kiriting')).toBeInTheDocument()
     expect(screen.getByText('Egasining ismini kiriting')).toBeInTheDocument()
     expect(screen.getByText('Telefon raqamini kiriting')).toBeInTheDocument()
     expect(screen.getByLabelText('Nomi')).toHaveFocus()
@@ -140,6 +154,8 @@ describe('new business', () => {
     await user.type(screen.getByLabelText('Ismi'), 'Aziz')
     await user.type(screen.getByLabelText('Telefoni (login)'), '123')
     await user.type(screen.getByLabelText(/^Parol/), 'short')
+    await putOnMap(user)
+    expect(screen.queryByText('Xaritada biznes joyini belgilang')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Biznesni ochish' }))
 
     expect(screen.getByText("Telefon raqami noto'g'ri")).toBeInTheDocument()
@@ -155,6 +171,7 @@ describe('new business', () => {
     await user.type(screen.getByLabelText('Ismi'), 'Aziz')
     // A valid number for the form, but not an Uzbek one: the API answers fields.owner_phone = ["invalid"].
     await user.type(screen.getByLabelText('Telefoni (login)'), '+1 555 000 0000')
+    await putOnMap(user)
     await screen.findByText("Manzil bo'sh")
     await user.click(screen.getByRole('button', { name: 'Biznesni ochish' }))
 
@@ -172,6 +189,7 @@ describe('new business', () => {
     expect(screen.getByText('lavash.png')).toBeInTheDocument()
     await user.type(screen.getByLabelText('Ismi'), 'Aziz')
     await user.type(screen.getByLabelText('Telefoni (login)'), '901112233')
+    await putOnMap(user)
     await screen.findByText("Manzil bo'sh")
     await user.click(screen.getByRole('button', { name: 'Biznesni ochish' }))
 
@@ -182,11 +200,64 @@ describe('new business', () => {
       name: 'Lavash Club',
       slug: 'lavash-club',
       min_order: '0',
+      address: MAP_ADDRESS,
+      lat: '41.2856',
+      lng: '69.2035',
       logo: { type: 'image/png' },
     })
     // The file goes with its name (Vitest's jsdom → Node fetch bridge drops file names on the wire; browsers do not).
     expect(append).toHaveBeenCalledWith('logo', expect.objectContaining({ name: 'lavash.png' }), 'lavash.png')
     expect(backend.business('lavash-club').logo).toMatch(/^\/media\/lavash_club\/logos\//)
+  })
+
+  it('puts the business on the map: a search, a pasted point or a click', async () => {
+    const { user } = renderApp('/new')
+    const search = await screen.findByLabelText('Xaritadan qidirish')
+    const address = screen.getByLabelText('Biznes manzili')
+
+    // A search on Enter (the form is not sent): the chosen place brings its own address.
+    await user.type(search, 'Chorsu{Enter}')
+    const found = await screen.findByRole('list', { name: 'Topilgan joylar' })
+    expect(within(found).getAllByRole('button')).toHaveLength(2)
+    await user.click(within(found).getByRole('button', { name: 'Chorsu bozori, Shayxontohur tumani, Toshkent' }))
+    expect(address).toHaveValue('Chorsu bozori, Shayxontohur tumani, Toshkent')
+    expect(screen.getByText('41.326600, 69.235300')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Yandex Kartada tekshirish/ })).toHaveAttribute(
+      'href',
+      'https://yandex.uz/maps/?pt=69.2353,41.3266&z=17&l=map',
+    )
+    expect(backend.requests('GET', '/geo/search')[0]?.search.get('q')).toBe('Chorsu')
+    expect(backend.requests('POST', '/businesses')).toHaveLength(0)
+
+    // An address typed by hand stays when the pin moves.
+    await user.clear(address)
+    await user.type(address, "Chorsu, mo'ljal: metro")
+    await user.click(screen.getByRole('button', { name: 'Xaritaga bosish' }))
+    expect(await screen.findByText('41.285600, 69.203500')).toBeInTheDocument()
+    await waitFor(() => expect(backend.requests('GET', '/geo/reverse')).toHaveLength(1))
+    expect(address).toHaveValue("Chorsu, mo'ljal: metro")
+
+    // A point copied from Yandex Maps (longitude first) needs no search.
+    await user.clear(search)
+    await user.type(search, 'https://yandex.uz/maps/?ll=69.240562%2C41.299496&z=16')
+    await user.click(screen.getByRole('button', { name: 'Topish' }))
+    expect(await screen.findByText('41.299496, 69.240562')).toBeInTheDocument()
+    expect(backend.requests('GET', '/geo/search')).toHaveLength(1)
+  })
+
+  it('works when the map server is out of reach', async () => {
+    backend.state.geo.down = true
+    const { user } = renderApp('/new')
+
+    await user.type(await screen.findByLabelText('Xaritadan qidirish'), 'Chorsu')
+    await user.click(screen.getByRole('button', { name: 'Topish' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Manzil qidiruvi hozir ishlamayapti — joyni xaritada o'zingiz belgilang.",
+    )
+    await user.click(screen.getByRole('button', { name: 'Xaritaga bosish' }))
+    expect(await screen.findByText('41.285600, 69.203500')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Manzil aniqlanmoqda…')).not.toBeInTheDocument())
+    expect(screen.getByLabelText('Biznes manzili')).toHaveValue('')
   })
 
   it('rejects files that are not images', async () => {

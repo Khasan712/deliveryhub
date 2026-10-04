@@ -98,12 +98,17 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // Libraries change rarely: a separate chunk stays cached across deployments of the shop.
+        // Libraries change rarely: a separate chunk stays cached across deployments of the shop. The map
+        // (MapLibre, ~1 MB) is a chunk of its own, loaded only when the checkout's map opens.
         codeSplitting: {
-          groups: [{ name: 'vendor', test: /node_modules[\\/]/ }],
+          groups: [
+            { name: 'map', test: /node_modules[\\/]maplibre-gl[\\/]/ },
+            { name: 'vendor', test: /node_modules[\\/](?!maplibre-gl[\\/])/ },
+          ],
         },
       },
     },
+    chunkSizeWarningLimit: 1100,
   },
   test: {
     environment: 'jsdom',

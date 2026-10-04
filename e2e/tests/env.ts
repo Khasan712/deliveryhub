@@ -44,5 +44,6 @@ export function newBusiness() {
     name: `E2E Burger ${stamp}`,
     slug: `e2e-${stamp}`,
     owner: { name: 'E2E Egasi', phone: `+99890${digits}`, password: `e2e-pass-${stamp}` },
+    place: { point: '41.311081, 69.279737', address: "Amir Temur ko'chasi, 15, Toshkent" },
   }
 }

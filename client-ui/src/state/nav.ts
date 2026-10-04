@@ -2,10 +2,15 @@ import { useCallback, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 /**
- * Sheets (product, cart, sign-in) are history entries: they live in `location.state`, so the browser /
- * phone back button and Telegram's BackButton close them, exactly like they leave a screen.
+ * Sheets (product, cart, sign-in, the checkout's map) are history entries: they live in `location.state`, so the
+ * browser / phone back button and Telegram's BackButton close them, exactly like they leave a screen.
  */
-export type Sheet = { type: 'product'; id: number } | { type: 'cart' } | { type: 'auth'; next?: string }
+export type Sheet =
+  | { type: 'product'; id: number }
+  | { type: 'cart' }
+  | { type: 'auth'; next?: string }
+  /** The checkout's map (the checkout renders it). */
+  | { type: 'map' }
 
 export interface NavState {
   sheet?: Sheet

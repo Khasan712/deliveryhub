@@ -2,10 +2,16 @@ import type { Business, Category, Client, Order, Product } from '../api/types'
 
 export const TOKEN = 'token-aziz'
 
+/** Where the test map lands when it is moved (Chilonzor): src/test/fakeMap.tsx. */
+export const MAP_MOVE = { lat: 41.2856, lng: 69.2035 }
+
 export const business: Business = {
   name: 'Burger House',
   tagline: 'Eng mazali burgerlar shaharda',
   support_phone: '+998712001122',
+  address: "Amir Temur ko'chasi, 15, Toshkent",
+  lat: 41.311081,
+  lng: 69.279737,
   delivery_time: '30–45',
   min_order: 50000,
   brand_color: '#ff6b00',

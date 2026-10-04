@@ -3,7 +3,7 @@
  * MOCK_MEDIA_DIR when it is set (see README); without it the shop shows its letter placeholders.
  */
 import type { Order, Product } from '../api/types'
-import type { MockData } from './handlers'
+import { GEO, type MockData } from './handlers'
 
 const img = (file: string) => `/media/demo/${file}`
 
@@ -90,6 +90,9 @@ export const demoData: MockData = {
     name: 'Burger House',
     tagline: 'Shahardagi eng shirali burgerlar',
     support_phone: '+998712001122',
+    address: "Amir Temur ko'chasi, 15, Yunusobod tumani, Toshkent",
+    lat: 41.311081,
+    lng: 69.279737,
     delivery_time: '30–45',
     min_order: 50000,
     brand_color: '#ff6b00',
@@ -118,5 +121,6 @@ export const demoData: MockData = {
   },
   token: 'demo-token',
   orders,
+  geo: GEO,
   demo: true,
 }
