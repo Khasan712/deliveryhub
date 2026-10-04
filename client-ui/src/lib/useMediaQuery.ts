@@ -4,6 +4,8 @@ import { useCallback, useSyncExternalStore } from 'react'
 export const ROOMY_QUERY = '(min-width: 640px)'
 /** From here up popular dishes are a grid of cards (below: a swipeable row). */
 export const DESKTOP_QUERY = '(min-width: 768px)'
+/** From here up the menu search sits in the header (below: above the banner). */
+export const HEADER_SEARCH_QUERY = '(min-width: 1024px)'
 /** From here up the categories are a rail on the left of the menu (below: chips above it). */
 export const WIDE_QUERY = '(min-width: 1360px)'
 

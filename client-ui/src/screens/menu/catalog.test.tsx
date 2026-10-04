@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { business } from '../../test/fixtures'
 import { requestsTo } from '../../test/handlers'
-import { findCard, pattern, renderApp, screen, som, uz, within } from '../../test/render'
+import { findCard, location, pattern, renderApp, screen, som, uz, within } from '../../test/render'
 
 describe('catalog', () => {
   it('shows the business, the hero, categories, the popular row and product cards', async () => {
@@ -51,7 +51,7 @@ describe('catalog', () => {
       window.matchMedia = matchMedia
     })
 
-    it('shows the categories on the left, the search above the banner and the cart beside the menu', async () => {
+    it('shows the categories on the left, the search in the header and the cart beside the menu', async () => {
       const { user } = renderApp({ cart: [{ id: 3, qty: 2 }] })
       const rail = await screen.findByRole('navigation', { name: uz.categories })
       expect(within(rail).getAllByRole('button').map((item) => item.textContent)).toEqual([
@@ -62,9 +62,9 @@ describe('catalog', () => {
       ])
       expect(within(rail).getByRole('button', { name: uz.popularShort })).toHaveAttribute('aria-current', 'true')
 
-      // The search sits above the banner, not in the header; the header keeps the links to the menu and orders.
-      const search = screen.getByRole('searchbox', { name: uz.searchPlaceholder })
-      expect(within(screen.getByRole('banner')).queryByRole('searchbox')).not.toBeInTheDocument()
+      // One row on top: the brand, the search, the links, the language, the theme and the profile.
+      const search = within(screen.getByRole('banner')).getByRole('searchbox', { name: uz.searchPlaceholder })
+      expect(screen.getAllByRole('searchbox')).toHaveLength(1)
       const links = within(screen.getByRole('navigation', { name: uz.mainNavigation }))
       expect(links.getAllByRole('link').map((link) => link.textContent)).toEqual([uz.menu, uz.orders])
 
@@ -78,6 +78,15 @@ describe('catalog', () => {
       await user.type(search, 'kola')
       expect(await screen.findByRole('heading', { name: new RegExp(uz.results) })).toHaveTextContent('1')
       expect(screen.getByRole('navigation', { name: uz.categories })).toBeInTheDocument()
+    })
+
+    it('searches from the header on any screen: typing goes back to the menu', async () => {
+      const { user } = renderApp({ route: '/orders' })
+      const search = await within(screen.getByRole('banner')).findByRole('searchbox', { name: uz.searchPlaceholder })
+      await user.type(search, 'kola')
+      await waitFor(() => expect(location.current?.pathname).toBe('/'))
+      expect(await screen.findByRole('heading', { name: new RegExp(uz.results) })).toHaveTextContent('1')
+      expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual(['Kola 0.5 l'])
     })
 
     it('scrolls to a category so that its title stays clear of the header', async () => {

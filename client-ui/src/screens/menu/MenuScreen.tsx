@@ -8,12 +8,13 @@ import { cn } from '../../lib/cn'
 import { errorMessageKey } from '../../lib/errors'
 import { prefersReducedMotion } from '../../lib/motion'
 import { haptic } from '../../lib/telegram'
-import { DESKTOP_QUERY, WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
+import { DESKTOP_QUERY, HEADER_SEARCH_QUERY, WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { useMainButton } from '../../lib/useTelegram'
 import { useCart } from '../../state/cart'
 import { searchProducts, useCatalog } from '../../state/catalog'
 import { useDocumentTitle } from '../../state/hooks'
 import { useNav } from '../../state/nav'
+import { useSearch } from '../../state/search'
 import { CartPanel } from './CartPanel'
 import { Hero, HeroSkeleton } from './Hero'
 import { FeaturedCard, ProductCard, ProductCardSkeleton } from './ProductCard'
@@ -58,11 +59,12 @@ export function MenuScreen() {
   const catalog = useCatalog()
   const cart = useCart()
   const { openSheet } = useNav()
-  const [search, setSearch] = useState('')
+  const { query: search, setQuery: setSearch } = useSearch()
   const query = useDeferredValue(search)
   const results = useMemo(() => searchProducts(catalog.products, query), [catalog.products, query])
   const desktop = useMediaQuery(DESKTOP_QUERY)
   const wide = useMediaQuery(WIDE_QUERY)
+  const searchInHeader = useMediaQuery(HEADER_SEARCH_QUERY)
   const [active, setActive] = useState<string | null>(null)
   const toolbar = useRef<HTMLDivElement>(null)
   const ignoreSpyUntil = useRef(0)
@@ -225,25 +227,25 @@ export function MenuScreen() {
     )
   }
 
-  // Wide screens: the search above the banner (row 1); the banner and the menu (row 2) start level with the cart
-  // beside them; the categories rail runs down both rows on the left.
+  // Wide screens: the search is in the header; the banner and the cart start level, with the categories rail
+  // on the left (its width and the cart's match the header above them). Phones: the search above the banner.
   const place = rail
-    ? { search: 'lg:col-start-2 lg:row-start-1', menu: 'lg:col-start-2 lg:row-start-2', cart: 'lg:col-start-3 lg:row-start-2' }
-    : { search: 'lg:col-start-1 lg:row-start-1', menu: 'lg:col-start-1 lg:row-start-2', cart: 'lg:col-start-2 lg:row-start-2' }
+    ? { menu: 'lg:col-start-2 lg:row-start-1', cart: 'lg:col-start-3 lg:row-start-1' }
+    : { menu: 'lg:col-start-1 lg:row-start-1', cart: 'lg:col-start-2 lg:row-start-1' }
 
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-x-7 gap-y-3 pt-3 pb-32 lg:gap-y-4 lg:pt-6 lg:pb-14 tg:pb-10',
-        rail ? 'lg:grid-cols-[200px_minmax(0,1fr)_352px]' : 'lg:grid-cols-[minmax(0,1fr)_340px]',
+        'grid grid-cols-1 gap-x-7 gap-y-3 pt-3 pb-32 lg:pt-6 lg:pb-14 tg:pb-10',
+        rail ? 'lg:grid-cols-[200px_minmax(0,1fr)_380px]' : 'lg:grid-cols-[minmax(0,1fr)_340px]',
       )}
     >
       {rail && (
-        <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
+        <div className="lg:col-start-1 lg:row-start-1">
           <CategoryRail places={places} active={activeKey} onSelect={selectPlace} />
         </div>
       )}
-      {catalog.status !== 'error' && <SearchBox value={search} onChange={setSearch} className={place.search} />}
+      {!searchInHeader && catalog.status !== 'error' && <SearchBox value={search} onChange={setSearch} />}
       <div className={cn('min-w-0', place.menu)}>
         {ready ? <Hero /> : catalog.status === 'loading' ? <HeroSkeleton /> : null}
         {chips && (
