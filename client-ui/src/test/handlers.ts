@@ -75,6 +75,8 @@ function createDb(data: MockData): Db {
     telegramLogin: 'pending',
     geoDown: false,
     frozen: new Set(),
+    // Set explicitly: resetDb() assigns over the shared object, so a key left out would keep a test's value.
+    week: undefined,
     requests: [],
     nextOrderId: 200,
   }
