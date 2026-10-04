@@ -113,7 +113,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
   )
 }
 
-/** A popular dish: a big photo, then name, description, the price and "+" (a swipeable row of these on phones). */
+/** A popular dish: a big photo, then name, description, the price and "+" (a row of these scrolls sideways). */
 export function FeaturedCard({ product, className }: { product: Product; className?: string }) {
   const { nameId, title, description, price, qty, open } = useCard(product)
   return (

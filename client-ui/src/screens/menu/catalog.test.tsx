@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react'
+import { act, fireEvent, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { business } from '../../test/fixtures'
 import { requestsTo } from '../../test/handlers'
@@ -78,6 +78,37 @@ describe('catalog', () => {
       await user.type(search, 'kola')
       expect(await screen.findByRole('heading', { name: new RegExp(uz.results) })).toHaveTextContent('1')
       expect(screen.getByRole('navigation', { name: uz.categories })).toBeInTheDocument()
+    })
+
+    it('keeps the favourites in one row that the arrows scroll', async () => {
+      const scrollTo = vi.spyOn(Element.prototype, 'scrollTo')
+      renderApp()
+      const favourites = (await screen.findByRole('heading', { name: uz.popular })).closest('section')!
+      expect(within(favourites).getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual([
+        'Chizburger',
+        'Klassik burger',
+        'Kola 0.5 l',
+      ])
+      const back = within(favourites).getByRole('button', { name: uz.scrollLeft })
+      const forward = within(favourites).getByRole('button', { name: uz.scrollRight })
+      // Everything fits: no arrows.
+      expect(back).toBeDisabled()
+      expect(forward).toBeDisabled()
+
+      // Three cards of 264px in a 600px column: there is more to the right.
+      const row = favourites.querySelector('.snap-x') as HTMLElement
+      Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 840 })
+      Object.defineProperty(row, 'clientWidth', { configurable: true, value: 600 })
+      act(() => row.dispatchEvent(new Event('scroll')))
+      expect(back).toBeDisabled()
+      expect(forward).toBeEnabled()
+      fireEvent.click(forward)
+      expect(scrollTo).toHaveBeenCalledWith({ left: 510, behavior: 'auto' })
+
+      Object.defineProperty(row, 'scrollLeft', { configurable: true, value: 240 })
+      act(() => row.dispatchEvent(new Event('scroll')))
+      expect(back).toBeEnabled()
+      expect(forward).toBeDisabled()
     })
 
     it('searches from the header on any screen: typing goes back to the menu', async () => {

@@ -9,8 +9,9 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
 - Menu: one header row — logo and name, the search (from 1024px; above the brand hero on phones), the links,
   language, theme and profile — brand hero (tagline, chips, popular photos), search by Uzbek/Russian names
   (apostrophe-tolerant; typing on another screen goes back to the menu), categories with scroll-spy — a
-  list on the left from 1360px, sticky chips below that — popular dishes (a grid of cards on wide screens, a
-  swipeable row on phones), menu lines (name, description, price, photo) whose round "+" next to the price turns
+  list on the left from 1360px, sticky chips below that — popular dishes ("Siz yoqtirganlar": one row that
+  scrolls sideways, swiped on phones, with arrows where there is a mouse), menu lines (name, description, price,
+  photo) whose round "+" next to the price turns
   into a stepper in place (the same on phones and in the Mini App), product details sheet.
   The cart beside the menu starts level with the hero; from 1360px the header lines up with the columns below
   (the search exactly as wide as the hero); every page keeps the same width. `brand_color` becomes the accent (`--brand*` CSS variables,

@@ -8,7 +8,7 @@ import { cn } from '../../lib/cn'
 import { errorMessageKey } from '../../lib/errors'
 import { prefersReducedMotion } from '../../lib/motion'
 import { haptic } from '../../lib/telegram'
-import { DESKTOP_QUERY, HEADER_SEARCH_QUERY, WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
+import { HEADER_SEARCH_QUERY, WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { useMainButton } from '../../lib/useTelegram'
 import { useCart } from '../../state/cart'
 import { searchProducts, useCatalog } from '../../state/catalog'
@@ -18,10 +18,9 @@ import { useSearch } from '../../state/search'
 import { CartPanel } from './CartPanel'
 import { Hero, HeroSkeleton } from './Hero'
 import { FeaturedCard, ProductCard, ProductCardSkeleton } from './ProductCard'
+import { ScrollRow } from './ScrollRow'
 import { CategoryChips, CategoryRail, Toolbar, type MenuPlace } from './Toolbar'
 
-/** Popular dishes in the grid of wide screens: six fill two rows of three (or three rows of two). */
-const FEATURED_ON_GRID = 6
 /** Room between the sticky bars and a section the menu scrolled to. */
 const SCROLL_GAP = 16
 
@@ -62,7 +61,6 @@ export function MenuScreen() {
   const { query: search, setQuery: setSearch } = useSearch()
   const query = useDeferredValue(search)
   const results = useMemo(() => searchProducts(catalog.products, query), [catalog.products, query])
-  const desktop = useMediaQuery(DESKTOP_QUERY)
   const wide = useMediaQuery(WIDE_QUERY)
   const searchInHeader = useMediaQuery(HEADER_SEARCH_QUERY)
   const [active, setActive] = useState<string | null>(null)
@@ -194,19 +192,11 @@ export function MenuScreen() {
         {catalog.popular.length > 0 && (
           <section data-place="popular" aria-labelledby="popular-title">
             <SectionTitle id="popular-title" icon="flame" title={t('popular')} />
-            {desktop ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))] gap-4">
-                {catalog.popular.slice(0, FEATURED_ON_GRID).map((product) => (
-                  <FeaturedCard key={product.id} product={product} />
-                ))}
-              </div>
-            ) : (
-              <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pt-0.5 pb-1.5">
-                {catalog.popular.map((product) => (
-                  <FeaturedCard key={product.id} product={product} className="w-[240px] shrink-0 snap-start" />
-                ))}
-              </div>
-            )}
+            <ScrollRow>
+              {catalog.popular.map((product) => (
+                <FeaturedCard key={product.id} product={product} className="w-[240px] shrink-0 snap-start lg:w-[264px]" />
+              ))}
+            </ScrollRow>
           </section>
         )}
         {catalog.sections.map((section) => (
