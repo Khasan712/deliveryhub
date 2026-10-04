@@ -19,6 +19,7 @@ from apps.core.enums import DeliveryTypeEnum, LoginTokenStatusEnum, OrderEnum, O
 from apps.core.models import Category, Client, Order, OrderItem, PhoneOTP, Product, TelegramLoginToken
 from apps.core.services import OrderError, create_order, resolve_items
 from apps.core.utils import normalize_phone, parse_price
+from apps.platform import hours
 from apps.platform.current import business_bot
 from apps.platform.models import BusinessBot
 from apps.telegram.outbox import queue_order_created
@@ -344,10 +345,16 @@ class OrdersView(CustomerView):
     @extend_schema(summary='Place an order', request=s.OrderCreateSerializer, responses={201: OrderEnvelope})
     def post(self, request):
         client, data, business = request.user.client, request.data, request.tenant
+        now = hours.status(business.working_hours)
+        if not now['open']:
+            raise ApiError('business_closed', opens_at=now['opens_at'])
         try:
             items = resolve_items(data.get('items'))
         except OrderError as exc:
             raise ApiError(exc.code, detail=exc.detail)
+        frozen = [product.pk for product, _ in items if product.is_frozen]
+        if frozen:
+            raise ApiError('product_unavailable', detail=frozen)
 
         name = text(data.get('name'), 150) or ' '.join(filter(None, [client.first_name, client.last_name]))
         phone = normalize_phone(data.get('phone'))

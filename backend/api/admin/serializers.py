@@ -1,4 +1,5 @@
 """Admin API data (docs/api.md, Admin API)."""
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.enums import OrderEnum, UserRole
@@ -106,6 +107,8 @@ class ProductSerializer(serializers.Serializer):
     unit = UnitSerializer(allow_null=True)
     category = CategoryRefSerializer(allow_null=True)
     image = serializers.CharField(allow_null=True)
+    frozen = serializers.BooleanField(help_text='The shop shows it as unavailable; staff may still sell it')
+    frozen_at = serializers.DateTimeField(allow_null=True)
     created_at = serializers.DateTimeField()
 
     def to_representation(self, product):
@@ -121,6 +124,8 @@ class ProductSerializer(serializers.Serializer):
             'category': ({'id': category.pk, 'name_uz': category.name_uz, 'name_ru': category.name_ru}
                          if category else None),
             'image': product_image_url(product),
+            'frozen': product.is_frozen,
+            'frozen_at': iso(product.frozen_at),
             'created_at': iso(product.created_at),
         }
 
@@ -135,6 +140,7 @@ class ProductWriteSerializer(serializers.Serializer):
     unit_id = serializers.IntegerField(required=False, allow_null=True)
     category_id = serializers.IntegerField(required=False, allow_null=True)
     image = LimitedImageField(max_mb=5, required=False, allow_null=True)
+    frozen = serializers.BooleanField(required=False)
 
     def validate_unit_id(self, value):
         if value is not None and not Descriptions.objects.filter(pk=value).exists():
@@ -161,6 +167,9 @@ class ProductWriteSerializer(serializers.Serializer):
         if 'image' in data:
             product.img = data['image'] or ''
             product.img_64 = None
+        if 'frozen' in data and data['frozen'] != product.is_frozen:
+            product.is_frozen = data['frozen']
+            product.frozen_at = timezone.now() if data['frozen'] else None
         product.save()
         return product
 

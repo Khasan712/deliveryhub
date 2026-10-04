@@ -107,15 +107,23 @@ def draft_card(draft, products, lang):
 
     lines = [t(lang, 'draft_title'), '']
     total = 0
+    frozen = []
     for item in items:
         product = products.get(item['product_id'])
         if not product:
             continue
         amount = parse_price(product.price) * item['quantity']
         total += amount
-        lines.append(f'• {escape(product_name(product, lang))} × {item["quantity"]} — {format_money(amount)}')
+        name = escape(product_name(product, lang))
+        if product.is_frozen:
+            frozen.append(name)
+        mark = ' ❄️' if product.is_frozen else ''
+        lines.append(f'• {name}{mark} × {item["quantity"]} — {format_money(amount)}')
     if not total:
         lines.append(t(lang, 'draft_no_items'))
+    if frozen:
+        # Staff may still sell a frozen product: they only need to know it is off the shop's menu.
+        lines.append(t(lang, 'draft_frozen', items=', '.join(frozen)))
     if draft.unmatched:
         lines.append(t(lang, 'unmatched', items=escape(', '.join(draft.unmatched))))
 

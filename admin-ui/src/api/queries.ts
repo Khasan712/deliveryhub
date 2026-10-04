@@ -1,5 +1,13 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  keepPreviousData,
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
+import {
+  businessApi,
   categoriesApi,
   clientsApi,
   dashboardApi,
@@ -16,10 +24,13 @@ import type {
   OrderDetail,
   OrderStatus,
   OrdersQuery,
+  Paginated,
+  Product,
   SalesData,
   StaffUserInput,
   TelegramData,
   TelegramLink,
+  Week,
 } from './types'
 
 export const queryKeys = {
@@ -33,8 +44,11 @@ export const queryKeys = {
   clientList: (query: object) => ['clients', 'list', query] as const,
   client: (id: string | number) => ['clients', 'detail', String(id)] as const,
   products: ['products'] as const,
+  productLists: ['products', 'list'] as const,
   productList: (query: object) => ['products', 'list', query] as const,
+  frozenCount: ['products', 'frozen-count'] as const,
   product: (id: string | number) => ['products', 'detail', String(id)] as const,
+  business: ['business'] as const,
   categories: ['categories'] as const,
   categoryList: (search: string) => ['categories', 'list', search] as const,
   units: ['units'] as const,
@@ -47,9 +61,26 @@ export const queryKeys = {
 
 export const PAGE_SIZE = 20
 
+/** Mutation key of freezing a product (its pending ids are read with `useFreezingIds`). */
+const FREEZE_MUTATION = ['products', 'freeze'] as const
+
 // ------------------------------------------------------------------ dashboard
 export function useDashboard() {
   return useQuery({ queryKey: queryKeys.dashboard, queryFn: dashboardApi.get, refetchInterval: 60_000 })
+}
+
+// ------------------------------------------------------------------ working hours
+/** The week and whether the business is open now (worked out by the server, so refreshed every minute). */
+export function useWorkingHours() {
+  return useQuery({ queryKey: queryKeys.business, queryFn: businessApi.get, refetchInterval: 60_000 })
+}
+
+export function useSaveWorkingHours() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (week: Week | null) => businessApi.setWeek(week),
+    onSuccess: (hours) => client.setQueryData(queryKeys.business, hours),
+  })
 }
 
 // ------------------------------------------------------------------ orders
@@ -115,11 +146,77 @@ export function useUpdateClient(id: string | number) {
 }
 
 // ------------------------------------------------------------------ products
-export function useProducts(query: { search?: string; category?: string; page?: number }) {
+export function useProducts(query: { search?: string; category?: string; frozen?: boolean; page?: number }) {
   return useQuery({
     queryKey: queryKeys.productList(query),
     queryFn: () => productsApi.list({ ...query, page_size: PAGE_SIZE }),
     placeholderData: keepPreviousData,
+  })
+}
+
+/** How many products are frozen — the counter on the "Frozen" filter. */
+export function useFrozenCount() {
+  return useQuery({
+    queryKey: queryKeys.frozenCount,
+    queryFn: () => productsApi.list({ frozen: true, page: 1, page_size: 1 }),
+    select: (data) => data.count,
+  })
+}
+
+interface FreezeVariables {
+  id: number
+  frozen: boolean
+}
+
+/** Writes `frozen` into every cached copy of a product: the lists, its edit page and the point of sale. */
+function patchFrozen(client: QueryClient, id: number, frozen: boolean, frozenAt: string | null) {
+  const update = (product: Product) => (product.id === id ? { ...product, frozen, frozen_at: frozenAt } : product)
+  client.setQueriesData<Paginated<Product>>({ queryKey: queryKeys.productLists }, (page) =>
+    page ? { ...page, results: page.results.map(update) } : page,
+  )
+  client.setQueryData<Product>(queryKeys.product(id), (product) => (product ? update(product) : product))
+  client.setQueryData<SalesData>(queryKeys.sales, (data) =>
+    data ? { ...data, products: data.products.map((item) => (item.id === id ? { ...item, frozen } : item)) } : data,
+  )
+}
+
+/**
+ * Freezes a product (sold out for now) or returns it to sale. Optimistic: every screen changes at once and goes
+ * back if the request fails; afterwards the lists are refetched (a filtered list may lose the product).
+ */
+export function useSetProductFrozen() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationKey: FREEZE_MUTATION,
+    mutationFn: ({ id, frozen }: FreezeVariables) => productsApi.setFrozen(id, frozen),
+    onMutate: async ({ id, frozen }) => {
+      await Promise.all([
+        client.cancelQueries({ queryKey: queryKeys.products }),
+        client.cancelQueries({ queryKey: queryKeys.sales }),
+      ])
+      const snapshot = [
+        ...client.getQueriesData({ queryKey: queryKeys.products }),
+        ...client.getQueriesData({ queryKey: queryKeys.sales }),
+      ]
+      patchFrozen(client, id, frozen, frozen ? new Date().toISOString() : null)
+      return { snapshot }
+    },
+    onError: (_error, _variables, context) => {
+      context?.snapshot.forEach(([key, data]) => client.setQueryData(key, data))
+    },
+    onSuccess: (product) => patchFrozen(client, product.id, product.frozen, product.frozen_at),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.products })
+      void client.invalidateQueries({ queryKey: queryKeys.sales })
+    },
+  })
+}
+
+/** Ids of the products being frozen / returned to sale right now (their buttons wait). */
+export function useFreezingIds(): number[] {
+  return useMutationState({
+    filters: { mutationKey: FREEZE_MUTATION, status: 'pending' },
+    select: (mutation) => (mutation.state.variables as FreezeVariables).id,
   })
 }
 

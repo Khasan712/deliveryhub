@@ -145,6 +145,8 @@ class Product(Base):
     price: Mapped[str] = mapped_column(String(255))
     measure_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_descriptions.id'), index=True)
     category_id: Mapped[int | None] = mapped_column(BigInteger)
+    # Frozen by the business (sold out): customers cannot order it; staff still may, with a warning.
+    is_frozen: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Client(Base):

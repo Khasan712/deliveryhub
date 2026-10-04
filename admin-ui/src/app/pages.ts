@@ -21,3 +21,4 @@ export const UsersPage = lazy(() => import('../features/users/UsersPage').then((
 export const UserFormPage = lazy(() => import('../features/users/UserFormPage').then((m) => ({ default: m.UserFormPage })))
 export const SalesPage = lazy(() => import('../features/sales/SalesPage').then((m) => ({ default: m.SalesPage })))
 export const TelegramPage = lazy(() => import('../features/telegram/TelegramPage').then((m) => ({ default: m.TelegramPage })))
+export const HoursPage = lazy(() => import('../features/hours/HoursPage').then((m) => ({ default: m.HoursPage })))

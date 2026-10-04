@@ -638,6 +638,10 @@ components:
           type: number
           format: double
           nullable: true
+        working_hours:
+          allOf:
+          - $ref: '#/components/schemas/WorkingHours'
+          description: Set by the business in its admin panel (read-only here)
         delivery_time:
           type: string
         min_order:
@@ -674,6 +678,7 @@ components:
       - status
       - support_phone
       - tagline
+      - working_hours
     BusinessTotals:
       type: object
       properties:
@@ -902,6 +907,18 @@ components:
       description: |-
         * `client` - client
         * `admin` - admin
+    Shift:
+      type: object
+      properties:
+        open:
+          type: string
+          description: HH:MM
+        close:
+          type: string
+          description: 'HH:MM or 24:00; not after `open`: the next day'
+      required:
+      - close
+      - open
     SlugCheck:
       type: object
       properties:
@@ -942,6 +959,37 @@ components:
           $ref: '#/components/schemas/StatusEnum'
       required:
       - status
+    WorkingHours:
+      type: object
+      properties:
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shift'
+          nullable: true
+          maxItems: 7
+          minItems: 7
+        timezone:
+          type: string
+        open:
+          type: boolean
+          description: At the time of the response
+        opens_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While closed: the next opening'
+        closes_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While open: the closing (null: never)'
+      required:
+      - closes_at
+      - open
+      - opens_at
+      - timezone
+      - week
   securitySchemes:
     cookieAuth:
       type: apiKey

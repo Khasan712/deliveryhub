@@ -36,12 +36,29 @@ export interface BusinessCard {
   bots: Record<BotRole, Bot | null>
 }
 
+/** One shift, "HH:MM"; a close that is not after the open is on the next day. */
+export interface Shift {
+  open: string
+  close: string
+}
+
+/** docs/api.md → "Working hours" (set by the business in its admin panel; read-only here). */
+export interface WorkingHours {
+  /** Monday first, null for a day off; null: no hours — the shop takes orders at any time. */
+  week: (Shift | null)[] | null
+  timezone: string
+  open: boolean
+  opens_at: string | null
+  closes_at: string | null
+}
+
 export interface BusinessDetail extends BusinessCard {
   support_phone: string
   /** Where customers pick up their orders; '' and null coordinates until the business is put on the map. */
   address: string
   lat: number | null
   lng: number | null
+  working_hours: WorkingHours
   delivery_time: string
   min_order: number
   owner: { name: string; phone: string } | null

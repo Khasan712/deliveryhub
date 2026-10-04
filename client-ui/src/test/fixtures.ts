@@ -12,6 +12,7 @@ export const business: Business = {
   address: "Amir Temur ko'chasi, 15, Toshkent",
   lat: 41.311081,
   lng: 69.279737,
+  working_hours: { week: null, timezone: 'Asia/Tashkent', open: true, opens_at: null, closes_at: null },
   delivery_time: '30–45',
   min_order: 50000,
   brand_color: '#ff6b00',
@@ -36,6 +37,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 1,
     image: '/media/burger_house/products/classic.jpg',
+    frozen: false,
   },
   {
     id: 2,
@@ -48,6 +50,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 1,
     image: null,
+    frozen: false,
   },
   {
     id: 3,
@@ -60,6 +63,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 2,
     image: null,
+    frozen: false,
   },
   {
     id: 4,
@@ -72,6 +76,7 @@ export const products: Product[] = [
     unit_ru: '',
     category_id: null,
     image: null,
+    frozen: false,
   },
 ]
 

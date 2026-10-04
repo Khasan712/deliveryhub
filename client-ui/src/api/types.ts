@@ -10,11 +10,29 @@ export interface Business {
   address: string
   lat: number | null
   lng: number | null
+  working_hours: WorkingHours
   /** Free text such as "30–45" (minutes). */
   delivery_time: string
   min_order: number
   brand_color: string
   logo: string | null
+}
+
+/** One shift, "HH:MM"; a close that is not after the open is on the next day ("18:00"–"02:00"). */
+export interface Shift {
+  open: string
+  close: string
+}
+
+/** docs/api.md → "Working hours". `week: null` — no hours set: orders are taken at any time. */
+export interface WorkingHours {
+  /** Monday first; null is a day off. */
+  week: (Shift | null)[] | null
+  timezone: string
+  /** The status at the time of the response (the shop works it out again live: lib/hours.ts). */
+  open: boolean
+  opens_at: string | null
+  closes_at: string | null
 }
 
 export interface Category {
@@ -34,6 +52,8 @@ export interface Product {
   unit_ru: string
   category_id: number | null
   image: string | null
+  /** Not available right now (frozen by the business): shown, but cannot be ordered. */
+  frozen: boolean
 }
 
 export interface Client {

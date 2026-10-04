@@ -10,6 +10,8 @@ export interface ProductFormState {
   desc_ru: string
   unit_id: string
   category_id: string
+  /** Not available right now: customers cannot order it, staff still sell it at the point of sale. */
+  frozen: boolean
 }
 
 export type ProductFormErrors = Partial<Record<keyof ProductFormState | 'image', string>>
@@ -22,6 +24,7 @@ export const EMPTY_PRODUCT_FORM: ProductFormState = {
   desc_ru: '',
   unit_id: '',
   category_id: '',
+  frozen: false,
 }
 
 export const MAX_PRICE = 1_000_000_000
@@ -35,6 +38,7 @@ export function productToForm(product: Product): ProductFormState {
     desc_ru: product.desc_ru ?? '',
     unit_id: product.unit ? String(product.unit.id) : '',
     category_id: product.category ? String(product.category.id) : '',
+    frozen: product.frozen === true,
   }
 }
 
@@ -70,10 +74,11 @@ export function productRequestBody(
     desc_ru: form.desc_ru.trim(),
     unit_id: form.unit_id ? Number(form.unit_id) : null,
     category_id: form.category_id ? Number(form.category_id) : null,
+    frozen: form.frozen,
   }
   if (file) {
     const body = new FormData()
-    // In multipart an empty value means "no unit / category".
+    // In multipart an empty value means "no unit / category"; booleans travel as "true" / "false".
     for (const [key, value] of Object.entries(fields)) body.append(key, value === null ? '' : String(value))
     body.append('image', file)
     return body

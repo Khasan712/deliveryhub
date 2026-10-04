@@ -18,6 +18,7 @@ import { OrdersScreen } from '../screens/orders/OrdersScreen'
 import { ProfileScreen } from '../screens/profile/ProfileScreen'
 import { AuthSheet } from '../screens/sheets/AuthSheet'
 import { CartSheet } from '../screens/sheets/CartSheet'
+import { HoursSheet } from '../screens/sheets/HoursSheet'
 import { ProductSheet } from '../screens/sheets/ProductSheet'
 import { NotFoundScreen, ShopUnavailable } from '../screens/StatusScreens'
 
@@ -62,6 +63,7 @@ export function AppShell() {
       <ProductSheet />
       <CartSheet />
       <AuthSheet />
+      <HoursSheet />
       <Toaster />
     </SearchContext>
   )

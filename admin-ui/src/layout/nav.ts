@@ -1,5 +1,6 @@
 import {
   IconClients,
+  IconClock,
   IconDashboard,
   IconMic,
   IconOrders,
@@ -50,6 +51,7 @@ export const NAV: NavGroup[] = [
   {
     label: 'nav_group_settings',
     items: [
+      { to: '/hours', label: 'nav_hours', icon: IconClock },
       { to: '/telegram', label: 'nav_telegram', icon: IconTelegram, iconClassName: '-rotate-12' },
       { to: '/users', label: 'nav_users', icon: IconUsersCog, adminOnly: true },
     ],

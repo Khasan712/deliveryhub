@@ -65,13 +65,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo((): CartContextValue => {
     const lines = resolveLines(items, productsById)
-    const { count, total } = cartTotals(lines)
+    const unavailable = lines.filter((line) => line.product.frozen)
+    // What is not available right now stays in the cart (and the count) but not in the total.
+    const { count } = cartTotals(lines)
+    const { total } = cartTotals(lines.filter((line) => !line.product.frozen))
     const minOrder = business?.min_order ?? 0
     const left = minOrderLeft(total, minOrder)
     const quantity = (id: number) => items.find((item) => item.id === id)?.qty ?? 0
     return {
       items,
       lines,
+      unavailable,
       count,
       total,
       minOrder,
@@ -101,6 +105,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       },
       replace: (next) => setItems(sanitizeItems(next)),
       removeIds: (ids) => setItems((current) => current.filter((item) => !ids.includes(item.id))),
+      removeUnavailable: () => {
+        const ids = new Set(unavailable.map((line) => line.product.id))
+        setItems((current) => current.filter((item) => !ids.has(item.id)))
+      },
       pulse,
     }
   }, [items, productsById, business?.min_order, update, pulse])

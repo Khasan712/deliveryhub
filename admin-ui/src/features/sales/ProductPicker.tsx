@@ -1,6 +1,6 @@
 import { useMemo, useState, type Ref } from 'react'
 import type { CartItem, SalesCategory, SalesProduct } from '../../api/types'
-import { IconPlus } from '../../components/icons'
+import { IconPlus, IconSnowflake } from '../../components/icons'
 import { SearchInput } from '../../components/ui/Form'
 import { useI18n } from '../../i18n/context'
 import { cn } from '../../lib/cn'
@@ -56,19 +56,26 @@ export function ProductPicker({ products, categories, items, onAdd, searchRef }:
         {visible.map((product) => {
           const qty = qtyOf(items, product.id)
           const unit = lang === 'ru' ? product.unit_ru : product.unit_uz
+          // A frozen product can still be sold here: it only looks different (and the order panel warns).
           return (
             <button
               key={product.id}
               type="button"
-              className={cn('tile', qty > 0 && 'in-order')}
+              className={cn('tile', qty > 0 && 'in-order', product.frozen && 'is-frozen')}
               onClick={() => onAdd(product)}
-              aria-label={`${t('add_to_order')}: ${name(product)}, ${formatMoney(product.price, lang)}${qty ? ` · ${t('in_order')}: ${qty}` : ''}`}
+              aria-label={`${t('add_to_order')}: ${name(product)}, ${formatMoney(product.price, lang)}${product.frozen ? ` · ${t('frozen_badge')}` : ''}${qty ? ` · ${t('in_order')}: ${qty}` : ''}`}
             >
               <div className="tile-media">
                 {product.image ? (
                   <img src={product.image} alt="" loading="lazy" decoding="async" />
                 ) : (
                   <span className="tile-ph">{name(product).trim().charAt(0).toUpperCase() || '?'}</span>
+                )}
+                {product.frozen && (
+                  <span className="tile-frozen" aria-hidden="true">
+                    <IconSnowflake size={11} strokeWidth={2.6} />
+                    {t('frozen_badge')}
+                  </span>
                 )}
                 {qty > 0 && <span className="tile-qty">×{qty}</span>}
                 <span className="tile-plus">

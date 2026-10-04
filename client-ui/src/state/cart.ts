@@ -63,6 +63,8 @@ export function pruneItems(items: CartItem[], productsById: Map<number, Product>
 export interface CartContextValue {
   items: CartItem[]
   lines: CartLine[]
+  /** Lines of products the business froze: they stay in the cart, but block the order until removed. */
+  unavailable: CartLine[]
   count: number
   total: number
   minOrder: number
@@ -79,6 +81,7 @@ export interface CartContextValue {
   clear: () => CartItem[]
   replace: (items: CartItem[]) => void
   removeIds: (ids: number[]) => void
+  removeUnavailable: () => void
   /** Increments on every add — drives the little "bump" of cart buttons. */
   pulse: number
 }

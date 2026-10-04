@@ -9,6 +9,7 @@ from apps.platform.current import url_for
 from apps.platform.models import Business, BusinessBot, Domain
 from apps.platform.overview import business_stats, owner_of
 from ..common.fields import ColorField, LimitedImageField, PhoneField
+from ..common.hours import WorkingHoursSerializer, hours_payload
 from ..common.representations import business_point, file_url, iso, person_name
 
 
@@ -84,6 +85,7 @@ class BusinessDetailSerializer(BusinessCardSerializer):
     address = serializers.CharField()
     lat = serializers.FloatField(allow_null=True)
     lng = serializers.FloatField(allow_null=True)
+    working_hours = WorkingHoursSerializer(help_text='Set by the business in its admin panel (read-only here)')
     delivery_time = serializers.CharField()
     min_order = serializers.IntegerField()
     owner = OwnerSerializer(allow_null=True)
@@ -98,6 +100,7 @@ class BusinessDetailSerializer(BusinessCardSerializer):
             'support_phone': business.support_phone,
             'address': business.address,
             **business_point(business),
+            'working_hours': hours_payload(business),
             'delivery_time': business.delivery_time,
             'min_order': business.min_order,
             'owner': {'name': person_name(owner), 'phone': owner.phone_number} if owner else None,

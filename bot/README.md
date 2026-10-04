@@ -6,7 +6,8 @@ One process that runs every Telegram bot of the platform:
   (`t.me/<bot>?start=login_<token>`), language switch, and sends the **customer messages** from the outbox
   (order placed, accepted / on the way / completed / rejected);
 * **staff bot** of each business — invite links from the admin panel, orders dictated by voice or typed
-  (Gemini, or a local parser without an API key) → draft card → order, new customer orders pushed to every
+  (Gemini, or a local parser without an API key) → draft card (a product the business froze is marked ❄️ with a
+  warning — staff may still sell it) → order, new customer orders pushed to every
   staff chat with Accept / Reject / On the way / Delivered buttons, all card copies kept in sync, today's
   orders and stats, uz / ru;
 * **our platform bot** — creates the two bots of a business with Telegram Managed Bots from a setup link of

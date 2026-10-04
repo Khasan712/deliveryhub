@@ -2,14 +2,46 @@ import type { ReactNode } from 'react'
 import { Icon, type IconName } from '../../components/Icon'
 import { ProductImage } from '../../components/ProductImage'
 import { useI18n } from '../../i18n/i18n'
+import { cn } from '../../lib/cn'
+import { statusLabel } from '../../lib/hours'
 import { useCatalog } from '../../state/catalog'
+import { useOpenStatus } from '../../state/hooks'
+import { useNav } from '../../state/nav'
+
+const CHIP =
+  'inline-flex h-7 max-w-full min-w-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--hero-ink)_12%,transparent)] px-2.5 text-xs font-bold whitespace-nowrap sm:h-8 sm:gap-1.5 sm:px-3 sm:text-[13px]'
 
 function Chip({ icon, children }: { icon: IconName; children: ReactNode }) {
   return (
-    <span className="inline-flex h-7 max-w-full min-w-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--hero-ink)_12%,transparent)] px-2.5 text-xs font-bold whitespace-nowrap sm:h-8 sm:gap-1.5 sm:px-3 sm:text-[13px]">
+    <span className={CHIP}>
       <Icon name={icon} className="size-3.5 sm:size-4" />
       <span className="truncate">{children}</span>
     </span>
+  )
+}
+
+/** Open or closed right now; opens the week of working hours. */
+function HoursChip() {
+  const { t } = useI18n()
+  const status = useOpenStatus()
+  const { openSheet } = useNav()
+  if (!status) return null
+  return (
+    <button
+      type="button"
+      onClick={() => openSheet({ type: 'hours' })}
+      aria-haspopup="dialog"
+      className={cn(CHIP, 'transition-colors hover:bg-[color-mix(in_srgb,var(--hero-ink)_18%,transparent)]')}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'size-2 shrink-0 rounded-full ring-2 ring-[color-mix(in_srgb,var(--hero-ink)_22%,transparent)] sm:size-2.5',
+          status.open ? 'bg-[#22c55e]' : 'bg-[#f43f5e]',
+        )}
+      />
+      <span className="truncate">{statusLabel(status, t)}</span>
+    </button>
   )
 }
 
@@ -30,6 +62,7 @@ export function Hero() {
           {t('heroText')}
         </p>
         <div className="mt-3.5 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
+          <HoursChip />
           {business.delivery_time && <Chip icon="clock">{t('deliveryTime', { time: business.delivery_time })}</Chip>}
           <Chip icon="cash">{t('cashOrCard')}</Chip>
           {business.min_order > 0 && (

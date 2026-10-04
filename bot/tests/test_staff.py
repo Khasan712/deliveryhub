@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import update
 
 from app.ai import understanding
-from app.db.models import Draft, Order, OrderCard, OrderItem, OrderTicket, Outbox, StaffInvite, StaffLink, User
+from app.db.models import Draft, Order, OrderCard, OrderItem, OrderTicket, Outbox, Product, StaffInvite, StaffLink, User
 from app.staff import service
 from app.utils import now
 from .fakes import ApiFailure, NetworkFailure, callback, message, voice
@@ -169,6 +169,19 @@ async def test_unknown_commands_get_a_hint(staff_bot, telegram, team):
 # ---------------------------------------------------------------------------
 # voice and text orders
 # ---------------------------------------------------------------------------
+
+async def test_a_frozen_product_is_sold_with_a_warning(staff_bot, telegram, shop, team, ai):
+    osh = await shop.add(Product(name_uz='Osh', name_ru='Плов', price='45 000', is_frozen=True))
+    ai(understood([(osh, 1), (team.burger, 1)]))
+    await staff_bot.send(recorded_voice(telegram, OPERATOR, 1))
+    card = telegram.last('editMessageText', OPERATOR)['text']
+    assert 'Osh ❄️ × 1 — 45 000' in card
+    assert '⚠️ Muzlatilgan: Osh — mijozlar hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.' in card
+    assert 'Chizburger ❄️' not in card
+
+    await staff_bot.send(callback(OPERATOR, 'draft:confirm', (await shop.one(Draft)).message_id))
+    assert [item.product_id for item in await shop.all(OrderItem)] == [osh.id, team.burger.id]
+
 
 async def test_voice_draft_edit_and_confirm(staff_bot, telegram, shop, other_shop, team, ai):
     fake = ai(understood([(team.burger, 2)], customer_name='Aziz', address='Chilonzor 9'))

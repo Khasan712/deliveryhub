@@ -45,6 +45,20 @@ The machine-readable schema of each API: `GET /api/v1/schema/` on its host (Open
   A token is valid for 90 days and only on the shop that issued it. Endpoints marked *auth* need it; others accept it
   optionally.
 
+### Working hours
+A business sets them in its admin panel; the shop shows them and takes orders only while open. Every API shows them
+as `WorkingHours`:
+```json
+{"week": [{"open": "09:00", "close": "22:00"}, ..., null], "timezone": "Asia/Tashkent",
+ "open": true, "opens_at": null, "closes_at": "2026-10-05T22:00:00+05:00"}
+```
+* `week` — seven shifts, Monday first; `null` is a day off. A `close` that is not after `open` is on the next day
+  (`"18:00"`–`"02:00"` closes at 02:00 the next night, and that night still counts as the day it started);
+  `"00:00"`–`"24:00"` is the whole day. `week: null` — no hours set: open at any time.
+* `open` / `opens_at` / `closes_at` — at the time of the response, in `timezone`: while open, when it closes (`null`:
+  never — open around the clock); while closed, when it opens next (`null`: every day off). Back-to-back shifts
+  (Monday 18:00–24:00, Tuesday 00:00–02:00) count as one.
+
 ---
 
 ## Shop API
@@ -54,7 +68,7 @@ Business profile and the whole catalog in one call.
 ```json
 {
   "business": {"name": "Burger House", "tagline": "", "support_phone": "+998712001122",
-               "address": "Amir Temur ko'chasi, 15", "lat": 41.311081, "lng": 69.279737,
+               "address": "Amir Temur ko'chasi, 15", "lat": 41.311081, "lng": 69.279737, "working_hours": WorkingHours,
                "delivery_time": "30–45", "min_order": 0, "brand_color": "#ff6b00", "logo": "/media/burger_house/logos/a.png"},
   "bot_username": "burger_house_bot",
   "categories": [{"id": 1, "name_uz": "Burgerlar", "name_ru": "Бургеры"}],
@@ -63,8 +77,8 @@ Business profile and the whole catalog in one call.
   "client": Client | null
 }
 ```
-`Product`: `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit_uz", "unit_ru", "category_id", "image"}`
-(`image`: URL or `null`). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
+`Product`: `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit_uz", "unit_ru", "category_id", "image",
+"frozen": bool}` (`image`: URL or `null`; `frozen` — not available right now: shown, but cannot be ordered). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
 `business.address` / `lat` / `lng`: where pickup orders are collected (`""` / `null` for a business not yet put on the
 map).
 
@@ -96,9 +110,10 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
    "delivery_type": "delivery" | "pickup", "address": "Chilonzor 9", "lat": 41.31, "lng": 69.27,
    "payment_method": "cash" | "card", "comment": "", "platform": "web" | "miniapp", "lang": "uz" | "ru"}
   ```
-  Errors: `validation` with `fields.name` / `fields.phone` / `fields.address` (`required` or `invalid`; delivery needs
-  an address or coordinates), `empty` (no items), `product_not_found` (`detail`: ids), `min_order` (`min_order`),
-  `429 too_many_requests`. Prices always come from the catalog.
+  Errors: `business_closed` (`opens_at`: iso or `null` — outside the [working hours](#working-hours)), `validation`
+  with `fields.name` / `fields.phone` / `fields.address` (`required` or `invalid`; delivery needs an address or
+  coordinates), `empty` (no items), `product_not_found` (`detail`: ids), `product_unavailable` (`detail`: ids of
+  frozen products), `min_order` (`min_order`), `429 too_many_requests`. Prices always come from the catalog.
 * `GET /api/v1/orders/{id}` → `{"order": Order}`.
 
 `Order`:
@@ -140,6 +155,11 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * `POST /api/v1/auth/telegram` `{"init_data"}` — sign-in from the staff bot's Mini App (Telegram account linked to
   a user) → `{"user": StaffUser}`; `403 not_linked` / `403 invalid_init_data`.
 
+### Working hours
+* `GET /api/v1/business` → `WorkingHours` (see [Working hours](#working-hours)) — every staff member.
+* `PATCH /api/v1/business` `{"week": [...] | null}` → `WorkingHours` — admin role only (`403` for managers);
+  `fields.week: ["invalid"]` for anything but seven shifts / `null`s.
+
 ### `GET /api/v1/dashboard`
 ```json
 {"orders": {"total": 120, "new": 3, "on_the_way": 1, "completed": 100, "last_7_days": 35},
@@ -169,13 +189,14 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * `PATCH /api/v1/clients/{id}` `{"first_name", "last_name", "phone", "location"}` → client.
 
 ### Catalog
-* Products — `GET /api/v1/products?search=&category=&page=` (*paginated*), `POST /api/v1/products`,
+* Products — `GET /api/v1/products?search=&category=&frozen=true|false&page=` (*paginated*), `POST /api/v1/products`,
   `GET|PATCH|DELETE /api/v1/products/{id}`.
   `Product` (admin): `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit": Unit | null,
-  "category": Category | null, "image", "created_at"}`.
+  "category": Category | null, "image", "frozen": bool, "frozen_at", "created_at"}`.
   Create / update fields (multipart when an image is attached): `name_uz`, `name_ru`, `price` (integer),
-  `desc_uz`, `desc_ru`, `unit_id`, `category_id`, `image` (file; `null` or an empty value removes it). Required on
-  create: `name_uz`, `name_ru`, `price`.
+  `desc_uz`, `desc_ru`, `unit_id`, `category_id`, `image` (file; `null` or an empty value removes it), `frozen`
+  (bool — any staff member; the shop shows the product as unavailable and refuses orders for it, staff may still sell
+  it). Required on create: `name_uz`, `name_ru`, `price`.
 * Categories — `GET /api/v1/categories?search=` → `[{"id", "name_uz", "name_ru", "products_count"}]` (not paginated);
   `POST`, `GET|PATCH|DELETE /{id}` with `{"name_uz", "name_ru"}` (deleting a category keeps its products).
 * Units — `GET /api/v1/units` → `[{"id", "name_uz", "name_ru"}]`; `POST {"name_uz", "name_ru"}`.
@@ -190,14 +211,15 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * `GET /api/v1/sales` →
   ```json
   {"categories": [{"id", "name_uz", "name_ru"}],
-   "products": [{"id", "name_uz", "name_ru", "price", "unit_uz", "unit_ru", "category_id", "image"}],
+   "products": [{"id", "name_uz", "name_ru", "price", "unit_uz", "unit_ru", "category_id", "image", "frozen"}],
    "recent": [SaleSummary], "stats": {"count", "revenue", "average", "all_orders_today"},
    "voice": {"gemini": bool, "live": bool}}
   ```
 * `POST /api/v1/sales`
   `{"items": [{"product_id", "quantity"}], "customer_name", "phone", "delivery_type", "address", "payment_method",
   "status", "comment"}` → `201 {"order": SaleSummary, "stats"}`. Defaults: `delivery_type=pickup`; `status` —
-  `completed` for pickup, `ordered` for delivery. Errors: `empty`, `product_not_found`.
+  `completed` for pickup, `ordered` for delivery; frozen products are sold too (the UI warns). Errors: `empty`,
+  `product_not_found`.
   `SaleSummary`: `{"id", "name", "phone", "status", "total", "items_count", "created_at"}`.
 
 ### Voice order entry (Gemini)
@@ -269,8 +291,9 @@ Our staff only (superusers of the platform; session auth).
  "bots": {"client": Bot | null, "admin": Bot | null}}
 ```
 `Bot`: `{"username", "alive": bool, "created_via": "managed" | "token"}` (`alive` — the bot service polls it now).
-`BusinessDetail` = BusinessCard + `{"support_phone", "address", "lat", "lng", "delivery_time", "min_order",
-"owner": {"name", "phone"} | null, "platform_bot": {"username"} | null, "missing_roles": ["client", "admin"]}`
+`BusinessDetail` = BusinessCard + `{"support_phone", "address", "lat", "lng", "working_hours": WorkingHours,
+"delivery_time", "min_order", "owner": {"name", "phone"} | null, "platform_bot": {"username"} | null,
+"missing_roles": ["client", "admin"]}` (`working_hours` is set by the business in its admin panel — read-only here)
 (`lat`/`lng` are `null` for a business opened before it was put on the map).
 
 ### Map

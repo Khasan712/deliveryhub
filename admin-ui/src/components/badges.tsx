@@ -1,6 +1,7 @@
 import type { OrderSource, OrderStatus, Role } from '../api/types'
 import { useI18n } from '../i18n/context'
 import { formatMoney } from '../lib/format'
+import { IconSnowflake } from './icons'
 import { Badge } from './ui/Badge'
 import { STATUS_KEYS, STATUS_TONES, SOURCE_KEYS, SOURCE_TONES } from './statusMeta'
 
@@ -35,6 +36,25 @@ export function ActiveBadge({ active }: { active: boolean }) {
   return (
     <Badge tone={active ? 'green' : 'red'} dot>
       {active ? t('active') : t('inactive')}
+    </Badge>
+  )
+}
+
+/** «❄ Muzlatilgan»: customers cannot order the product right now. `compact` keeps only the icon on phones. */
+export function FrozenBadge({
+  size = 'xs',
+  compact,
+  className,
+}: {
+  size?: 'xs' | 'sm'
+  compact?: boolean
+  className?: string
+}) {
+  const { t } = useI18n()
+  return (
+    <Badge tone="sky" size={size} className={className} title={compact ? t('frozen_badge') : undefined}>
+      <IconSnowflake size={size === 'xs' ? 11 : 13} strokeWidth={2.4} className="shrink-0" />
+      <span className={compact ? 'sr-only sm:not-sr-only' : undefined}>{t('frozen_badge')}</span>
     </Badge>
   )
 }

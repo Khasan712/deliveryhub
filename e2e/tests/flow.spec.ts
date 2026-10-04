@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { newBusiness, urls } from './env'
-import { completeOrder, fillCatalog, openBusiness, placeOrder, signInToAdmin } from './steps'
+import { closeForTheWeek, completeOrder, fillCatalog, freezeProduct, openBusiness, placeOrder, signInToAdmin } from './steps'
 
 /**
  * The life of a business, through every part: our panel opens it → its owner signs in to the admin panel and
@@ -44,6 +44,16 @@ test.describe.serial('a new business from opening to the first order', () => {
     await completeOrder(owner, business, orderId)
     await customer.goto(`${urls.shop(business.slug)}/orders/${orderId}`)
     await expect(customer.getByText('Buyurtma topshirildi. Yoqimli ishtaha!')).toBeVisible()
+  })
+
+  test('a frozen product and a week off show up in the shop', async () => {
+    await freezeProduct(owner, business, product)
+    await customer.goto(urls.shop(business.slug))
+    await expect(customer.getByRole('article', { name: product }).first().getByText('Mavjud emas')).toBeVisible()
+
+    await closeForTheWeek(owner, business)
+    await customer.reload()
+    await expect(customer.getByRole('button', { name: 'Hozir yopiq' })).toBeVisible()
   })
 
   test('a suspended business closes its shop and admin panel until it is activated again', async ({ page }) => {

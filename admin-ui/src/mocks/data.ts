@@ -11,12 +11,15 @@ import type {
   StaffUser,
   TelegramLink,
   Unit,
+  Week,
 } from '../api/types'
 
 export type MockClient = Omit<ClientDetail, 'orders' | 'orders_count'>
 
 export interface MockDb {
   business: Business
+  /** Working hours (`null`: none set — open at any time). */
+  hours: Week | null
   users: StaffUser[]
   passwords: Record<number, string>
   /** Signed-in staff user id (the session cookie of the mock). */
@@ -34,6 +37,14 @@ export interface MockDb {
 }
 
 const DAY = 86_400_000
+const FROZEN_INDEX = 12
+
+/** Monday–Thursday 09:00–22:00, Friday and Saturday until 02:00 at night, Sunday 10:00–22:00. */
+export function defaultWeek(): Week {
+  const day = { open: '09:00', close: '22:00' }
+  const late = { open: '09:00', close: '02:00' }
+  return [day, day, day, day, late, late, { open: '10:00', close: '22:00' }].map((shift) => ({ ...shift }))
+}
 
 /** Small deterministic PRNG (mulberry32). */
 function random(seed: number) {
@@ -126,6 +137,9 @@ export function createDb(): MockDb {
       return category ? { id: category.id, name_uz: category.name_uz, name_ru: category.name_ru } : null
     })(),
     image: index === 10 ? null : foodImage(emoji, from, to),
+    // «Naggetslar» is sold out for now: frozen (the shop refuses it, the point of sale warns).
+    frozen: index === FROZEN_INDEX,
+    frozen_at: index === FROZEN_INDEX ? iso(now - 3 * 3_600_000) : null,
     created_at: iso(now - (90 - index * 3) * DAY),
   }))
 
@@ -231,6 +245,7 @@ export function createDb(): MockDb {
 
   return {
     business,
+    hours: defaultWeek(),
     users,
     passwords: { 1: 'admin12345', 2: 'manager12345', 3: 'manager12345' },
     sessionUserId: null,

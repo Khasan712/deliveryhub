@@ -5,6 +5,7 @@ import { brandColor, prefersLightText } from './color'
 import { platformDomain } from './domain'
 import { errorMessage, fieldErrors } from './errors'
 import { formatDateTime, formatPrice, hostOf, initialOf } from './format'
+import { hoursStatus } from './hours'
 import { parsePoint } from './map'
 import { loginPath, safeNext } from './paths'
 import { formatPhone, normalizePhone } from './phone'
@@ -116,5 +117,28 @@ describe('map', () => {
     expect(parsePoint('Chilonzor 9')).toBeNull()
     expect(parsePoint('Amir Temur 15, 2')).toBeNull()
     expect(parsePoint('91.5, 69.2')).toBeNull()
+  })
+})
+
+describe('working hours', () => {
+  const hours = (status: { open: boolean; opens_at?: string; closes_at?: string }) => ({
+    week: [],
+    timezone: 'Asia/Tashkent',
+    open: status.open,
+    opens_at: status.opens_at ?? null,
+    closes_at: status.closes_at ?? null,
+  })
+  const monday = new Date('2026-10-05T10:00:00+05:00')
+
+  it('says when an open business closes and when a closed one opens, on its own clock', () => {
+    expect(hoursStatus(hours({ open: true, closes_at: '2026-10-05T22:00:00+05:00' }), monday)).toBe('Hozir ochiq · bugun 22:00 gacha')
+    expect(hoursStatus(hours({ open: false, opens_at: '2026-10-06T09:00:00+05:00' }), monday)).toBe(
+      'Hozir yopiq · ertaga 09:00 da ochiladi',
+    )
+    expect(hoursStatus(hours({ open: false, opens_at: '2026-10-12T09:00:00+05:00' }), monday)).toBe(
+      'Hozir yopiq · dushanba 09:00 da ochiladi',
+    )
+    expect(hoursStatus(hours({ open: true }), monday)).toBe('Hozir ochiq · 24 soat')
+    expect(hoursStatus(hours({ open: false }), monday)).toBe('Hozir yopiq')
   })
 })

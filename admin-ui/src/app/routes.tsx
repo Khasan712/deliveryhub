@@ -11,6 +11,7 @@ import {
   ClientEditPage,
   ClientsPage,
   DashboardPage,
+  HoursPage,
   OrderDetailPage,
   OrdersPage,
   ProductFormPage,
@@ -63,6 +64,8 @@ export const routes: RouteObject[] = [
             ],
           },
           { path: 'telegram', element: <TelegramPage /> },
+          // Every staff member sees the working hours; only the admin role can change them (the page knows).
+          { path: 'hours', element: <HoursPage /> },
           { path: '*', element: <NotFound /> },
         ],
       },

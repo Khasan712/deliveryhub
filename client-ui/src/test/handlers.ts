@@ -3,7 +3,8 @@
  * exercise real request/response shapes (including error bodies).
  */
 import { http, HttpResponse, type JsonBodyType } from 'msw'
-import type { Business, Category, Client, NewOrder, Order, Place, Product } from '../api/types'
+import type { Business, Category, Client, NewOrder, Order, Place, Product, Shift } from '../api/types'
+import { openStatus } from '../lib/hours'
 import * as fixtures from './fixtures'
 
 export const API = '/api/v1'
@@ -57,6 +58,10 @@ interface Db {
   telegramLogin: 'pending' | 'confirmed' | 'expired'
   /** The map server is out of reach (GET /geo/* → 503). */
   geoDown: boolean
+  /** Products the business froze (on top of the data's own `frozen`). */
+  frozen: Set<number>
+  /** Working hours set by a test (undefined: those of the data). */
+  week?: (Shift | null)[] | null
   requests: LoggedRequest[]
   nextOrderId: number
 }
@@ -69,6 +74,7 @@ function createDb(data: MockData): Db {
     phoneAttempts: 5,
     telegramLogin: 'pending',
     geoDown: false,
+    frozen: new Set(),
     requests: [],
     nextOrderId: 200,
   }
@@ -108,16 +114,23 @@ function authorised(db: Db, request: Request): Client | null {
 }
 
 export function createHandlers(data: MockData, state: Db = createDb(data)) {
-  const { business, categories, products, popular, client: aziz } = data
+  const { business, categories, products: catalog, popular, client: aziz } = data
   const db = state
+  const products = () => catalog.map((product) => ({ ...product, frozen: product.frozen || db.frozen.has(product.id) }))
+  // The hours with their status worked out now, like the backend does.
+  const workingHours = () => {
+    const hours = { ...business.working_hours, week: db.week === undefined ? business.working_hours.week : db.week }
+    const status = openStatus(hours)
+    return { ...hours, open: status?.open ?? true, opens_at: null, closes_at: null }
+  }
   return [
     http.get(`${API}/shop`, async ({ request }) => {
       await log(db, request)
       return HttpResponse.json({
-        business: { ...business, min_order: db.minOrder },
+        business: { ...business, min_order: db.minOrder, working_hours: workingHours() },
         bot_username: 'burger_house_bot',
         categories,
-        products,
+        products: products(),
         popular,
         client: authorised(db, request),
       })
@@ -227,16 +240,20 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
     http.post(`${API}/orders`, async ({ request }) => {
       const body = (await log(db, request)) as NewOrder
       if (!authorised(db, request)) return error(401, 'auth_required')
+      if (!workingHours().open) return error(400, 'business_closed', { opens_at: null })
       if (!body.items?.length) return error(400, 'empty')
-      const missing = body.items.filter((item) => !products.some((product) => product.id === item.product_id))
+      const all = products()
+      const missing = body.items.filter((item) => !all.some((product) => product.id === item.product_id))
       if (missing.length) return error(400, 'product_not_found', { detail: missing.map((item) => item.product_id) })
+      const frozen = body.items.filter((item) => all.find((product) => product.id === item.product_id)?.frozen)
+      if (frozen.length) return error(400, 'product_unavailable', { detail: frozen.map((item) => item.product_id) })
       const fields: Record<string, string[]> = {}
       if (!body.name?.trim()) fields.name = ['required']
       if (!/^\+998\d{9}$/.test(body.phone ?? '')) fields.phone = ['invalid']
       if (body.delivery_type === 'delivery' && !body.address && body.lat === null) fields.address = ['required']
       if (Object.keys(fields).length) return error(400, 'validation', { fields })
       const items = body.items.map((item) => {
-        const product = products.find((candidate) => candidate.id === item.product_id)!
+        const product = all.find((candidate) => candidate.id === item.product_id)!
         return {
           product_id: product.id,
           name_uz: product.name_uz,

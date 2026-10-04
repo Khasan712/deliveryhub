@@ -11,6 +11,8 @@ export type Sheet =
   | { type: 'auth'; next?: string }
   /** The checkout's map (the checkout renders it). */
   | { type: 'map' }
+  /** The week of working hours. */
+  | { type: 'hours' }
 
 export interface NavState {
   sheet?: Sheet

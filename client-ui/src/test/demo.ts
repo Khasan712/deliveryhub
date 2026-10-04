@@ -17,7 +17,8 @@ const product = (
   desc_uz = '',
   desc_ru = '',
   unit: [string, string] = ['dona', 'шт'],
-): Product => ({ id, category_id, name_uz, name_ru, price, image, desc_uz, desc_ru, unit_uz: unit[0], unit_ru: unit[1] })
+  frozen = false,
+): Product => ({ id, category_id, name_uz, name_ru, price, image, desc_uz, desc_ru, unit_uz: unit[0], unit_ru: unit[1], frozen })
 
 const products: Product[] = [
   product(1, 1, 'Klassik burger', 'Классический бургер', 35000, img('Klassik_Burger.jpg'), 'Mol go‘shti kotleti, cheddar, pomidor, tuzlangan bodring va maxsus sous.', 'Говяжья котлета, чеддер, томат, маринованный огурец и фирменный соус.'),
@@ -32,7 +33,7 @@ const products: Product[] = [
   product(10, 2, '4 pishloqli pitsa', 'Пицца 4 сыра', 75000, img('4_Pishloqli_Pizza.jpg')),
   product(11, 3, 'Fri kartoshka', 'Картофель фри', 18000, null, '', '', ['porsiya', 'порция']),
   product(12, 3, 'Gril hot-dog', 'Хот-дог гриль', 24000, img('SEA-best-grilled-hot-dogs-recipe-hero-02-9d245c0d43874a3da13a7228682b0dce.jpg')),
-  product(13, 3, 'Achchiq qanotchalar', 'Острые крылышки', 32000, img('cr-chipotle-chicken-wings-qhzj-jumbo.jpg'), '8 dona tovuq qanoti, chipotle sousi bilan.', '8 куриных крылышек с соусом чипотле.'),
+  product(13, 3, 'Achchiq qanotchalar', 'Острые крылышки', 32000, img('cr-chipotle-chicken-wings-qhzj-jumbo.jpg'), '8 dona tovuq qanoti, chipotle sousi bilan.', '8 куриных крылышек с соусом чипотле.', ['dona', 'шт'], true),
   product(14, 4, 'Cheesecake', 'Чизкейк', 28000, img('Cheesecake.jpg'), '', '', ['bo‘lak', 'кусок']),
   product(15, 4, 'Tiramisu', 'Тирамису', 30000, img('Tiramisu.jpg'), '', '', ['bo‘lak', 'кусок']),
   product(16, 5, 'Coca-Cola 1 l', 'Coca-Cola 1 л', 12000, null),
@@ -93,6 +94,19 @@ export const demoData: MockData = {
     address: "Amir Temur ko'chasi, 15, Yunusobod tumani, Toshkent",
     lat: 41.311081,
     lng: 69.279737,
+    // Every day 09:00–23:00, Friday and Saturday nights until 01:00.
+    working_hours: {
+      week: [
+        ...Array.from({ length: 4 }, () => ({ open: '09:00', close: '23:00' })),
+        { open: '09:00', close: '01:00' },
+        { open: '09:00', close: '01:00' },
+        { open: '10:00', close: '23:00' },
+      ],
+      timezone: 'Asia/Tashkent',
+      open: true,
+      opens_at: null,
+      closes_at: null,
+    },
     delivery_time: '30–45',
     min_order: 50000,
     brand_color: '#ff6b00',

@@ -26,6 +26,7 @@ import { cx } from '../../lib/cx'
 import { formatDate, formatNumber } from '../../lib/format'
 import { AddressesCard } from './AddressesCard'
 import { LocationCard } from './LocationCard'
+import { HoursCard } from './HoursCard'
 import { BotsSection } from './bots'
 import { DangerZone } from './DangerZone'
 import { OwnerCard } from './OwnerCard'
@@ -142,6 +143,7 @@ function BusinessView({ slug }: { slug: string }) {
         </div>
         <div className="min-w-0 space-y-5 lg:col-span-2">
           <ProfileForm business={business} />
+          <HoursCard business={business} />
           <OwnerCard business={business} />
         </div>
       </div>

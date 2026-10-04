@@ -365,6 +365,26 @@ describe('business page', () => {
     expect(backend.requests('PATCH', '/businesses/burger-house')).toHaveLength(0)
   })
 
+  it('shows the working hours the business set (read-only)', async () => {
+    const week = [...Array.from({ length: 6 }, () => ({ open: '09:00', close: '22:00' })), null]
+    backend.state.businesses = [
+      makeBusiness({
+        working_hours: { week, timezone: 'Asia/Tashkent', open: false, opens_at: null, closes_at: null },
+      }),
+      makeBusiness({ slug: 'pizza-palace', name: 'Pizza Palace' }),
+    ]
+    const { router } = renderApp('/b/burger-house')
+
+    const card = within(await screen.findByRole('region', { name: 'Ish vaqti' }))
+    expect(card.getByText('Hozir yopiq')).toBeInTheDocument()
+    expect(card.getByText('Dushanba').nextElementSibling).toHaveTextContent('09:00 – 22:00')
+    expect(card.getByText('Yakshanba').nextElementSibling).toHaveTextContent('Dam olish')
+    expect(card.queryByRole('button')).not.toBeInTheDocument()
+
+    await router.navigate('/b/pizza-palace')
+    expect(await screen.findByText(/Ish vaqti belgilanmagan/)).toBeInTheDocument()
+  })
+
   it('focuses the business heading once it has loaded after navigating to it', async () => {
     backend.state.businesses = sampleBusinesses()
     const { user } = renderApp('/')

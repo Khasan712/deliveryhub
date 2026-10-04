@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { getMe, updateMe } from '../api/shop'
 import type { Lang } from '../api/types'
 import { useI18n } from '../i18n/i18n'
+import { clockTick, openStatus, subscribeClock, tickTime, type OpenStatus } from '../lib/hours'
 import { haptic } from '../lib/telegram'
 import { useAuth } from './auth'
-import { useCart } from './cart'
+import { useCart, type CartLine } from './cart'
 import { useCatalog } from './catalog'
 import { useNav } from './nav'
 import { useToast } from './toast'
@@ -30,20 +31,45 @@ export function useChangeLanguage() {
   )
 }
 
-/** "Checkout" from the cart: needs a signed-in customer and the minimum order. */
+/** Open or closed right now, worked out again every half minute; null when the business has no working hours. */
+export function useOpenStatus(): OpenStatus | null {
+  const { business } = useCatalog()
+  const tick = useSyncExternalStore(subscribeClock, clockTick, clockTick)
+  return useMemo(() => openStatus(business?.working_hours, tickTime(tick)), [business?.working_hours, tick])
+}
+
+export type CheckoutBlock =
+  | { reason: 'closed'; status: OpenStatus }
+  | { reason: 'unavailable'; lines: CartLine[] }
+  | { reason: 'minimum' }
+  | null
+
+/** Why the cart cannot be ordered right now (null: it can) — the business is closed, some products are not
+ * available, or the total is below the minimum order. */
+export function useCheckoutBlock(): CheckoutBlock {
+  const status = useOpenStatus()
+  const { unavailable, belowMinimum } = useCart()
+  if (status && !status.open) return { reason: 'closed', status }
+  if (unavailable.length) return { reason: 'unavailable', lines: unavailable }
+  if (belowMinimum) return { reason: 'minimum' }
+  return null
+}
+
+/** "Checkout" from the cart: needs a signed-in customer and a cart that can be ordered now. */
 export function useStartCheckout() {
   const { token, status } = useAuth()
-  const { count, belowMinimum } = useCart()
+  const { count } = useCart()
+  const blocked = useCheckoutBlock() !== null
   const { go, openSheet, sheet } = useNav()
   return useCallback(() => {
-    if (!count || belowMinimum) {
+    if (!count || blocked) {
       haptic('error')
       return
     }
     const fromSheet = sheet !== null
     if (!token && status === 'ready') openSheet({ type: 'auth', next: '/checkout' }, { replace: fromSheet })
     else go('/checkout', { replace: fromSheet })
-  }, [count, belowMinimum, token, status, go, openSheet, sheet])
+  }, [count, blocked, token, status, go, openSheet, sheet])
 }
 
 /** Empties the cart with an "undo" toast. */

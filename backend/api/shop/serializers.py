@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.core.enums import DeliveryTypeEnum, LanguageEnum, OrderSourceEnum, PaymentMethodEnum
 from apps.core.utils import parse_price, parse_quantity
+from ..common.hours import WorkingHoursSerializer, hours_payload
 from ..common.representations import business_point, file_url, iso, order_address, product_image_url
 
 LANGS = tuple(lang.value for lang in LanguageEnum)
@@ -16,6 +17,7 @@ class BusinessSerializer(serializers.Serializer):
     address = serializers.CharField(help_text='Where pickup orders are collected')
     lat = serializers.FloatField(allow_null=True)
     lng = serializers.FloatField(allow_null=True)
+    working_hours = WorkingHoursSerializer(help_text='Closed: orders are refused (business_closed)')
     delivery_time = serializers.CharField()
     min_order = serializers.IntegerField()
     brand_color = serializers.CharField()
@@ -28,6 +30,7 @@ class BusinessSerializer(serializers.Serializer):
             'support_phone': business.support_phone,
             'address': business.address,
             **business_point(business),
+            'working_hours': hours_payload(business),
             'delivery_time': business.delivery_time,
             'min_order': business.min_order,
             'brand_color': business.brand_color,
@@ -55,6 +58,7 @@ class ProductSerializer(serializers.Serializer):
     unit_ru = serializers.CharField()
     category_id = serializers.IntegerField(allow_null=True)
     image = serializers.CharField(allow_null=True)
+    frozen = serializers.BooleanField(help_text='Not available right now: shown, but cannot be ordered')
 
     def to_representation(self, product):
         measure = product.measure
@@ -69,6 +73,7 @@ class ProductSerializer(serializers.Serializer):
             'unit_ru': measure.name_ru if measure else '',
             'category_id': product.category_id,
             'image': product_image_url(product),
+            'frozen': product.is_frozen,
         }
 
 

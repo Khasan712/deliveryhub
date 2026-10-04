@@ -12,7 +12,8 @@ def products():
     return Product.objects.select_related('category', 'measure').order_by('-created_at', '-id')
 
 
-@extend_schema(parameters=[OpenApiParameter('search', str), OpenApiParameter('category', int)])
+@extend_schema(parameters=[OpenApiParameter('search', str), OpenApiParameter('category', int),
+                           OpenApiParameter('frozen', bool, description='true: only frozen, false: only on sale')])
 class ProductListView(StaffListView):
     serializer_class = ProductSerializer
 
@@ -23,6 +24,9 @@ class ProductListView(StaffListView):
         category = self.request.query_params.get('category', '')
         if category.isdigit():
             queryset = queryset.filter(category_id=int(category))
+        frozen = self.request.query_params.get('frozen', '')
+        if frozen in ('true', 'false'):
+            queryset = queryset.filter(is_frozen=frozen == 'true')
         return queryset
 
     @extend_schema(summary='Add a product', request=ProductWriteSerializer, responses={201: ProductSerializer})

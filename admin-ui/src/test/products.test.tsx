@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { formatPriceInput, productRequestBody, validateProductForm, EMPTY_PRODUCT_FORM } from '../features/products/productForm'
 import { translate } from '../i18n/translate'
-import { store } from '../mocks/data'
+import { resetDb, store } from '../mocks/data'
 import { locationOf, renderApp } from './render'
 import { recordRequests, server } from './server'
 
@@ -40,14 +40,16 @@ describe('product form helpers', () => {
       desc_ru: '',
       unit_id: null,
       category_id: 2,
+      frozen: false,
     })
     expect(productRequestBody(form, null, true)).toMatchObject({ image: null })
 
     const file = new File(['png'], 'lavash.png', { type: 'image/png' })
-    const multipart = productRequestBody(form, file, false) as FormData
+    const multipart = productRequestBody({ ...form, frozen: true }, file, false) as FormData
     expect(multipart).toBeInstanceOf(FormData)
     expect(multipart.get('price')).toBe('28000')
     expect(multipart.get('unit_id')).toBe('')
+    expect(multipart.get('frozen')).toBe('true')
     expect((multipart.get('image') as File).name).toBe('lavash.png')
   })
 })
@@ -188,5 +190,109 @@ describe('products', () => {
     await user.click(screen.getByRole('link', { name: 'Kategoriyalar' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Chiqish' }))
     await waitFor(() => expect(locationOf(router)).toBe('/categories'))
+  })
+})
+
+describe('freezing products', () => {
+  it('freezes a product from the list at once, and the toast can undo it', async () => {
+    const patches = recordRequests('patch', '/api/v1/products/1')
+    const { user } = renderApp('/products')
+    const row = (await screen.findByRole('link', { name: 'Chizburger' })).closest('tr')!
+    expect(within(row).queryByText('Muzlatilgan')).not.toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: 'Muzlatish: Chizburger' }))
+
+    expect(await within(row).findByText('Muzlatilgan')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Sotuvga qaytarish: Chizburger' })).toBeInTheDocument()
+    expect(await screen.findByText('«Chizburger» muzlatildi')).toBeInTheDocument()
+    expect(screen.getByText('Mijozlar uni hozir buyurtma qila olmaydi')).toBeInTheDocument()
+    expect(patches[0].body).toEqual({ frozen: true })
+    expect(store.db.products.find((product) => product.id === 1)).toMatchObject({ frozen: true })
+
+    await user.click(screen.getByRole('button', { name: 'Bekor qilish' }))
+    expect(await screen.findByText('«Chizburger» sotuvga qaytarildi')).toBeInTheDocument()
+    expect(patches[1].body).toEqual({ frozen: false })
+    await waitFor(() => expect(within(row).queryByText('Muzlatilgan')).not.toBeInTheDocument())
+    expect(store.db.products.find((product) => product.id === 1)).toMatchObject({ frozen: false, frozen_at: null })
+  })
+
+  it('returns a frozen product to sale and puts the list back if the request fails', async () => {
+    server.use(http.patch('/api/v1/products/13', () => HttpResponse.json({ error: 'not_found' }, { status: 404 })))
+    const { user } = renderApp('/products')
+    const row = (await screen.findByRole('link', { name: 'Naggetslar' })).closest('tr')!
+    expect(within(row).getByText('Muzlatilgan')).toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: 'Sotuvga qaytarish: Naggetslar' }))
+
+    expect(await screen.findByText('Topilmadi')).toBeInTheDocument()
+    expect(within(row).getByText('Muzlatilgan')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Sotuvga qaytarish: Naggetslar' })).toBeInTheDocument()
+  })
+
+  it('filters by availability (kept in the URL) and counts the frozen products', async () => {
+    const requests = recordRequests('get', '/api/v1/products')
+    const { user, router } = renderApp('/products')
+    await screen.findByRole('link', { name: 'Chizburger' })
+
+    const frozenTab = screen.getByRole('button', { name: 'Muzlatilgan 1' })
+    await user.click(frozenTab)
+    await waitFor(() => expect(requests.at(-1)!.url.searchParams.get('frozen')).toBe('true'))
+    expect(locationOf(router)).toBe('/products?frozen=true')
+    expect(frozenTab).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Chizburger' })).not.toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'Naggetslar' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Sotuvda' }))
+    await waitFor(() => expect(requests.at(-1)!.url.searchParams.get('frozen')).toBe('false'))
+    expect(await screen.findByRole('link', { name: 'Chizburger' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Naggetslar' })).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Hammasi' }))
+    await waitFor(() => expect(requests.at(-1)!.url.searchParams.has('frozen')).toBe(false))
+    expect(locationOf(router)).toBe('/products')
+  })
+
+  it('explains an empty "Frozen" tab', async () => {
+    resetDb((db) => {
+      for (const product of db.products) product.frozen = false
+    })
+    renderApp('/products?frozen=true')
+    expect(await screen.findByText("Muzlatilgan mahsulot yo'q")).toBeInTheDocument()
+    expect(screen.getByText(/Hamma mahsulotlar sotuvda/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Muzlatilgan' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('freezes a product from its form, saved with the other fields', async () => {
+    const patches = recordRequests('patch', '/api/v1/products/1')
+    const { user } = renderApp('/products/1/edit')
+    await screen.findByDisplayValue('Chizburger')
+
+    const toggle = screen.getByRole('switch', { name: 'Muzlatilgan' })
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    expect(toggle).toHaveAccessibleDescription(/«Hozir mavjud emas» deb ko'radi/)
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    await user.click(screen.getByRole('button', { name: "O'zgarishlarni saqlash" }))
+
+    expect(await screen.findByText('Mahsulot saqlandi')).toBeInTheDocument()
+    expect(patches[0].body).toMatchObject({ name_uz: 'Chizburger', price: 32000, frozen: true })
+    const row = (await screen.findByRole('link', { name: 'Chizburger' })).closest('tr')!
+    expect(within(row).getByText('Muzlatilgan')).toBeInTheDocument()
+  })
+
+  it('shows a frozen product as such on its form and returns it to sale', async () => {
+    const patches = recordRequests('patch', '/api/v1/products/13')
+    const { user } = renderApp('/products/13/edit')
+    await screen.findByDisplayValue('Naggetslar')
+
+    const toggle = screen.getByRole('switch', { name: 'Muzlatilgan' })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText(/^Muzlatilgan: /)).toBeInTheDocument()
+    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: "O'zgarishlarni saqlash" }))
+
+    expect(await screen.findByText('Mahsulot saqlandi')).toBeInTheDocument()
+    expect(patches[0].body).toMatchObject({ frozen: false })
+    expect(store.db.products.find((product) => product.id === 13)).toMatchObject({ frozen: false, frozen_at: null })
   })
 })

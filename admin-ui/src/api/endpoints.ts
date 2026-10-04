@@ -14,6 +14,7 @@ import type {
   OrdersQuery,
   Paginated,
   Product,
+  ProductsQuery,
   SaleCreateResponse,
   SalesData,
   StaffUser,
@@ -27,6 +28,8 @@ import type {
   VoiceToken,
   CartItem,
   SaleForm,
+  Week,
+  WorkingHours,
 } from './types'
 
 export const authApi = {
@@ -45,6 +48,13 @@ export const dashboardApi = {
   get: () => api.get<DashboardData>('/dashboard'),
 }
 
+/** Working hours: every staff member reads them, only the admin role changes them (others get 403). */
+export const businessApi = {
+  get: () => api.get<WorkingHours>('/business'),
+  /** `week: null` — no hours: the shop takes orders at any time. */
+  setWeek: (week: Week | null) => api.patch<WorkingHours>('/business', { week }),
+}
+
 export const ordersApi = {
   list: (query: OrdersQuery) => api.get<Paginated<OrderSummary>>('/orders', { ...query }),
   get: (id: number | string) => api.get<OrderDetail>(`/orders/${id}`),
@@ -59,8 +69,7 @@ export const clientsApi = {
 }
 
 export const productsApi = {
-  list: (query: { search?: string; category?: string | number; page?: number; page_size?: number }) =>
-    api.get<Paginated<Product>>('/products', { ...query }),
+  list: (query: ProductsQuery) => api.get<Paginated<Product>>('/products', { ...query }),
   get: (id: number | string) => api.get<Product>(`/products/${id}`),
   /** JSON, or multipart when an image file is attached. */
   create: (body: Record<string, unknown> | FormData) =>
@@ -69,6 +78,8 @@ export const productsApi = {
     body instanceof FormData
       ? api.upload<Product>('PATCH', `/products/${id}`, body)
       : api.patch<Product>(`/products/${id}`, body),
+  /** Freeze (sold out for now) or return to sale — any staff member. */
+  setFrozen: (id: number, frozen: boolean) => api.patch<Product>(`/products/${id}`, { frozen }),
   remove: (id: number | string) => api.delete(`/products/${id}`),
 }
 

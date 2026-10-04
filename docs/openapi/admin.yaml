@@ -108,6 +108,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffMe'
           description: ''
+  /api/v1/business:
+    get:
+      operationId: business_retrieve
+      description: An endpoint for any signed-in staff member of the business (admin
+        or manager).
+      summary: Working hours and whether the business is open now
+      tags:
+      - business
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkingHours'
+          description: ''
+    patch:
+      operationId: business_partial_update
+      description: '`week`: seven shifts, Monday first, null for a day off; `null`
+        — open at any time.'
+      summary: Set the working hours (admin role)
+      tags:
+      - business
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWeekUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWeekUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWeekUpdateRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkingHours'
+          description: ''
   /api/v1/categories:
     get:
       operationId: categories_list
@@ -446,6 +490,11 @@ paths:
         name: category
         schema:
           type: integer
+      - in: query
+        name: frozen
+        schema:
+          type: boolean
+        description: 'true: only frozen, false: only on sale'
       - name: page
         in: query
         required: false
@@ -483,6 +532,11 @@ paths:
         name: category
         schema:
           type: integer
+      - in: query
+        name: frozen
+        schema:
+          type: boolean
+        description: 'true: only frozen, false: only on sale'
       - in: query
         name: search
         schema:
@@ -1586,6 +1640,8 @@ components:
           type: string
           format: binary
           nullable: true
+        frozen:
+          type: boolean
     PatchedStaffUserRequest:
       type: object
       description: 'Read: StaffUser. Write: password required on create (8+ characters),
@@ -1610,6 +1666,16 @@ components:
           writeOnly: true
           minLength: 8
           maxLength: 128
+    PatchedWeekUpdateRequest:
+      type: object
+      properties:
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShiftRequest'
+          nullable: true
+          maxItems: 7
+          minItems: 7
     PaymentMethodEnum:
       enum:
       - cash
@@ -1668,10 +1734,14 @@ components:
         image:
           type: string
           nullable: true
+        frozen:
+          type: boolean
+          description: 'Not available right now: shown, but cannot be ordered'
       required:
       - category_id
       - desc_ru
       - desc_uz
+      - frozen
       - id
       - image
       - name_ru
@@ -1705,6 +1775,13 @@ components:
         image:
           type: string
           nullable: true
+        frozen:
+          type: boolean
+          description: The shop shows it as unavailable; staff may still sell it
+        frozen_at:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1713,6 +1790,8 @@ components:
       - created_at
       - desc_ru
       - desc_uz
+      - frozen
+      - frozen_at
       - id
       - image
       - name_ru
@@ -1752,6 +1831,8 @@ components:
           type: string
           format: binary
           nullable: true
+        frozen:
+          type: boolean
       required:
       - name_ru
       - name_uz
@@ -1886,6 +1967,32 @@ components:
       - average
       - count
       - revenue
+    Shift:
+      type: object
+      properties:
+        open:
+          type: string
+          description: HH:MM
+        close:
+          type: string
+          description: 'HH:MM or 24:00; not after `open`: the next day'
+      required:
+      - close
+      - open
+    ShiftRequest:
+      type: object
+      properties:
+        open:
+          type: string
+          minLength: 1
+          description: HH:MM
+        close:
+          type: string
+          minLength: 1
+          description: 'HH:MM or 24:00; not after `open`: the next day'
+      required:
+      - close
+      - open
     StaffBot:
       type: object
       properties:
@@ -2098,6 +2205,37 @@ components:
           additionalProperties: {}
         lang:
           $ref: '#/components/schemas/LangEnum'
+    WorkingHours:
+      type: object
+      properties:
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shift'
+          nullable: true
+          maxItems: 7
+          minItems: 7
+        timezone:
+          type: string
+        open:
+          type: boolean
+          description: At the time of the response
+        opens_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While closed: the next opening'
+        closes_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While open: the closing (null: never)'
+      required:
+      - closes_at
+      - open
+      - opens_at
+      - timezone
+      - week
   securitySchemes:
     cookieAuth:
       type: apiKey

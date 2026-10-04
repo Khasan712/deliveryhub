@@ -7,11 +7,13 @@ It talks only to the **Admin API** on its own host (`/api/v1/...`, session cooki
 [`docs/api.md`](../docs/api.md) and [`docs/architecture.md`](../docs/architecture.md).
 
 **Pages:** dashboard (KPIs, orders by status, last 7 days, latest orders) · sales point of sale with the AI voice
-assistant (Gemini Live captions, browser speech fallback, typed commands, undo, Space / Esc / `/` / Ctrl+Enter) ·
-orders (status / source filters, search, pagination) and order detail (items, customer, address with map links,
-status change) · clients (list, detail, edit) · products (search, category filter, create / edit with image upload,
-delete) · categories · units · staff users (admins only) · Telegram bot (status, linked accounts, notifications,
-invite link + QR, team). Uzbek / Russian, light / dark theme, responsive down to phones.
+assistant (Gemini Live captions, browser speech fallback, typed commands, undo, Space / Esc / `/` / Ctrl+Enter; frozen
+products can be sold, with a warning and one-tap "return to sale") · orders (status / source filters, search,
+pagination) and order detail (items, customer, address with map links, status change) · clients (list, detail, edit) ·
+products (search, category and on sale / frozen filters, one-tap freeze with undo, create / edit with image upload,
+delete) · categories · units · working hours (open now / closed status, weekly schedule — admins edit, managers see
+it) · staff users (admins only) · Telegram bot (status, linked accounts, notifications, invite link + QR, team).
+Uzbek / Russian, light / dark theme, responsive down to phones.
 
 ## Stack
 

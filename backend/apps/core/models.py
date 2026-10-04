@@ -61,6 +61,10 @@ class Product(models.Model):
     desc_ru = models.TextField()
     measure = models.ForeignKey(Descriptions, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True)
+    # Frozen: sold out or not made right now. The shop shows it as unavailable and takes no orders for it;
+    # staff may still sell it (with a warning). Unfrozen by hand.
+    is_frozen = models.BooleanField(default=False)
+    frozen_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

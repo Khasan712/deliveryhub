@@ -283,6 +283,7 @@ export const handlers = [
       address: '',
       lat: null,
       lng: null,
+      working_hours: { week: null, timezone: 'Asia/Tashkent', open: true, opens_at: null, closes_at: null },
       delivery_time: '30–45',
       min_order: 0,
       owner: { name: String(body.owner_name), phone: ownerPhone ?? '' },

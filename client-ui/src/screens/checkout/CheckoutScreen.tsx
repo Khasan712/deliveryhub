@@ -7,6 +7,7 @@ import type { Order } from '../../api/types'
 import { Button } from '../../components/Button'
 import { Card, PageTitle } from '../../components/Card'
 import { CartSummary } from '../../components/CartLines'
+import { CheckoutNotice } from '../../components/CheckoutNotice'
 import { EmptyState, Skeleton } from '../../components/EmptyState'
 import { ExternalLink } from '../../components/ExternalLink'
 import { Field, TextArea, TextInput } from '../../components/Field'
@@ -19,12 +20,13 @@ import { cn } from '../../lib/cn'
 import { errorMessageKey, fieldErrorKey } from '../../lib/errors'
 import { mapUrl } from '../../lib/format'
 import type { Coordinates } from '../../lib/geo'
+import { closedNotice, statusLabel } from '../../lib/hours'
 import { confirmClosing, haptic, telegram } from '../../lib/telegram'
 import { useMainButton } from '../../lib/useTelegram'
 import { clientName, useAuth } from '../../state/auth'
 import { useCart } from '../../state/cart'
 import { useCatalog } from '../../state/catalog'
-import { useDocumentTitle } from '../../state/hooks'
+import { useCheckoutBlock, useDocumentTitle } from '../../state/hooks'
 import { useNav } from '../../state/nav'
 import { orderKey, ordersKey } from '../../state/orders'
 import { useToast } from '../../state/toast'
@@ -125,6 +127,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const [mapAddress, setMapAddress] = useState('')
   const filledByMap = useRef('')
   const filledFromClient = useRef(false)
+  const block = useCheckoutBlock()
   const touched = useRef(new Set<keyof CheckoutForm>())
   const fields = useRef<Partial<Record<CheckoutField, HTMLElement | null>>>({})
 
@@ -197,6 +200,16 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
       focusFirstError(found)
       return
     }
+    if (block?.reason === 'closed') {
+      haptic('error')
+      setFormError(closedNotice(block.status, t))
+      return
+    }
+    if (block?.reason === 'unavailable') {
+      haptic('error')
+      setFormError(t('unavailableOrdered'))
+      return
+    }
     if (cart.belowMinimum) {
       haptic('error')
       setFormError(t('minOrderError', { amount: money(cart.minOrder) }))
@@ -256,28 +269,46 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
       case 'min_order':
         setFormError(t('minOrderError', { amount: money(Number(caught.data.min_order) || cart.minOrder) }))
         return
+      // The catalog of this visit was out of date: fresh hours / products show what changed.
+      case 'business_closed':
+        setFormError(t('closedNoticeNoTime'))
+        catalog.refetch()
+        return
+      case 'product_unavailable':
+        setFormError(t('unavailableOrdered'))
+        catalog.refetch()
+        return
       default:
         if (caught.status === 401) openSheet({ type: 'auth' })
         else setFormError(t(errorMessageKey(caught)))
     }
   }
 
-  const submitText = `${t('placeOrder')} · ${money(cart.total)}`
-  useMainButton({ text: submitText, onClick: () => void submit(), progress: placing, disabled: cart.belowMinimum, shine: true })
+  const closedLabel = block?.reason === 'closed' ? statusLabel(block.status, t) : null
+  const submitText = closedLabel ?? `${t('placeOrder')} · ${money(cart.total)}`
+  const cannotOrder = cart.belowMinimum || block !== null
+  useMainButton({ text: submitText, onClick: () => void submit(), progress: placing, disabled: cannotOrder, shine: !cannotOrder })
 
   const delivery = form.delivery_type === 'delivery'
   const hasLocation = form.lat !== null && form.lng !== null
 
   const submitButton = (
-    <Button type="submit" form="checkout-form" block loading={placing} disabled={cart.belowMinimum}>
-      <span className="flex-1 text-left">{t('placeOrder')}</span>
-      <span className="tabular">{money(cart.total)}</span>
+    <Button type="submit" form="checkout-form" block loading={placing} disabled={cannotOrder}>
+      {closedLabel ? (
+        <span className="min-w-0 flex-1 truncate">{closedLabel}</span>
+      ) : (
+        <>
+          <span className="flex-1 text-left">{t('placeOrder')}</span>
+          <span className="tabular">{money(cart.total)}</span>
+        </>
+      )}
     </Button>
   )
 
   return (
     <div className="mx-auto max-w-[1040px] pb-36 lg:pb-16 tg:pb-10">
       <PageTitle>{t('checkoutTitle')}</PageTitle>
+      <CheckoutNotice className="mb-4" />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <form id="checkout-form" onSubmit={submit} noValidate className="min-w-0 space-y-4">
           <Card title={t('receive')} titleId="receive-title">
@@ -480,14 +511,23 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
             <ul className="mb-3 space-y-2.5">
               {cart.lines.map(({ product, qty, total }) => (
                 <li key={product.id} className="flex items-center gap-3">
-                  <ProductImage src={product.image} name={name(product)} className="size-11 shrink-0 rounded-xl" letterClassName="text-base" />
+                  <ProductImage
+                    src={product.image}
+                    name={name(product)}
+                    className={cn('size-11 shrink-0 rounded-xl', product.frozen && '[&_img]:grayscale [&_img]:opacity-60')}
+                    letterClassName="text-base"
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold">{name(product)}</div>
-                    <div className="tabular text-[12.5px] font-semibold text-muted">
-                      {qty} × {money(product.price)}
-                    </div>
+                    <div className={cn('truncate text-sm font-bold', product.frozen && 'text-muted')}>{name(product)}</div>
+                    {product.frozen ? (
+                      <div className="text-[12.5px] font-bold text-red">{t('unavailableLine')}</div>
+                    ) : (
+                      <div className="tabular text-[12.5px] font-semibold text-muted">
+                        {qty} × {money(product.price)}
+                      </div>
+                    )}
                   </div>
-                  <span className="tabular text-sm font-extrabold">{money(total)}</span>
+                  <span className={cn('tabular text-sm font-extrabold', product.frozen && 'text-muted line-through')}>{money(total)}</span>
                 </li>
               ))}
             </ul>

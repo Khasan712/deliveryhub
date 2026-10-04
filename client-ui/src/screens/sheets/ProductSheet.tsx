@@ -9,7 +9,7 @@ import { Stepper } from '../../components/Stepper'
 import { useI18n } from '../../i18n/i18n'
 import { cn } from '../../lib/cn'
 import { haptic, isTelegram } from '../../lib/telegram'
-import { MAIN_BUTTON_SHEET, useMainButton } from '../../lib/useTelegram'
+import { HIDE_MAIN_BUTTON, MAIN_BUTTON_SHEET, useMainButton } from '../../lib/useTelegram'
 import { MAX_QTY, useCart } from '../../state/cart'
 import { useCatalog } from '../../state/catalog'
 import { useNav } from '../../state/nav'
@@ -77,8 +77,21 @@ function ProductDetails({ product, open, top, onDone }: ProductDetailsProps) {
     onDone()
   }
 
+  const remove = () => {
+    cart.setQuantity(product.id, 0)
+    haptic('select')
+    toast(t('removedFromCart'))
+    onDone()
+  }
+
+  // A product that is not available right now cannot be added (one already in the cart can be taken out).
+  const frozenAction = inCart > 0 ? { text: t('removeFromCart'), onClick: remove } : HIDE_MAIN_BUTTON
   useMainButton(
-    open ? { text: removing ? mainLabel : `${mainLabel} · ${money(product.price * qty)}`, onClick: confirm } : null,
+    open
+      ? product.frozen
+        ? frozenAction
+        : { text: removing ? mainLabel : `${mainLabel} · ${money(product.price * qty)}`, onClick: confirm }
+      : null,
     MAIN_BUTTON_SHEET,
   )
 
@@ -90,7 +103,14 @@ function ProductDetails({ product, open, top, onDone }: ProductDetailsProps) {
       {/* Phones: photo and text scroll together. Wider screens: photo on the left, text on the right. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:flex md:overflow-hidden">
         <div className="relative aspect-[4/3] w-full bg-surface-2 sm:aspect-[16/10] md:aspect-auto md:min-h-[400px] md:w-[46%] md:shrink-0">
-          <ProductImage src={product.image} name={title} alt={title} eager className="size-full" letterClassName="text-6xl" />
+          <ProductImage
+            src={product.image}
+            name={title}
+            alt={title}
+            eager
+            className={cn('size-full', product.frozen && '[&_img]:grayscale [&_img]:opacity-70')}
+            letterClassName="text-6xl"
+          />
           <div className="absolute inset-x-0 top-0 flex h-7 touch-none justify-center pt-2.5 sm:hidden" {...dragProps}>
             <div className="h-[5px] w-[42px] rounded-full bg-white/75 shadow-sm" />
           </div>
@@ -117,28 +137,42 @@ function ProductDetails({ product, open, top, onDone }: ProductDetailsProps) {
         </div>
       </div>
       <SheetFooter>
-        <div className={cn('flex gap-2.5', inTelegram && 'justify-center')}>
-          <Stepper
-            variant="large"
-            value={qty}
-            min={min}
-            name={title}
-            onIncrement={() => {
-              setQty((value) => Math.min(MAX_QTY, value + 1))
-              haptic('select')
-            }}
-            onDecrement={() => {
-              setQty((value) => Math.max(min, value - 1))
-              haptic('select')
-            }}
-          />
-          {!inTelegram && (
-            <Button variant={removing ? 'danger' : 'primary'} onClick={confirm} className="min-w-0 flex-1">
-              <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-              {!removing && <span className="tabular">{money(product.price * qty)}</span>}
-            </Button>
-          )}
-        </div>
+        {product.frozen ? (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="flex min-w-[200px] flex-1 items-start gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[13.5px] font-bold text-ink-2">
+              <Icon name="ban" className="mt-px size-4 shrink-0 text-muted" />
+              {t('productUnavailableText')}
+            </p>
+            {inCart > 0 && !inTelegram && (
+              <Button variant="danger" onClick={remove}>
+                {t('removeFromCart')}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className={cn('flex gap-2.5', inTelegram && 'justify-center')}>
+            <Stepper
+              variant="large"
+              value={qty}
+              min={min}
+              name={title}
+              onIncrement={() => {
+                setQty((value) => Math.min(MAX_QTY, value + 1))
+                haptic('select')
+              }}
+              onDecrement={() => {
+                setQty((value) => Math.max(min, value - 1))
+                haptic('select')
+              }}
+            />
+            {!inTelegram && (
+              <Button variant={removing ? 'danger' : 'primary'} onClick={confirm} className="min-w-0 flex-1">
+                <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+                {!removing && <span className="tabular">{money(product.price * qty)}</span>}
+              </Button>
+            )}
+          </div>
+        )}
       </SheetFooter>
     </>
   )

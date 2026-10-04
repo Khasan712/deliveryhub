@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react'
 import { SALE_STATUSES, type SaleForm, type SaleStatus } from '../../api/types'
-import { Money } from '../../components/badges'
+import { FrozenBadge, Money } from '../../components/badges'
 import { IconBag, IconCard, IconCart, IconCash, IconCheck, IconMinus, IconPlus, IconTrash, IconTruck } from '../../components/icons'
 import { STATUS_KEYS } from '../../components/statusMeta'
 import { AiBadge } from '../../components/ui/Badge'
@@ -8,7 +8,9 @@ import { Field, Input, Select, Textarea } from '../../components/ui/Form'
 import { Segmented } from '../../components/ui/Segmented'
 import { useI18n } from '../../i18n/context'
 import { cn } from '../../lib/cn'
+import { ProductThumb } from '../products/ProductThumb'
 import type { CartLine } from './cart'
+import { FrozenNotice } from './FrozenNotice'
 import type { SaleAction, SaleState } from './saleState'
 import type { FormField } from './voiceResult'
 
@@ -29,6 +31,7 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
   const { form, aiFields } = state
   const badge = (field: FormField) => (aiFields[field] ? <AiBadge /> : null)
   const glow = (field: FormField) => (isFlashed(field) ? 'ai-glow' : undefined)
+  const frozen = lines.filter((line) => line.product.frozen).map((line) => line.product)
 
   return (
     <section className="rounded-3xl border border-line bg-card shadow-card" aria-labelledby="sale-title">
@@ -63,13 +66,12 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
           <ul aria-label={t('order_items')}>
             {lines.map((line) => (
               <li key={line.product_id} className={cn('line', isFlashed(`item-${line.product_id}`) && 'line-flash')}>
-                <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-subtle">
-                  {line.product.image && <img src={line.product.image} alt="" className="size-full object-cover" loading="lazy" />}
-                </div>
+                <ProductThumb src={line.product.image} frozen={line.product.frozen} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-fg">{name(line.product)}</p>
-                  <p className="text-xs text-muted">
+                  <p className="flex items-center gap-1.5 text-xs text-muted">
                     <Money value={line.product.price} />
+                    {line.product.frozen && <FrozenBadge compact />}
                   </p>
                 </div>
                 <div className="stepper">
@@ -95,6 +97,7 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
           </ul>
         )}
       </div>
+      <FrozenNotice products={frozen} />
 
       <div className="@container space-y-4 border-t border-line px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-faint">{t('customer_optional')}</p>

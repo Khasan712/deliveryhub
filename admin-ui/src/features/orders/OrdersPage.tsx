@@ -4,13 +4,13 @@ import { SOURCE_KEYS, STATUS_KEYS, STATUS_TONES } from '../../components/statusM
 import { IconOrders } from '../../components/icons'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { FilterTab } from '../../components/ui/FilterTab'
 import { SearchInput, Select } from '../../components/ui/Form'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Pagination } from '../../components/ui/Pagination'
 import { EmptyState } from '../../components/ui/States'
 import { TONES } from '../../components/ui/styles'
 import { useI18n } from '../../i18n/context'
-import { cn } from '../../lib/cn'
 import { useFirstPageOnMissing, useListParams } from '../../lib/useListParams'
 import { OrdersTable } from './OrdersTable'
 
@@ -36,9 +36,9 @@ export function OrdersPage() {
         <div className="space-y-3 border-b border-line p-4">
           <fieldset className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
             <legend className="sr-only">{t('status')}</legend>
-            <StatusTab active={!status} onClick={() => setFilter('status', '')} label={t('all_statuses')} />
+            <FilterTab active={!status} onClick={() => setFilter('status', '')} label={t('all_statuses')} />
             {ORDER_STATUSES.map((value) => (
-              <StatusTab
+              <FilterTab
                 key={value}
                 active={status === value}
                 onClick={() => setFilter('status', value)}
@@ -100,24 +100,5 @@ export function OrdersPage() {
         />
       </Card>
     </>
-  )
-}
-
-function StatusTab({ active, onClick, label, dot }: { active: boolean; onClick: () => void; label: string; dot?: string }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-8 shrink-0 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold transition-colors',
-        active
-          ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
-          : 'bg-subtle text-fg-soft hover:bg-line hover:text-fg',
-      )}
-    >
-      {dot && <span className={cn('size-2 rounded-full', dot)} aria-hidden="true" />}
-      {label}
-    </button>
   )
 }

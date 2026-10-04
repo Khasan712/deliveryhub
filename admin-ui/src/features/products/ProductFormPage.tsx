@@ -5,17 +5,20 @@ import { errorMessage, mapFieldErrors } from '../../api/errors'
 import { useCategories, useCreateUnit, useProduct, useSaveCategory, useSaveProduct, useUnits } from '../../api/queries'
 import type { NamePair } from '../../api/types'
 import { NotFound } from '../../auth/SystemScreens'
+import { FrozenBadge } from '../../components/badges'
 import { NamePairModal } from '../../components/NamePairModal'
 import { useToast } from '../../components/feedback/feedback'
-import { IconPlus } from '../../components/icons'
+import { IconPlus, IconSnowflake } from '../../components/icons'
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { Field, Input, Select, Textarea } from '../../components/ui/Form'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { ErrorState } from '../../components/ui/States'
+import { Switch } from '../../components/ui/Switch'
 import { useI18n } from '../../i18n/context'
-import { formatFullDateTime } from '../../lib/format'
+import { cn } from '../../lib/cn'
+import { formatDateTime, formatFullDateTime } from '../../lib/format'
 import { useUnsavedChanges } from '../../lib/useUnsavedChanges'
 import { ImagePicker } from './ImagePicker'
 import {
@@ -64,7 +67,7 @@ export function ProductFormPage() {
 
   if (editing && isApiError(product.error) && product.error.status === 404) return <NotFound />
 
-  const set = (key: keyof ProductFormState, value: string) => {
+  const set = <K extends keyof ProductFormState>(key: K, value: ProductFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
     if (errors[key]) setErrors((current) => ({ ...current, [key]: undefined }))
   }
@@ -94,6 +97,8 @@ export function ProductFormPage() {
 
   const back = { to: '/products', label: t('back_to_products') }
   const title = editing ? t('edit_product') : t('add_product')
+  // Since when the saved product is frozen (shown while the toggle stays on).
+  const frozenAt = form.frozen && product.data?.frozen ? product.data.frozen_at : null
 
   if (editing && !product.data) {
     return (
@@ -129,6 +134,7 @@ export function ProductFormPage() {
       <PageHeader
         back={back}
         title={title}
+        meta={product.data?.frozen ? <FrozenBadge size="sm" /> : undefined}
         description={
           editing && product.data
             ? `${name(product.data)} · ${formatFullDateTime(product.data.created_at, lang)}`
@@ -207,6 +213,41 @@ export function ProductFormPage() {
                     </Select>
                   )}
                 </Field>
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-4 rounded-2xl border p-4 transition-colors sm:col-span-2',
+                    form.frozen ? 'border-sky-200 bg-sky-50/70 dark:border-sky-500/25 dark:bg-sky-500/10' : 'border-line',
+                  )}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors',
+                        form.frozen ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/30' : 'bg-subtle text-faint',
+                      )}
+                    >
+                      <IconSnowflake size={18} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-fg">{t('frozen_field')}</p>
+                      <p id="product-frozen-hint" className="mt-0.5 text-[13px] leading-relaxed text-muted">
+                        {t('frozen_field_hint')}
+                      </p>
+                      {frozenAt && (
+                        <p className="mt-1.5 text-xs font-medium text-sky-700 dark:text-sky-300">
+                          {t('frozen_since', { date: formatDateTime(frozenAt, lang) })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={form.frozen}
+                    onChange={(value) => set('frozen', value)}
+                    label={t('frozen_field')}
+                    aria-describedby="product-frozen-hint"
+                  />
+                </div>
               </div>
             </Card>
 

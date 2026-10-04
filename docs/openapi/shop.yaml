@@ -364,6 +364,10 @@ components:
           type: number
           format: double
           nullable: true
+        working_hours:
+          allOf:
+          - $ref: '#/components/schemas/WorkingHours'
+          description: 'Closed: orders are refused (business_closed)'
         delivery_time:
           type: string
         min_order:
@@ -384,6 +388,7 @@ components:
       - name
       - support_phone
       - tagline
+      - working_hours
     Category:
       type: object
       properties:
@@ -736,10 +741,14 @@ components:
         image:
           type: string
           nullable: true
+        frozen:
+          type: boolean
+          description: 'Not available right now: shown, but cannot be ordered'
       required:
       - category_id
       - desc_ru
       - desc_uz
+      - frozen
       - id
       - image
       - name_ru
@@ -755,6 +764,18 @@ components:
           description: ''''' when the map knows no address there'
       required:
       - address
+    Shift:
+      type: object
+      properties:
+        open:
+          type: string
+          description: HH:MM
+        close:
+          type: string
+          description: 'HH:MM or 24:00; not after `open`: the next day'
+      required:
+      - close
+      - open
     Shop:
       type: object
       properties:
@@ -823,6 +844,37 @@ components:
       - expires_in
       - token
       - url
+    WorkingHours:
+      type: object
+      properties:
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shift'
+          nullable: true
+          maxItems: 7
+          minItems: 7
+        timezone:
+          type: string
+        open:
+          type: boolean
+          description: At the time of the response
+        opens_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While closed: the next opening'
+        closes_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While open: the closing (null: never)'
+      required:
+      - closes_at
+      - open
+      - opens_at
+      - timezone
+      - week
   securitySchemes:
     customerToken:
       type: http

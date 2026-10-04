@@ -15,6 +15,7 @@ import type {
   VoiceState,
 } from '../api/types'
 import { QR_SVG, saleSummary, store } from './data'
+import { parseWeek, workingHours } from './hours'
 import { localParse } from './voiceParser'
 
 const API = '/api/v1'
@@ -245,6 +246,26 @@ export const handlers = [
     })
   }),
 
+  // ---------------------------------------------------------------- working hours
+  http.get(`${API}/business`, async ({ request }) => {
+    await wait()
+    const user = guard(request)
+    if (user instanceof Response) return user
+    return HttpResponse.json(workingHours(store.db.hours))
+  }),
+
+  http.patch(`${API}/business`, async ({ request }) => {
+    await wait()
+    const user = guard(request, { adminOnly: true })
+    if (user instanceof Response) return user
+    const body = (await request.json()) as { week?: unknown }
+    if (!('week' in body)) return validation({ week: ['required'] })
+    const week = parseWeek(body.week)
+    if (week === undefined) return validation({ week: ['invalid'] })
+    store.db.hours = week
+    return HttpResponse.json(workingHours(week))
+  }),
+
   // ---------------------------------------------------------------- orders
   http.get(`${API}/orders`, async ({ request }) => {
     await wait()
@@ -346,9 +367,11 @@ export const handlers = [
     const url = new URL(request.url)
     const search = url.searchParams.get('search')?.trim().toLowerCase()
     const category = url.searchParams.get('category')
+    const frozen = url.searchParams.get('frozen')
     const rows = [...store.db.products]
       .reverse()
       .filter((product) => !category || String(product.category?.id) === category)
+      .filter((product) => (frozen === 'true' || frozen === 'false' ? product.frozen === (frozen === 'true') : true))
       .filter((product) => !search || `${product.name_uz} ${product.name_ru}`.toLowerCase().includes(search))
     const page = paginate(rows, url)
     return page ? HttpResponse.json(page) : fail(404, 'not_found')
@@ -393,7 +416,14 @@ export const handlers = [
       if (categoryId && !category) errors.category_id = ['does_not_exist']
       const file = files.image
       if (file && !file.type.startsWith('image/')) errors.image = ['invalid_image']
+      let frozen: boolean | undefined
+      if (fields.frozen !== undefined) {
+        if (fields.frozen === true || fields.frozen === 'true') frozen = true
+        else if (fields.frozen === false || fields.frozen === 'false') frozen = false
+        else errors.frozen = ['invalid']
+      }
       if (Object.keys(errors).length) return validation(errors)
+      const isFrozen = frozen ?? existing?.frozen ?? false
 
       let image: string | null | undefined
       if (file) image = await fileToDataUrl(file)
@@ -414,6 +444,9 @@ export const handlers = [
               ? { id: category.id, name_uz: category.name_uz, name_ru: category.name_ru }
               : null,
         image: image === undefined ? (existing?.image ?? null) : image,
+        frozen: isFrozen,
+        // The moment of freezing is kept until the product returns to sale.
+        frozen_at: !isFrozen ? null : existing?.frozen ? existing.frozen_at : new Date().toISOString(),
         created_at: existing?.created_at ?? new Date().toISOString(),
       }
       if (existing) Object.assign(existing, product)
@@ -620,6 +653,7 @@ export const handlers = [
         unit_ru: product.unit?.name_ru ?? '',
         category_id: product.category?.id ?? null,
         image: product.image,
+        frozen: product.frozen,
       })),
       recent: orders.filter((order) => order.source === 'admin').reverse().slice(0, 8).map(saleSummary),
       stats: salesStats(),

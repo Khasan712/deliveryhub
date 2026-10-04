@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { SalesProduct } from '../api/types'
 import { addOne, cartLines, cartTotal, filterProducts, itemsCount, MAX_QTY, qtyOf, setQty, statusFor } from '../features/sales/cart'
+import { resetDb, store } from '../mocks/data'
 import { renderApp } from './render'
 import { recordRequests, server } from './server'
 
@@ -15,6 +16,7 @@ const product = (id: number, price: number, category: number | null = 1, name = 
   unit_ru: 'шт',
   category_id: category,
   image: null,
+  frozen: false,
 })
 
 describe('cart math', () => {
@@ -169,5 +171,76 @@ describe('point of sale', () => {
     await user.click(await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ }))
     await user.click(within(orderPanel()).getByRole('button', { name: 'Buyurtma yaratish' }))
     expect(await screen.findByText("Ba'zi mahsulotlar endi mavjud emas — sahifani yangilang")).toBeInTheDocument()
+  })
+})
+
+describe('frozen products at the point of sale', () => {
+  it('shows them muted, warns in the order panel and still sells them', async () => {
+    const creates = recordRequests('post', '/api/v1/sales')
+    const { user } = renderApp('/sales')
+
+    const tile = await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,.* · Muzlatilgan$/ })
+    expect(tile).toHaveClass('is-frozen')
+    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ })).not.toHaveClass('is-frozen')
+    expect(within(orderPanel()).queryByText(/Muzlatilgan mahsulot/)).not.toBeInTheDocument()
+
+    await user.click(tile)
+    const panel = orderPanel()
+    expect(within(panel).getByText('Muzlatilgan mahsulot: Naggetslar')).toBeInTheDocument()
+    expect(within(panel).getByText('Mijozlar hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.')).toBeInTheDocument()
+    // The order line carries the mark too.
+    const lines = within(panel).getByRole('list', { name: 'Buyurtma mahsulotlari' })
+    expect(within(lines).getByText('Muzlatilgan')).toBeInTheDocument()
+
+    // Nothing is blocked: the sale goes through with the frozen product.
+    await user.click(within(panel).getByRole('button', { name: 'Buyurtma yaratish' }))
+    expect(await screen.findByText(/^Buyurtma yaratildi/)).toBeInTheDocument()
+    expect(creates[0].body).toMatchObject({ items: [{ product_id: 13, quantity: 1 }] })
+    await waitFor(() => expect(within(orderPanel()).queryByText(/Muzlatilgan mahsulot/)).not.toBeInTheDocument())
+  })
+
+  it('returns a product to sale in one tap — the warning goes away', async () => {
+    const patches = recordRequests('patch', '/api/v1/products/13')
+    const { user } = renderApp('/sales')
+    await user.click(await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,/ }))
+    await user.click(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ }))
+    const panel = orderPanel()
+
+    await user.click(within(panel).getByRole('button', { name: 'Sotuvga qaytarish: Naggetslar' }))
+
+    await waitFor(() => expect(within(panel).queryByText(/Muzlatilgan mahsulot/)).not.toBeInTheDocument())
+    expect(within(panel).queryByText('Muzlatilgan')).not.toBeInTheDocument()
+    expect(patches[0].body).toEqual({ frozen: false })
+    expect(await screen.findByText('«Naggetslar» sotuvga qaytarildi')).toBeInTheDocument()
+    expect(store.db.products.find((product) => product.id === 13)?.frozen).toBe(false)
+    // The order keeps both lines; the tile is an ordinary one again.
+    expect(within(panel).getByText('Naggetslar')).toBeInTheDocument()
+    expect(within(panel).getByText('Chizburger')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,/ })).not.toHaveClass('is-frozen')
+  })
+
+  it('lists several frozen products, each with its own button', async () => {
+    resetDb((db) => {
+      db.products[13].frozen = true // Sezar salati
+    })
+    const { user } = renderApp('/sales')
+    await user.click(await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,/ }))
+    await user.click(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Sezar salati,/ }))
+
+    const panel = orderPanel()
+    expect(within(panel).getByText('Muzlatilgan mahsulotlar')).toBeInTheDocument()
+    expect(within(panel).getByText('Mijozlar ularni hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.')).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Sotuvga qaytarish: Naggetslar' })).toBeInTheDocument()
+    await user.click(within(panel).getByRole('button', { name: 'Sotuvga qaytarish: Sezar salati' }))
+    expect(await within(panel).findByText('Muzlatilgan mahsulot: Naggetslar')).toBeInTheDocument()
+  })
+
+  it('warns about a frozen product added by a voice / typed command too', async () => {
+    const { user } = renderApp('/sales')
+    await user.type(await screen.findByRole('textbox', { name: 'Yoki yozib yuboring…' }), '2 ta naggetslar{Enter}')
+
+    const panel = orderPanel()
+    expect(await within(panel).findByText('Muzlatilgan mahsulot: Naggetslar')).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Sotuvga qaytarish: Naggetslar' })).toBeInTheDocument()
   })
 })

@@ -2,7 +2,8 @@
 
 Our platform panel (`deliveryhub.<domain>`): sign in, see all businesses, open a new one (shop, admin panel, owner
 account, its place on the map) and manage it — status, profile, location, owner password and both Telegram bots
-(two-tap setup link with QR, or a @BotFather token). Uzbek UI. The place of a business is picked on a map (MapLibre
+(two-tap setup link with QR, or a @BotFather token), and its working hours — read-only here, the business sets
+them in its admin panel. Uzbek UI. The place of a business is picked on a map (MapLibre
 GL + OpenFreeMap tiles, loaded only on those pages): a click or a dragged pin, a search (an address through
 `GET /geo/search`, or coordinates / a Yandex or Google Maps link pasted in); the address fills in from the point
 (`GET /geo/reverse`) and can be edited — customers see it for pickup. Talks only to the **Platform API** on its own host (`/api/v1/...`, see

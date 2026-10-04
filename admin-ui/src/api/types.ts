@@ -40,6 +40,28 @@ export interface MeResponse {
   business: Business
 }
 
+// ------------------------------------------------------------------ working hours
+/** One day's shift, "HH:MM". A `close` not after `open` is on the next day; "00:00"–"24:00" is the whole day. */
+export interface Shift {
+  open: string
+  close: string
+}
+
+/** Seven shifts, Monday first; `null` is a day off. */
+export type Week = Array<Shift | null>
+
+export interface WorkingHours {
+  /** `null` — no hours set: the shop takes orders at any time. */
+  week: Week | null
+  timezone: string
+  /** At the time of the response, in `timezone`. */
+  open: boolean
+  /** While closed: the next opening (`null`: every day is off). */
+  opens_at: string | null
+  /** While open: the closing (`null`: never — open around the clock). */
+  closes_at: string | null
+}
+
 // ------------------------------------------------------------------ dashboard
 export interface DashboardData {
   orders: { total: number; new: number; on_the_way: number; completed: number; last_7_days: number }
@@ -143,6 +165,9 @@ export interface Product {
   unit: Unit | null
   category: Category | null
   image: string | null
+  /** Not available right now: the shop shows it but refuses orders for it; staff may still sell it. */
+  frozen: boolean
+  frozen_at: string | null
   created_at: string
 }
 
@@ -154,6 +179,16 @@ export interface ProductInput {
   desc_ru: string
   unit_id: number | null
   category_id: number | null
+  frozen?: boolean
+}
+
+export interface ProductsQuery {
+  search?: string
+  category?: string | number
+  /** `true` — only frozen, `false` — only on sale. */
+  frozen?: boolean
+  page?: number
+  page_size?: number
 }
 
 export interface NamePair {
@@ -190,6 +225,8 @@ export interface SalesProduct {
   unit_ru: string
   category_id: number | null
   image: string | null
+  /** Frozen: customers cannot order it right now, the point of sale still sells it (with a warning). */
+  frozen: boolean
 }
 
 export interface SaleSummary {

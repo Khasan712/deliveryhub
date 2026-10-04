@@ -22,6 +22,9 @@ class Business(TenantMixin):
     address = models.CharField(max_length=255, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    # A shift a day, Monday first: [{"open": "09:00", "close": "22:00"} | null] × 7 (apps.platform.hours).
+    # Null: not set — the shop takes orders at any time.
+    working_hours = models.JSONField(blank=True, null=True)
     delivery_time = models.CharField(max_length=20, blank=True, default='30–45')
     min_order = models.PositiveIntegerField(default=0)
     brand_color = models.CharField(max_length=7, blank=True)

@@ -19,6 +19,13 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   cached so the next visit paints in the right colour.
 - Cart: persisted per shop host, synced between tabs, minimum-order progress, "clear" with undo; always-open side
   panel on desktop (lines with unit price, delivery time, total), bottom sheet + floating bar on phones.
+- Working hours (`business.working_hours`, the business sets them in its admin panel): the banner shows "Ochiq ·
+  22:00 gacha" / "Yopiq · ertaga 09:00 da ochiladi", worked out live on the business's clock (`lib/hours.ts`, the
+  backend's rules: night shifts past midnight, days off), and opens the week in a sheet. While closed the menu and
+  the cart stay usable, but checkout is blocked with the opening time (the backend refuses with `business_closed`).
+- Frozen products (`product.frozen`): on the menu with a grey photo and "Mavjud emas"; "+" tells it is not
+  available instead of adding. One already in the cart is greyed out, left out of the total and holds the order
+  until it is taken out ("Olib tashlash"); `product_unavailable` from the backend refreshes the menu.
 - Checkout: delivery/pickup. Delivery: the point on a **map** (a full-screen sheet; the pin stays in the middle
   while the map moves under it, like in taxi apps — OpenFreeMap tiles, MapLibre GL loaded only then; search by
   street/landmark and the address under the pin through `GET /geo/*`; "my location": Telegram `LocationManager`

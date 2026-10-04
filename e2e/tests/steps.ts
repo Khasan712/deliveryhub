@@ -105,3 +105,21 @@ export async function completeOrder(page: Page, business: Business, orderId: num
   await page.getByText('Bajarilgan', { exact: true }).click()
   await expect(page.getByText('Holat yangilandi')).toBeVisible()
 }
+
+/** The admin panel: the product is frozen (sold out for now). */
+export async function freezeProduct(page: Page, business: Business, product: string) {
+  await page.goto(`${urls.admin(business.slug)}/products`)
+  await page.getByRole('button', { name: `Muzlatish: ${product}` }).first().click()
+  await expect(page.getByText(`«${product}» muzlatildi`)).toBeVisible()
+}
+
+/** The admin panel: working hours with every day off — the shop is closed. */
+export async function closeForTheWeek(page: Page, business: Business) {
+  await page.goto(`${urls.admin(business.slug)}/hours`)
+  await page.getByRole('button', { name: 'Ish vaqtini belgilash' }).click()
+  for (const day of ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba']) {
+    await page.getByRole('switch', { name: `${day} — ish kuni`, exact: true }).click()
+  }
+  await page.getByRole('button', { name: "O'zgarishlarni saqlash" }).click()
+  await expect(page.getByText('Ish vaqti saqlandi')).toBeVisible()
+}

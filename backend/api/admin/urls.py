@@ -2,7 +2,7 @@ from django.urls import path
 
 from ..common.auth import CsrfView, LogoutView
 from ..common.views import ProductImageView
-from .views import auth, catalog, clients, dashboard, orders, sales, telegram, users, voice
+from .views import auth, business, catalog, clients, dashboard, orders, sales, telegram, users, voice
 
 urlpatterns = [
     path('auth/csrf', CsrfView.as_view(), name='auth-csrf'),
@@ -12,6 +12,7 @@ urlpatterns = [
     path('auth/telegram', auth.TelegramLoginView.as_view(), name='auth-telegram'),
 
     path('dashboard', dashboard.DashboardView.as_view(), name='dashboard'),
+    path('business', business.BusinessView.as_view(), name='business'),
 
     path('orders', orders.OrderListView.as_view(), name='orders'),
     path('orders/<int:pk>', orders.OrderDetailView.as_view(), name='order'),

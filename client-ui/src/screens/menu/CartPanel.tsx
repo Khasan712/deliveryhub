@@ -1,17 +1,20 @@
 import { Button } from '../../components/Button'
 import { CartLines, CartSummary } from '../../components/CartLines'
+import { CheckoutNotice } from '../../components/CheckoutNotice'
 import { EmptyState } from '../../components/EmptyState'
 import { Icon } from '../../components/Icon'
 import { useI18n } from '../../i18n/i18n'
+import { statusLabel } from '../../lib/hours'
 import { useCart } from '../../state/cart'
-import { useClearCart, useStartCheckout } from '../../state/hooks'
+import { useCheckoutBlock, useClearCart, useStartCheckout } from '../../state/hooks'
 
 /** The cart next to the menu on wide screens: always open, the total and "Checkout" at the bottom. */
 export function CartPanel() {
   const { t } = useI18n()
-  const { lines, count, belowMinimum } = useCart()
+  const { lines, count } = useCart()
   const clear = useClearCart()
   const startCheckout = useStartCheckout()
+  const block = useCheckoutBlock()
 
   return (
     <section
@@ -48,9 +51,10 @@ export function CartPanel() {
       </div>
       {lines.length > 0 && (
         <div className="border-t border-line px-5 pt-4 pb-5">
+          <CheckoutNotice className="mb-3" />
           <CartSummary showDelivery />
-          <Button block iconRight="arrow-right" disabled={belowMinimum} onClick={startCheckout}>
-            {t('checkout')}
+          <Button block iconRight={block ? undefined : 'arrow-right'} disabled={block !== null} onClick={startCheckout}>
+            {block?.reason === 'closed' ? statusLabel(block.status, t) : t('checkout')}
           </Button>
         </div>
       )}

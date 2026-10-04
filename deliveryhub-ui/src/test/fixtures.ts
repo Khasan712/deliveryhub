@@ -25,6 +25,7 @@ export function makeBusiness(overrides: Partial<BusinessDetail> = {}): BusinessD
     address: "Amir Temur ko'chasi, 15",
     lat: 41.311081,
     lng: 69.279737,
+    working_hours: { week: null, timezone: 'Asia/Tashkent', open: true, opens_at: null, closes_at: null },
     delivery_time: '30–45',
     min_order: 0,
     owner: { name: 'Aziz', phone: '+998901112233' },

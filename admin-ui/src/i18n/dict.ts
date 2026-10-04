@@ -48,6 +48,7 @@ export const uz = {
   yes_delete: "Ha, o'chirish",
   id: 'ID',
   you: 'siz',
+  undo_action: 'Bekor qilish',
 
   // ------------------------------------------------------------------ navigation
   nav_group_main: 'Asosiy',
@@ -62,6 +63,7 @@ export const uz = {
   nav_categories: 'Kategoriyalar',
   nav_units: "O'lchov birliklari",
   nav_users: 'Foydalanuvchilar',
+  nav_hours: 'Ish vaqti',
   new_orders_badge: '{count} ta yangi buyurtma',
 
   // ------------------------------------------------------------------ roles
@@ -272,6 +274,23 @@ export const uz = {
   product_deleted: "Mahsulot o'chirildi",
   quick_add_unit: "Yangi o'lchov birligi",
   quick_add_category: 'Yangi kategoriya',
+  frozen_badge: 'Muzlatilgan',
+  products_filter_all: 'Hammasi',
+  products_on_sale: 'Sotuvda',
+  products_frozen: 'Muzlatilgan',
+  availability: 'Mavjudlik',
+  freeze: 'Muzlatish',
+  unfreeze: 'Sotuvga qaytarish',
+  product_frozen: '«{name}» muzlatildi',
+  product_frozen_text: 'Mijozlar uni hozir buyurtma qila olmaydi',
+  product_unfrozen: '«{name}» sotuvga qaytarildi',
+  product_unfrozen_text: 'Mijozlar uni yana buyurtma qila oladi',
+  frozen_field: 'Muzlatilgan',
+  frozen_field_hint:
+    "Mijozlar uni «Hozir mavjud emas» deb ko'radi va buyurtma qila olmaydi, siz esa Sotuv bo'limida baribir sota olasiz.",
+  frozen_since: 'Muzlatilgan: {date}',
+  no_frozen_products: "Muzlatilgan mahsulot yo'q",
+  no_frozen_products_hint: 'Hamma mahsulotlar sotuvda. Mahsulot tugasa, uni «Muzlatish» tugmasi bilan vaqtincha sotuvdan oling.',
 
   // ------------------------------------------------------------------ categories
   categories_title: 'Kategoriyalar',
@@ -369,6 +388,10 @@ export const uz = {
   in_order: 'Buyurtmada',
   per_unit: '/ {unit}',
   ai: 'AI',
+  pos_frozen_one: 'Muzlatilgan mahsulot',
+  pos_frozen_many: 'Muzlatilgan mahsulotlar',
+  pos_frozen_text_one: 'Mijozlar hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.',
+  pos_frozen_text_many: 'Mijozlar ularni hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.',
 
   voice_idle: 'Mikrofonni bosing va buyurtmani ayting',
   voice_starting: 'Mikrofon ulanmoqda…',
@@ -410,6 +433,54 @@ export const uz = {
   voice_network: "Internet aloqasi yo'q — qayta urinib ko'ring",
   voice_rate_limited: "Juda ko'p so'rov — birozdan so'ng urinib ko'ring",
   voice_shortcut_stop: "Space — to'xtatish · Esc — bekor qilish",
+
+  // ------------------------------------------------------------------ working hours
+  hours_title: 'Ish vaqti',
+  hours_subtitle: "Do'kon buyurtmalarni faqat ish vaqtida qabul qiladi",
+  hours_open_now: 'Hozir ochiq',
+  hours_closed_now: 'Hozir yopiq',
+  hours_closes_today: '{time} da yopiladi',
+  hours_closes_tomorrow: 'Ertaga {time} da yopiladi',
+  hours_closes_day: '{day} {time} da yopiladi',
+  hours_opens_today: 'Bugun {time} da ochiladi',
+  hours_opens_tomorrow: 'Ertaga {time} da ochiladi',
+  hours_opens_day: '{day} {time} da ochiladi',
+  hours_status_always: 'Kecha-kunduz ishlaydi',
+  hours_status_never: 'Hamma kunlar dam olish — buyurtmalar qabul qilinmaydi',
+  hours_status_any_time: 'Ish vaqti belgilanmagan — buyurtmalar istalgan vaqtda qabul qilinadi',
+  hours_zone_tashkent: 'Toshkent vaqti bilan',
+  hours_zone: 'Vaqt mintaqasi: {zone}',
+  hours_admin_only: "Ish vaqtini faqat admin o'zgartira oladi",
+  hours_week: 'Haftalik jadval',
+  hours_week_hint: "Har bir kun uchun ochilish va yopilish vaqti. Bir kunni sozlab, uni hamma kunlarga qo'llash mumkin.",
+  hours_open: 'Ochiq',
+  hours_day_off: 'Dam olish',
+  hours_working_day: '{day} — ish kuni',
+  hours_open_label: '{day}: ochilish vaqti',
+  hours_close_label: '{day}: yopilish vaqti',
+  hours_all_day: '24 soat',
+  hours_all_day_label: '{day}: 24 soat',
+  hours_around_clock: 'Kecha-kunduz',
+  hours_next_day: 'ertasi kuni {time} gacha',
+  hours_until_midnight: 'yarim tungacha',
+  hours_apply_all: "Hamma kunlarga qo'llash",
+  hours_apply_all_label: "{day}: hamma kunlarga qo'llash",
+  hours_applied_all: "{day} vaqti hamma kunlarga qo'llandi",
+  hours_same_time: 'Vaqtlar bir xil — kecha-kunduz ishlasa, «24 soat»ni tanlang',
+  hours_saved: 'Ish vaqti saqlandi',
+  hours_invalid: "Ish vaqtini saqlab bo'lmadi — vaqtlarni tekshiring",
+  hours_unsaved: "Saqlanmagan o'zgarishlar bor",
+  hours_empty_title: 'Ish vaqti belgilanmagan',
+  hours_empty_text:
+    "Hozir do'kon istalgan vaqtda buyurtma qabul qiladi. Ish vaqtini belgilasangiz, mijozlar faqat shu vaqt ichida buyurtma bera oladi.",
+  hours_set: 'Ish vaqtini belgilash',
+  hours_remove: 'Ish vaqtini olib tashlash',
+  hours_remove_hint: "Ish vaqti kerak bo'lmasa, uni olib tashlang — do'kon istalgan vaqtda buyurtma qabul qiladi.",
+  hours_remove_title: 'Ish vaqti olib tashlansinmi?',
+  hours_remove_text:
+    "Do'kon istalgan vaqtda buyurtma qabul qiladigan bo'ladi. Ish vaqtini keyin istalgan payt qayta belgilash mumkin.",
+  hours_remove_confirm: 'Ha, olib tashlash',
+  hours_removed: 'Ish vaqti olib tashlandi — buyurtmalar istalgan vaqtda qabul qilinadi',
 
   // ------------------------------------------------------------------ telegram bot page
   tg_title: 'Admin Telegram bot',
@@ -516,6 +587,7 @@ export const ru: Record<DictKey, string> = {
   yes_delete: 'Да, удалить',
   id: 'ID',
   you: 'вы',
+  undo_action: 'Отменить',
 
   // ------------------------------------------------------------------ navigation
   nav_group_main: 'Основное',
@@ -530,6 +602,7 @@ export const ru: Record<DictKey, string> = {
   nav_categories: 'Категории',
   nav_units: 'Единицы измерения',
   nav_users: 'Пользователи',
+  nav_hours: 'Время работы',
   new_orders_badge: 'Новых заказов: {count}',
 
   // ------------------------------------------------------------------ roles
@@ -739,6 +812,23 @@ export const ru: Record<DictKey, string> = {
   product_deleted: 'Товар удалён',
   quick_add_unit: 'Новая единица измерения',
   quick_add_category: 'Новая категория',
+  frozen_badge: 'Заморожен',
+  products_filter_all: 'Все',
+  products_on_sale: 'В продаже',
+  products_frozen: 'Замороженные',
+  availability: 'Наличие',
+  freeze: 'Заморозить',
+  unfreeze: 'Вернуть в продажу',
+  product_frozen: '«{name}» заморожен',
+  product_frozen_text: 'Клиенты сейчас не могут его заказать',
+  product_unfrozen: '«{name}» снова в продаже',
+  product_unfrozen_text: 'Клиенты снова могут его заказать',
+  frozen_field: 'Заморожен',
+  frozen_field_hint:
+    'Клиенты видят его как недоступный и не могут заказать, а вы по-прежнему можете продать его в разделе «Продажи».',
+  frozen_since: 'Заморожен: {date}',
+  no_frozen_products: 'Замороженных товаров нет',
+  no_frozen_products_hint: 'Все товары в продаже. Если товар закончился, временно снимите его с продажи кнопкой «Заморозить».',
 
   // ------------------------------------------------------------------ categories
   categories_title: 'Категории',
@@ -836,6 +926,10 @@ export const ru: Record<DictKey, string> = {
   in_order: 'В заказе',
   per_unit: '/ {unit}',
   ai: 'AI',
+  pos_frozen_one: 'Замороженный товар',
+  pos_frozen_many: 'Замороженные товары',
+  pos_frozen_text_one: 'Клиенты сейчас не могут его заказать, но вы всё равно можете его продать.',
+  pos_frozen_text_many: 'Клиенты сейчас не могут их заказать, но вы всё равно можете их продать.',
 
   voice_idle: 'Нажмите на микрофон и продиктуйте заказ',
   voice_starting: 'Подключаем микрофон…',
@@ -875,6 +969,53 @@ export const ru: Record<DictKey, string> = {
   voice_network: 'Нет подключения к интернету — попробуйте ещё раз',
   voice_rate_limited: 'Слишком много запросов — попробуйте чуть позже',
   voice_shortcut_stop: 'Space — остановить · Esc — отмена',
+
+  // ------------------------------------------------------------------ working hours
+  hours_title: 'Время работы',
+  hours_subtitle: 'Магазин принимает заказы только в рабочее время',
+  hours_open_now: 'Сейчас открыто',
+  hours_closed_now: 'Сейчас закрыто',
+  hours_closes_today: 'Закроется в {time}',
+  hours_closes_tomorrow: 'Закроется завтра в {time}',
+  hours_closes_day: 'Закроется {day} в {time}',
+  hours_opens_today: 'Откроется сегодня в {time}',
+  hours_opens_tomorrow: 'Откроется завтра в {time}',
+  hours_opens_day: 'Откроется {day} в {time}',
+  hours_status_always: 'Работает круглосуточно',
+  hours_status_never: 'Все дни выходные — заказы не принимаются',
+  hours_status_any_time: 'Время работы не задано — заказы принимаются в любое время',
+  hours_zone_tashkent: 'По ташкентскому времени',
+  hours_zone: 'Часовой пояс: {zone}',
+  hours_admin_only: 'Время работы может менять только администратор',
+  hours_week: 'Расписание на неделю',
+  hours_week_hint: 'Время открытия и закрытия на каждый день. Настройте один день — и примените его ко всем.',
+  hours_open: 'Открыто',
+  hours_day_off: 'Выходной',
+  hours_working_day: '{day} — рабочий день',
+  hours_open_label: '{day}: время открытия',
+  hours_close_label: '{day}: время закрытия',
+  hours_all_day: '24 часа',
+  hours_all_day_label: '{day}: 24 часа',
+  hours_around_clock: 'Круглосуточно',
+  hours_next_day: 'до {time} следующего дня',
+  hours_until_midnight: 'до полуночи',
+  hours_apply_all: 'Применить ко всем дням',
+  hours_apply_all_label: '{day}: применить ко всем дням',
+  hours_applied_all: 'Часы как {day} — теперь на все дни',
+  hours_same_time: 'Время совпадает — для круглосуточной работы выберите «24 часа»',
+  hours_saved: 'Время работы сохранено',
+  hours_invalid: 'Не удалось сохранить — проверьте время',
+  hours_unsaved: 'Есть несохранённые изменения',
+  hours_empty_title: 'Время работы не задано',
+  hours_empty_text:
+    'Сейчас магазин принимает заказы в любое время. Если задать время работы, клиенты смогут заказывать только в эти часы.',
+  hours_set: 'Задать время работы',
+  hours_remove: 'Убрать время работы',
+  hours_remove_hint: 'Если расписание не нужно, уберите его — магазин будет принимать заказы в любое время.',
+  hours_remove_title: 'Убрать время работы?',
+  hours_remove_text: 'Магазин будет принимать заказы в любое время. Задать время работы снова можно в любой момент.',
+  hours_remove_confirm: 'Да, убрать',
+  hours_removed: 'Время работы убрано — заказы принимаются в любое время',
 
   // ------------------------------------------------------------------ telegram bot page
   tg_title: 'Админ Telegram-бот',
@@ -986,4 +1127,10 @@ export const WEEKDAYS_SHORT = {
 export const WEEKDAYS_LONG = {
   uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'],
   ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'],
+} as const
+
+/** Sunday-first, "on <day>": «Dushanba 09:00 da ochiladi» / «Откроется в понедельник в 09:00». */
+export const WEEKDAYS_ON = {
+  uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'],
+  ru: ['в воскресенье', 'в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу'],
 } as const
