@@ -1,0 +1,578 @@
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="markGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B5BD6"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+  </defs>
+  <symbol id="mark" viewBox="0 0 32 32">
+    <rect width="32" height="32" rx="9" fill="url(#markGrad)"/>
+    <path d="M12.3 12.6v-1.5a3.7 3.7 0 0 1 7.4 0v1.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <path d="M9.4 12.6h13.2l-.95 10.7a2.1 2.1 0 0 1-2.1 1.9h-7.1a2.1 2.1 0 0 1-2.1-1.9z" fill="#FFFFFF"/>
+  </symbol>
+  <symbol id="check" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" fill="currentColor" opacity=".16"/><path d="m6 10.2 2.6 2.6L14 7.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="tick" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="arrow-out" viewBox="0 0 16 16"><path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="arrow-down" viewBox="0 0 16 16"><path d="M8 3v10m-4-4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="phone" viewBox="0 0 24 24"><path d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/></symbol>
+  <symbol id="plane" viewBox="0 0 24 24"><path d="m3.4 11.2 15.9-6.1c.75-.27 1.4.18 1.16 1.3l-2.7 12.7c-.2.9-.74 1.12-1.5.7l-4.1-3-2 1.9c-.22.22-.4.4-.82.4l.3-4.2 7.6-6.9c.33-.3-.07-.46-.5-.17l-9.4 5.9-4-1.25c-.88-.27-.9-.88.18-1.3z" fill="currentColor"/></symbol>
+  <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+  <symbol id="lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="2" fill="currentColor"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+</svg>
+
+<a class="skip" href="#muammo" data-t="skip">Asosiy qismga o‘tish</a>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="DeliveryHub" data-t-attr="aria-label:nav.home"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="wordmark">DeliveryHub</span></a>
+    <nav class="links" aria-label="Bo‘limlar" data-t-attr="aria-label:nav.label">
+      <a href="#muammo" data-t="nav.problem">Muammo</a>
+      <a href="#yechim" data-t="nav.solution">Yechim</a>
+      <a href="#sinab" data-t="nav.try">Sinab ko‘ring</a>
+      <a href="#imkoniyatlar" data-t="nav.features">Imkoniyatlar</a>
+      <a href="#savollar" data-t="nav.faq">Savollar</a>
+    </nav>
+    <div class="langs" role="group" aria-label="Til" data-t-attr="aria-label:nav.lang">
+      <a href="{{href:uz}}" hreflang="uz" lang="uz" data-lang="uz">UZ</a>
+      <a href="{{href:ru}}" hreflang="ru" lang="ru" data-lang="ru">RU</a>
+    </div>
+    <button class="theme-btn" type="button" id="themeToggle" aria-pressed="false" aria-label="Tungi rejim" data-t-attr="aria-label:nav.theme"><svg class="moon" aria-hidden="true"><use href="#moon"/></svg><svg class="sun" aria-hidden="true"><use href="#sun"/></svg></button>
+    <a class="btn btn-dark btn-sm" href="#ariza" data-t="nav.apply">Ariza qoldirish</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <span class="chip"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span data-t="hero.chip">Kafe, restoran va do‘konlar uchun</span></span>
+      <h1><span class="q" data-t="hero.q">Buyurtmalar chatda yo‘qolyaptimi?</span><span class="a" data-t="hero.a">Mijoz o‘zi buyurtma bersin.</span></h1>
+      <p class="lead" data-t="hero.lead">DeliveryHub biznesingizga o‘z onlayn do‘konini beradi: Telegram’da, saytda va telefon ilovasida. Mijoz menyudan tanlaydi va manzilini xaritada belgilaydi. Sizga tayyor buyurtma keladi, uni bitta tugma bilan qabul qilasiz.</p>
+      <div class="pills">
+        <span class="pill"><svg aria-hidden="true"><use href="#check"/></svg><span data-t="hero.pill1">Telegram Mini App</span></span>
+        <span class="pill"><svg aria-hidden="true"><use href="#check"/></svg><span data-t="hero.pill2">Sayt va mobil ilova</span></span>
+        <span class="pill"><svg aria-hidden="true"><use href="#check"/></svg><span data-t="hero.pill3">O‘zbek va rus tilida</span></span>
+      </div>
+      <div class="ctas">
+        <a class="btn btn-dark" href="#ariza"><span data-t="hero.apply">Ariza qoldirish</span> <svg aria-hidden="true"><use href="#arrow-down"/></svg></a>
+        <a class="btn btn-light" href="#sinab"><span data-t="hero.how">Qanday ishlashini ko‘ring</span> <svg aria-hidden="true"><use href="#arrow-down"/></svg></a>
+      </div>
+      <p class="hero-note"><span data-t="hero.note">Namuna do‘kon:</span> <a href="https://navroz-choyxona.sizlarbilan.uz/" target="_blank" rel="noopener">navroz-choyxona.sizlarbilan.uz</a></p>
+
+      <div class="hstage" role="group" aria-label="Chatdagi xabarlar o‘rniga bitta tayyor buyurtma" data-t-attr="aria-label:hero.stage">
+        <div class="chaos" aria-hidden="true">
+          <div class="bub b1"><span data-t="hero.b1">Assalomu alaykum, menyu bormi?</span><time>19:02</time></div>
+          <div class="bub b2"><span data-t="hero.b2">Osh qancha turadi?</span><time>19:07</time></div>
+          <div class="bub b3"><span data-t="hero.b3">Manzil: Chilonzor, maktab orqasida…</span><time>19:12</time></div>
+          <div class="bub b4"><span data-t="hero.b4">Buyurtmam qayerda??</span><time>19:58</time><i class="badge">3</i></div>
+        </div>
+        <div class="flow" aria-hidden="true">
+          <svg viewBox="0 0 96 40"><path class="dash" d="M4 20h80" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="m76 11 10 9-10 9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ticket">
+          <span class="ticket-tag" data-t="hero.tag">Xodimlar botida</span>
+          <div class="tmsg"><span data-t="hero.ticket">🔔 <b>Yangi buyurtma #128</b>
+Mini App · 19:42
+
+• Osh × 2 — 90 000
+• Ko‘k choy × 1 — 8 000
+
+📍 Chilonzor 9-kvartal, 12-uy (<span class="tlink">xaritada ko‘rish</span>)
+💰 <b>Jami: 98 000 so‘m</b></span><time>19:42</time></div>
+          <div class="ikb"><div class="ikb-row"><span data-t="hero.accept">✅ Qabul qilish</span><span data-t="hero.reject">❌ Rad etish</span></div></div>
+        </div>
+        <p class="hcap" data-t="hero.cap">Chatdagi o‘nlab xabar o‘rniga bitta tayyor buyurtma</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="muammo">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-t="p.eyebrow">Muammo</p>
+        <h2 class="h2" data-t="p.h2">Bu sizga tanishmi?</h2>
+        <p class="lead" data-t="p.lead">Mijozlar Telegram’da yozadi, qo‘ng‘iroq qiladi, Instagram’da so‘raydi. Har bir buyurtma uchun menyu yuborasiz, narx aytasiz, manzilni so‘raysiz va hammasini qo‘lda hisoblaysiz. Kechki payt bunday chatlar o‘nlab bo‘ladi.</p>
+      </div>
+
+      <div class="pgrid" id="problem">
+        <div class="pstage">
+          <div class="phone short" aria-hidden="true">
+            <div class="screen tg">
+              <div class="sbar"><span>19:58</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
+              <div class="tg-head"><span class="back">‹</span><span class="ava">D</span><div><b>Dilshod</b><small data-t="p.seen">yaqinda tarmoqda edi</small></div></div>
+              <div class="tg-body pchat" id="pchat">
+                <div class="m in" data-s="1"><span data-t="p.m1">Assalomu alaykum, menyu bormi?</span><time>19:02</time></div>
+                <div class="m out" data-s="1"><div class="menuimg" data-t="p.menu"><b>MENYU</b><span>Osh<i></i>42 000</span><span>Lag‘mon<i></i>35 000</span><span>Somsa<i></i>10 000</span><span>Ko‘k choy<i></i>6 000</span></div><time>19:05</time></div>
+                <div class="m in" data-s="2"><span data-t="p.m2">Osh qancha? Somsa bormi hozir?</span><time>19:07</time></div>
+                <div class="m out" data-s="2"><span data-t="p.m3">Osh 45 000. Somsa tugagan 🙏</span><time>19:09</time></div>
+                <div class="m in" data-s="2"><span data-t="p.m4">Unda 2 ta osh va bitta choynak ko‘k choy</span><time>19:10</time></div>
+                <div class="m out" data-s="3"><span data-t="p.m5">Manzilingizni yozing</span><time>19:10</time></div>
+                <div class="m in" data-s="3"><span data-t="p.m6">Chilonzor, 9-kvartal, maktab orqasida, ko‘k darvoza</span><time>19:12</time></div>
+                <div class="m out" data-s="4"><span data-t="p.m7">Jami 98 000 so‘m. 40–60 daqiqada yetkazamiz</span><time>19:14</time></div>
+                <div class="m sys" data-s="4" data-t="p.sys">Buyurtma «Oshxona» guruhiga qo‘lda ko‘chirildi</div>
+                <div class="m in" data-s="5"><span data-t="p.m8">Buyurtmam qayerda?? Bir soat bo‘ldi</span><time>19:58</time></div>
+                <div class="m in call" data-s="5"><span class="ci"><svg><use href="#phone"/></svg></span><span data-t="p.call"><b>Kiruvchi qo‘ng‘iroq</b><small>Javobsiz</small></span><time>19:59</time></div>
+              </div>
+              <div class="tg-input"><span data-t="p.input">Xabar</span></div>
+            </div>
+          </div>
+          <div class="pcount"><span class="rec" aria-hidden="true"></span><span data-t="p.spent">Sarflangan vaqt</span> <b id="ptime">06:00</b> · <b id="pmsgs">9</b> <span data-t="p.msgs">xabar</span><button class="replay" id="preplay" type="button" hidden data-t="p.replay">↺ Qayta</button></div>
+        </div>
+
+        <div>
+          <ol class="psteps">
+            <li><button class="pstep" type="button" data-step="1"><span class="num">1</span><span><b data-t="p.s1">Menyu so‘rashadi</b><small data-t="p.s1d">Siz menyu rasmini yuborasiz. Undagi narxlar allaqachon eskirgan bo‘lishi mumkin.</small></span></button></li>
+            <li><button class="pstep" type="button" data-step="2"><span class="num">2</span><span><b data-t="p.s2">Narx va bor-yo‘qligini so‘rashadi</b><small data-t="p.s2d">Har bir savolga alohida javob yozasiz. Bu orada boshqa chatlar ham kutib turibdi.</small></span></button></li>
+            <li><button class="pstep" type="button" data-step="3"><span class="num">3</span><span><b data-t="p.s3">Manzilni tushuntirishadi</b><small data-t="p.s3d">«Maktab orqasida, ko‘k darvoza». Kuryer baribir yo‘lda qo‘ng‘iroq qilib, qayta so‘raydi.</small></span></button></li>
+            <li><button class="pstep" type="button" data-step="4"><span class="num">4</span><span><b data-t="p.s4">Hisoblab, qo‘lda uzatasiz</b><small data-t="p.s4d">Summani kalkulyatorda chiqarasiz, buyurtmani oshxona guruhiga ko‘chirib yozasiz.</small></span></button></li>
+            <li><button class="pstep" type="button" data-step="5"><span class="num">5</span><span><b data-t="p.s5">«Buyurtmam qayerda?»</b><small data-t="p.s5d">Mijoz holatni ko‘rmaydi, shuning uchun yana yozadi va qo‘ng‘iroq qiladi.</small></span></button></li>
+          </ol>
+          <p class="psum" data-t="p.sum">Bitta buyurtma: <b>9 ta xabar</b>, <b>1 ta qo‘ng‘iroq</b> va taxminan <b>6 daqiqa</b> sizning vaqtingiz.</p>
+        </div>
+      </div>
+
+      <div class="pains">
+        <article class="pain rv">
+          <div class="pv" aria-hidden="true">
+            <ul class="clist">
+              <li class="lost"><span class="ava">S</span><span><b>Sardor</b><small data-t="pain1.a">Kecha yozgandim, javob yo‘q…</small></span><i class="cnt">5</i></li>
+              <li><span class="ava a2">M</span><span><b>Malika</b><small data-t="pain1.b">2 ta lag‘mon, 1 ta non</small></span><i class="cnt">2</i></li>
+              <li><span class="ava a3">+</span><span><b>+998 93 ••• 41 07</b><small data-t="pain1.c">Manzil: Yunusobod, 4-mavze…</small></span><i class="cnt">1</i></li>
+            </ul>
+          </div>
+          <h3 data-t="pain1.h">Buyurtma chatlar orasida yo‘qoladi</h3>
+          <p data-t="pain1.p">Kechki payt o‘nlab chat bir vaqtda yoziladi. Bitta xabar e’tibordan chetda qolsa, mijoz boshqa joydan buyurtma beradi.</p>
+        </article>
+        <article class="pain rv">
+          <div class="pv" aria-hidden="true">
+            <div class="paper" data-t="pain2.menu"><b>MENYU</b><span>Osh<i></i><s>42 000</s></span><span>Lag‘mon<i></i>35 000</span><span>Somsa<i></i><s>10 000</s></span><span class="stamp">TUGADI</span></div>
+          </div>
+          <h3 data-t="pain2.h">Menyu rasmi eskiradi</h3>
+          <p data-t="pain2.p">Narx o‘zgardi, somsa tugadi, yangi taom qo‘shildi. Har safar rasmni qayta tayyorlab, hammaga qayta yuborasiz.</p>
+        </article>
+        <article class="pain rv">
+          <div class="pv pmap" aria-hidden="true">
+            <span class="qpin" style="--x:24%;--y:42%"><b>?</b></span>
+            <span class="qpin" style="--x:70%;--y:38%"><b>?</b></span>
+            <span class="qpin" style="--x:52%;--y:70%"><b>?</b></span>
+            <span class="mbub" data-t="pain3.a">maktab orqasida, ko‘k darvoza</span>
+          </div>
+          <h3 data-t="pain3.h">Manzil topishmoqqa aylanadi</h3>
+          <p data-t="pain3.p">Mijoz mo‘ljal bilan tushuntiradi. Kuryer yo‘lda to‘xtab, qo‘ng‘iroq qiladi va qayta so‘raydi.</p>
+        </article>
+        <article class="pain rv">
+          <div class="pv" aria-hidden="true">
+            <div class="callui"><span class="ava">D</span><b>Dilshod</b><small data-t="pain4.a">3-marta qo‘ng‘iroq qilmoqda…</small><span class="cbtns"><i class="dec"><svg><use href="#phone"/></svg></i><i class="acc"><svg><use href="#phone"/></svg></i></span></div>
+          </div>
+          <h3 data-t="pain4.h">Holatni so‘rab qo‘ng‘iroq qilishadi</h3>
+          <p data-t="pain4.p">Mijoz buyurtma qabul qilinganini ham, yo‘lda ekanini ham ko‘rmaydi. Javob berish uchun ishingizni to‘xtatasiz.</p>
+        </article>
+      </div>
+
+      <div class="calc rv">
+        <div class="calc-big" aria-live="polite"><span class="n" id="cNum">4</span><span class="u" id="cUnit" data-t="calc.unit">soat</span></div>
+        <p class="calc-sub" data-t="calc.sub">har kuni buyurtma yozishmalariga ketadi.</p>
+        <div class="calc-ctl">
+          <label for="cOrders"><span data-t="calc.orders">Kuniga buyurtmalar</span> <output id="oOrders" for="cOrders" data-t="calc.ordersVal">40 ta</output></label>
+          <input type="range" id="cOrders" min="5" max="200" step="5" value="40">
+          <label for="cMinutes"><span data-t="calc.minutes">Bitta buyurtmaga ketadigan vaqt</span> <output id="oMinutes" for="cMinutes" data-t="calc.minutesVal">6 daqiqa</output></label>
+          <input type="range" id="cMinutes" min="2" max="15" step="1" value="6">
+        </div>
+        <p class="calc-month" id="cMonth" data-t="calc.month">Oyiga <b>120 soat</b>, ya’ni <b>15 ta</b> to‘liq ish kuni.</p>
+        <p class="calc-note" data-t="calc.note">Taxminiy hisob. Sonlarni o‘z biznesingizga moslab ko‘ring.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="night turn" id="yechim">
+    <div class="wrap">
+      <p class="turn-q" id="turnQ" data-t="turn.q">Agar buyurtma sizga <em>tayyor holda</em> kelsa-chi?</p>
+      <div class="meet rv">
+        <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+        <p class="eyebrow" data-t="turn.eyebrow">Tanishing: DeliveryHub</p>
+        <h2 class="h2" data-t="turn.h2">Mijoz tanlaydi. Siz qabul qilasiz.</h2>
+        <p class="lead" data-t="turn.lead">Har bir biznes o‘z do‘konini oladi: Telegram botidagi Mini App, alohida sayt va telefon ilovasi. Buyurtma xodimlar botiga to‘liq holda keladi: taomlar, summa, telefon raqam va xaritadagi nuqta.</p>
+      </div>
+      <div class="versus" id="versus">
+        <div class="vs-row old">
+          <span class="vs-label" data-t="vs.chat">Chatda</span>
+          <div class="vs-track"><div class="vs-chips" data-t="vs.chips"><span>Menyu</span><span>Narxlar</span><span>Manzil</span><span>Hisob</span><span>Oshxonaga</span><span>Holat</span></div><div class="vs-bar"><i style="--w:94%"></i></div></div>
+          <span class="vs-val" data-t="vs.old">≈ 6 daq</span>
+        </div>
+        <div class="vs-row new">
+          <span class="vs-label" data-t="vs.dh">DeliveryHub bilan</span>
+          <div class="vs-track"><div class="vs-chips"><span data-t="vs.accept">✅ Qabul qilish</span></div><div class="vs-bar"><i style="--w:5%"></i></div></div>
+          <span class="vs-val" data-t="vs.new">1 bosish</span>
+        </div>
+        <p class="vs-note" data-t="vs.note">Bitta buyurtmani qabul qilish uchun sizning vaqtingiz</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sinab">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-t="demo.eyebrow">Qanday ishlaydi</p>
+        <h2 class="h2" data-t="demo.h2">Bitta buyurtma, boshidan oxirigacha.</h2>
+        <p class="lead" data-t="demo.lead">Chapda mijozning telefoni, o‘ngda xodimlar boti. Mijoz sifatida buyurtma bering, keyin xodim sifatida uni qabul qiling. Ekrandagi matnlar haqiqiy tizimdagidek, faqat jarayon soddalashtirilgan.</p>
+      </div>
+
+      <div class="demo" id="demo">
+        <ol class="dsteps" id="dsteps" aria-label="Buyurtma bosqichlari" data-t-attr="aria-label:demo.steps">
+          <li><span class="n">1</span><span class="l" data-t="demo.s1">Taom tanlang</span></li>
+          <li><span class="n">2</span><span class="l" data-t="demo.s2">Buyurtma bering</span></li>
+          <li><span class="n">3</span><span class="l" data-t="demo.s3">Qabul qiling</span></li>
+          <li><span class="n">4</span><span class="l" data-t="demo.s4">Yo‘lga chiqaring</span></li>
+          <li><span class="n">5</span><span class="l" data-t="demo.s5">Yetkazing</span></li>
+        </ol>
+        <div class="dbar">
+          <p class="hint" id="dhint" aria-live="polite" data-t="demo.hint">Mijoz sifatida boshlang: «+» bilan bir-ikkita taom qo‘shing.</p>
+          <div class="dctl">
+            <button class="btn btn-sm btn-dark" type="button" id="dplay" data-t="demo.play">▶ O‘zi ko‘rsatsin</button>
+            <button class="btn btn-sm btn-light" type="button" id="dreset" data-t="demo.reset">↺ Qaytadan</button>
+          </div>
+        </div>
+        <div class="dtabs" role="tablist" aria-label="Qaysi ekran" data-t-attr="aria-label:demo.tabs">
+          <button type="button" role="tab" id="tabClient" aria-selected="true" aria-controls="paneClient"><span data-t="demo.tabClient">Mijoz telefoni</span></button>
+          <button type="button" role="tab" id="tabStaff" aria-selected="false" aria-controls="paneStaff"><span data-t="demo.tabStaff">Xodimlar boti</span></button>
+        </div>
+
+        <div class="stage">
+          <div class="pane" id="paneClient" role="tabpanel" aria-labelledby="tabClient">
+            <p class="pane-cap"><i></i><span data-t="demo.capClient">Mijoz · Navro‘z Choyxona do‘koni</span></p>
+            <div class="phone">
+              <div class="screen shop" id="shop">
+                <div class="sbar"><span>19:42</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
+                <div class="shop-head"><span class="slogo">N</span><div class="sname"><b>Navro‘z Choyxona</b><small><i></i><span data-t="demo.open">Ochiq · 22:00 gacha</span></small></div></div>
+                <div class="shop-main" id="shopMain"></div>
+                <div id="bannerSlot"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lane" aria-hidden="true">
+            <div class="track"><span class="packet" id="pkR"></span><small data-t="demo.laneOrder">buyurtma →</small></div>
+            <div class="track"><span class="packet l" id="pkL"></span><small data-t="demo.laneStatus">← mijozga xabar</small></div>
+          </div>
+
+          <div class="pane" id="paneStaff" role="tabpanel" aria-labelledby="tabStaff">
+            <p class="pane-cap"><i class="tgdot"></i><span data-t="demo.capStaff">Xodim · Telegram’dagi xodimlar boti</span></p>
+            <div class="phone">
+              <div class="screen tg" id="staff">
+                <div class="sbar"><span>19:42</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
+                <div class="tg-head"><span class="back">‹</span><span class="ava shopava">N</span><div><b data-t="demo.staffName">Navro‘z · Xodimlar</b><small>bot</small></div></div>
+                <div class="tg-body staffmsgs" id="staffBody"></div>
+                <div class="tg-kbd" aria-hidden="true"><span data-t="demo.kbToday">📋 Bugungi buyurtmalar</span><span data-t="demo.kbStats">📊 Bugun</span></div>
+                <div class="tg-input" aria-hidden="true"><span data-t="demo.voice">🎤 Buyurtmani ovoz bilan ayting…</span></div>
+                <div id="toastSlot"></div>
+              </div>
+            </div>
+            <p class="mirror" id="mirror" aria-live="polite"></p>
+          </div>
+        </div>
+        <div class="ddone" id="ddone" hidden>
+          <div><b id="ddTaps">3</b><span data-t="demo.doneTaps">xodim bosgan tugma</span></div>
+          <div><b>0</b><span data-t="demo.doneCalls">qo‘ng‘iroq</span></div>
+          <div><b>0</b><span data-t="demo.doneChats">yozishma</span></div>
+          <p data-t="demo.doneText">Chatda shu buyurtma uchun 9 ta xabar va taxminan 6 daqiqa ketgan bo‘lardi.</p>
+          <div class="dd-cta"><b data-t="demo.ddCta">Biznesingizda ham shunday ishlasinmi?</b><a class="btn btn-sm btn-dark" href="#ariza" data-t="demo.ddApply">Ariza qoldirish</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="imkoniyatlar">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-t="f.eyebrow">Imkoniyatlar</p>
+        <h2 class="h2" data-t="f.h2">Do‘kon, kassa va bot. Hammasi bitta joyda.</h2>
+      </div>
+      <div class="bento">
+        <article class="bc wide rv">
+          <div class="bv" aria-hidden="true">
+            <div class="chs">
+              <div class="ch">
+                <div class="ch-box ch-tg"><div class="tmsg" data-t="f1.welcome"><span class="long">👋 <b>Navro‘z Choyxona</b>ga xush kelibsiz! Menyuni ko‘rish va buyurtma berish uchun «🛍 Do‘kon» tugmasini bosing.</span><span class="short">👋 Xush kelibsiz!</span></div><span class="open" data-t="f1.open">🛍 Do‘kon</span></div>
+                <span class="ch-label" data-t="f1.tg">Telegram bot</span>
+              </div>
+              <div class="ch">
+                <div class="ch-box ch-web"><span class="ch-url">navroz-choyxona.sizlarbilan.uz</span><div class="ch-grid"><span style="background-image:url({{img:osh}})"></span><span style="background-image:url({{img:lagmon}})"></span><span style="background-image:url({{img:shashlik}})"></span><span style="background-image:url({{img:somsa}})"></span></div></div>
+                <span class="ch-label" data-t="f1.web">Sayt</span>
+              </div>
+              <div class="ch">
+                <div class="ch-box ch-app"><span class="slogo">N</span><b>Navro‘z Choyxona</b></div>
+                <span class="ch-label" data-t="f1.app">Android va iOS ilova</span>
+              </div>
+            </div>
+          </div>
+          <h3 data-t="f1.h">Bitta do‘kon, uchta eshik</h3>
+          <p data-t="f1.p">Mijoz qayerda bo‘lsa, do‘koningiz o‘sha yerda: Telegram botidagi «🛍 Do‘kon» tugmasi, o‘z saytingiz va telefon ilovasi. Menyu, savat va buyurtmalar hammasida bir xil. Yangilanish uchalasiga bir vaqtda yetadi.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv voice" aria-hidden="true">
+            <div class="wave" id="wave"></div>
+            <p class="quote" data-t="f2.quote">«Ikkita osh, bitta choynak ko‘k choy, Chilonzor 9»</p>
+            <ul class="parsed" data-t="f2.parsed"><li><span class="ai">AI</span>Osh × 2</li><li><span class="ai">AI</span>Ko‘k choy × 1</li><li><span class="ai">AI</span>Chilonzor 9</li></ul>
+          </div>
+          <h3 data-t="f2.h">Ovozli buyurtma</h3>
+          <p data-t="f2.p">Telefonda kelgan buyurtmani shunchaki ayting. Sun’iy intellekt uni kassada yoki xodimlar botida tayyor buyurtmaga aylantiradi, siz tekshirib tasdiqlaysiz.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv bmap" aria-hidden="true">
+            <span class="pin"></span>
+            <span class="tag" data-t="f3.tag">Chilonzor 9-kvartal, 12-uy</span>
+            <span class="mbtn" data-t="f3.btn">Shu manzilni tanlash</span>
+          </div>
+          <h3 data-t="f3.h">Xaritada aniq manzil</h3>
+          <p data-t="f3.p">Mijoz nuqtani taksi ilovalaridagidek belgilaydi. Kuryer buyurtma kartasidagi havola orqali to‘g‘ri boradi.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv hours" aria-hidden="true">
+            <span class="hchip"><i></i><span data-t="f4.closed">Yopiq · ertaga 09:00 da ochiladi</span></span>
+            <dl class="week"><div><dt data-t="f4.weekdays">Du–Ju</dt><dd>09:00–23:00</dd></div><div><dt data-t="f4.sat">Shanba</dt><dd>10:00–02:00</dd></div><div class="off"><dt data-t="f4.sun">Yakshanba</dt><dd data-t="f4.off">Dam olish</dd></div></dl>
+          </div>
+          <h3 data-t="f4.h">Ish vaqti</h3>
+          <p data-t="f4.p">Har kun uchun o‘z soatlari, yarim tundan o‘tadigan smena ham. Yopiq paytda menyu ko‘rinib turadi, buyurtma esa ochilguncha qabul qilinmaydi.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv freeze" aria-hidden="true">
+            <div class="frow frozen"><img src="{{img:somsa}}" alt=""><span><b data-t="f5.somsa">Tandir somsa</b><small data-t="f5.off">Mavjud emas</small></span><span class="fbtn">❄️</span></div>
+            <div class="frow"><img src="{{img:shashlik}}" alt=""><span><b data-t="f5.shashlik">Qo‘y go‘shti shashlik</b><small data-t="f5.price">22 000 so‘m</small></span><span class="fbtn">❄️</span></div>
+          </div>
+          <h3 data-t="f5.h">Tugadimi? Muzlating</h3>
+          <p data-t="f5.p">Tugagan taomni bir bosishda sotuvdan olasiz. Mijoz uni «Mavjud emas» deb ko‘radi va buyurtma qila olmaydi.</p>
+        </article>
+
+        <article class="bc wide rv">
+          <div class="bv stats">
+            <div class="kpis">
+              <div><small data-t="f6.orders">Buyurtmalar</small><b>42</b></div>
+              <div><small data-t="f6.revenue">Tushum, so‘m</small><b>3 864 000</b></div>
+              <div><small data-t="f6.average">O‘rtacha chek, so‘m</small><b>92 000</b></div>
+            </div>
+            <div class="chart">
+              <span class="sample" data-t="f6.sample">Namuna</span>
+              <div class="bars" role="img" aria-label="So‘nggi 7 kundagi buyurtmalar: dushanba 31, seshanba 28, chorshanba 35, payshanba 33, juma 47, shanba 52, yakshanba 42" data-t-attr="aria-label:f6.chart">
+                <div style="--v:31"><span>31</span><i></i></div>
+                <div style="--v:28"><span>28</span><i></i></div>
+                <div style="--v:35"><span>35</span><i></i></div>
+                <div style="--v:33"><span>33</span><i></i></div>
+                <div style="--v:47"><span>47</span><i></i></div>
+                <div style="--v:52"><span>52</span><i></i></div>
+                <div class="today" style="--v:42"><span>42</span><i></i></div>
+              </div>
+              <div class="days" aria-hidden="true" data-t="f6.days"><span>Du</span><span>Se</span><span>Ch</span><span>Pa</span><span>Ju</span><span>Sh</span><span>Ya</span></div>
+            </div>
+          </div>
+          <h3 data-t="f6.h">Bugungi savdo ko‘z oldingizda</h3>
+          <p data-t="f6.p">Buyurtmalar soni, tushum, o‘rtacha chek va so‘nggi 7 kun grafigi admin panelda. Xodimlar botida esa «📊 Bugun» tugmasi bor: kunning natijasi bitta xabarda.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv brandv" id="brandv" style="--b:#77BB41;--bi:#132008">
+            <div class="bmock" aria-hidden="true">
+              <div class="bm-head"><span class="slogo">N</span><b>Navro‘z Choyxona</b></div>
+              <div class="bm-hero"><span data-t="f7.tagline">Milliy taomlar, issiq non va xushbo‘y choy</span></div>
+              <div class="bm-btn" data-t="f7.btn">Savatga qo‘shish</div>
+            </div>
+            <div class="swatches" role="group" aria-label="Namuna brend rangi" data-t-attr="aria-label:f7.swatches">
+              <button type="button" aria-pressed="true" aria-label="Yashil" data-t-attr="aria-label:f7.green" style="--s:#77BB41" data-ink="#132008"></button>
+              <button type="button" aria-pressed="false" aria-label="Qahvarang" data-t-attr="aria-label:f7.brown" style="--s:#6F4E37" data-ink="#FFFFFF"></button>
+              <button type="button" aria-pressed="false" aria-label="Ko‘k" data-t-attr="aria-label:f7.blue" style="--s:#1E5AA8" data-ink="#FFFFFF"></button>
+              <button type="button" aria-pressed="false" aria-label="To‘q sariq" data-t-attr="aria-label:f7.orange" style="--s:#F08C00" data-ink="#1F1300"></button>
+            </div>
+          </div>
+          <h3 data-t="f7.h">Sizning brendingiz</h3>
+          <p data-t="f7.p">Logo va rangingizni tanlaysiz: do‘kon, tugmalar va ilovaning ochilish ekrani shu ranglarda. Tugmadagi yozuv rangi o‘qilishi uchun avtomatik tanlanadi.</p>
+        </article>
+
+        <article class="bc rv">
+          <div class="bv langv">
+            <div class="seg" role="group" aria-label="Namuna tili" data-t-attr="aria-label:f8.seg">
+              <button type="button" aria-pressed="true" data-lang-sample="uz">O‘zbekcha</button>
+              <button type="button" aria-pressed="false" data-lang-sample="ru">Русский</button>
+            </div>
+            <div class="lrow" aria-live="polite">
+              <span><b data-uz="Osh" data-ru="Плов">Osh</b><small data-uz="Qo‘y go‘shti, sariq sabzi, no‘xat, mayiz" data-ru="Баранина, жёлтая морковь, нут, изюм">Qo‘y go‘shti, sariq sabzi, no‘xat, mayiz</small><em data-uz="45 000 so‘m" data-ru="45 000 сум">45 000 so‘m</em></span>
+              <img src="{{img:osh}}" alt="">
+            </div>
+          </div>
+          <h3 data-t="f8.h">O‘zbek va rus tilida</h3>
+          <p data-t="f8.p">Mijoz tilni o‘zi tanlaydi. Do‘kon, botlar va admin panel ikkala tilda ishlaydi. Kunduzgi va tungi rejim ham bor.</p>
+        </article>
+
+        <article class="bc wide rv">
+          <div class="bv speed">
+            <span class="sample" data-t="f9.sample">Namuna do‘kon</span>
+            <div class="sp-row"><span data-t="f9.before">Asl rasmlar</span><div class="sp-track"><i style="--w:100%"></i></div><b>3,5 MB</b></div>
+            <div class="sp-row"><span data-t="f9.after">Do‘konda</span><div class="sp-track"><i class="new" style="--w:12%"></i></div><b>424 KB</b></div>
+            <p class="note" data-t="f9.note">14 ta taom rasmi menyu kartochkalarida: 8 baravar yengil</p>
+          </div>
+          <h3 data-t="f9.h">Sekin internetda ham tez</h3>
+          <p data-t="f9.p">Rasmlar telefon ekraniga moslab yengillashtiriladi, menyu oxirgi nusxadan bir zumda ochiladi. Yangilanishlar o‘zi keladi: ilovani Play Market’dan qayta yuklash shart emas.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="boshlash">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-t="go.eyebrow">Ishga tushirish</p>
+        <h2 class="h2" data-t="go.h2">To‘rt qadamda do‘koningiz ochiladi.</h2>
+      </div>
+      <ol class="launch">
+        <li class="rv">
+          <span class="ln">1</span>
+          <div class="lv" aria-hidden="true"><span class="url"><svg><use href="#lock"/></svg><span data-t="go.url"><b>nomingiz</b>.sizlarbilan.uz</span></span></div>
+          <h3 data-t="go.1h">Biznesingizni ochamiz</h3>
+          <p data-t="go.1p">Nom, logo, brend rangi va xaritadagi manzilingiz. Shu zahoti do‘kon manzili va admin panel tayyor bo‘ladi.</p>
+        </li>
+        <li class="rv">
+          <span class="ln">2</span>
+          <div class="lv" aria-hidden="true"><span class="tgb"><span data-t="go.bot1">🤖 Mijozlar boti</span> <i>✓</i></span><span class="tgb"><span data-t="go.bot2">🤖 Xodimlar boti</span> <i>✓</i></span></div>
+          <h3 data-t="go.2h">Telegram’da ikki bosish</h3>
+          <p data-t="go.2p">QR kodni ochib, ikki tugmani bosasiz. Ikkala bot yaratiladi va o‘zi sozlanadi: «🛍 Do‘kon» tugmasi, buyruqlar va tavsif.</p>
+        </li>
+        <li class="rv">
+          <span class="ln">3</span>
+          <div class="lv" aria-hidden="true"><div class="form"><div><img src="{{img:osh}}" alt=""><b data-t="go.osh">Osh</b><span>45 000</span></div><div><img src="{{img:choy}}" alt=""><b data-t="go.choy">Ko‘k choy</b><span>8 000</span></div></div></div>
+          <h3 data-t="go.3h">Menyuni kiritasiz</h3>
+          <p data-t="go.3p">Admin panelda rasm, narx va kategoriya qo‘shasiz. Nomlarni o‘zbek va rus tilida yozasiz, rasmlar o‘zi yengillashadi.</p>
+        </li>
+        <li class="rv">
+          <span class="ln">4</span>
+          <div class="lv" aria-hidden="true"><div class="qrline"><svg class="qr" viewBox="0 0 29 29"><path fill="currentColor" d="M0 0h7v7H0zm1 1v5h5V1zm1 1h3v3H2zM22 0h7v7h-7zm1 1v5h5V1zm1 1h3v3h-3zM0 22h7v7H0zm1 1v5h5v-5zm1 1h3v3H2zM9 0h2v2H9zm4 0h1v3h-1zm3 1h2v2h-2zm-6 3h3v2h-3zm5 1h2v3h-2zm4 0h1v2h-1zM9 9h2v2H9zm3 0h4v1h-4zm6 0h2v3h-2zm4 0h3v2h-3zm4 1h1v3h-1zM0 9h2v2H0zm3 0h3v1H3zm0 3h4v2H3zm9 1h2v4h-2zm4-1h2v2h-2zm4 2h3v1h-3zm4 0h2v3h-2zM0 14h2v3H0zm9 2h2v3H9zm7 1h3v2h-3zm5 0h1v4h-1zm3 2h3v1h-3zM9 21h3v1H9zm5-1h2v3h-2zm4 2h2v2h-2zm4 2h3v2h-3zm5-1h1v4h-1zM9 24h2v2H9zm4 2h4v1h-4zm7 1h2v2h-2zm-11 1h3v1H9z"/></svg><small data-t="go.qr">Admin paneldagi taklif QR kodi</small></div></div>
+          <h3 data-t="go.4h">Jamoa va mijozlarni ulaysiz</h3>
+          <p data-t="go.4p">Xodimlar QR orqali xodimlar botiga ulanadi. Mijozlarga bot va sayt havolasini yuborasiz, Instagram profilingizga qo‘yasiz.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="night sec" id="ishonch">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-t="trust.eyebrow">Ma’lumotlar</p>
+        <h2 class="h2" data-t="trust.h2">Mijozlaringiz sizda qoladi.</h2>
+        <p class="lead" data-t="trust.lead">Buyurtmalar, mijozlar ro‘yxati va savdo tarixi sizning admin panelingizda turadi. Ular boshqa bizneslar bilan aralashmaydi.</p>
+      </div>
+      <div class="trust">
+        <div class="tc rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.5M4.5 12v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V12"/></svg><h3 data-t="trust.1h">Alohida baza</h3><p data-t="trust.1p">Har bir biznesning menyusi, mijozlari va buyurtmalari alohida saqlanadi.</p></div>
+        <div class="tc rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18.5 14.8c1.7.7 2.7 2.4 3 5.2"/></svg><h3 data-t="trust.2h">Mijozlar ro‘yxati sizniki</h3><p data-t="trust.2p">Ism, telefon va har bir mijozning buyurtmalar tarixi. Doimiy mijozlaringizni bilasiz.</p></div>
+        <div class="tc rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 3.5v4h4M12 7.5V12l3 2"/></svg><h3 data-t="trust.3h">Har kecha zaxira</h3><p data-t="trust.3p">Barcha ma’lumotlar har tun avtomatik zaxiralanadi.</p></div>
+        <div class="tc rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/></svg><h3 data-t="trust.4h">Himoyalangan kirish</h3><p data-t="trust.4p">Admin panelga parol bilan kiriladi, Telegram bot kalitlari shifrlangan holda saqlanadi.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="savollar">
+    <div class="wrap qa">
+      <div class="rv"><p class="eyebrow" data-t="faq.eyebrow">Savollar</p><h2 class="h2" data-t="faq.h2">Ko‘p beriladigan savollar</h2></div>
+      <div class="faq">
+        <details open>
+          <summary data-t="faq.1q">Mijozlar biror narsa o‘rnatishi kerakmi?</summary>
+          <p data-t="faq.1a">Yo‘q. Telegram’da botingizni ochib «🛍 Do‘kon» tugmasini bosadi yoki saytingizga kiradi. Xohlasa, telefon ilovasidan foydalanadi. Telegram ichida ro‘yxatdan o‘tish ham shart emas.</p>
+        </details>
+        <details>
+          <summary data-t="faq.2q">Buyurtmalar qayerga keladi?</summary>
+          <p data-t="faq.2a">Xodimlar botiga: har bir ulangan xodimga «✅ Qabul qilish» va «❌ Rad etish» tugmalari bilan karta keladi. Bittasi qabul qilsa, qolganlarida ham yangilanadi. Hamma buyurtmalar admin panelda ham turadi.</p>
+        </details>
+        <details>
+          <summary data-t="faq.3q">Telefon orqali kelgan buyurtmalar-chi?</summary>
+          <p data-t="faq.3a">Ularni admin paneldagi kassada qo‘lda yoki ovoz bilan kiritasiz. Xodimlar botiga ovozli xabar yuborsangiz ham bo‘ladi: bot buyurtma qoralamasini tuzib beradi, siz tasdiqlaysiz.</p>
+        </details>
+        <details>
+          <summary data-t="faq.4q">To‘lov qanday bo‘ladi?</summary>
+          <p data-t="faq.4a">Mijoz buyurtma berishda naqd yoki kartani tanlaydi. To‘lov yetkazib berilganda yoki olib ketishda amalga oshiriladi.</p>
+        </details>
+        <details>
+          <summary data-t="faq.5q">Menyuni kim kiritadi va o‘zgartiradi?</summary>
+          <p data-t="faq.5a">O‘zingiz, admin paneldan: rasm, nom, narx va kategoriya. O‘zgarish do‘konda, botda va ilovada darhol ko‘rinadi.</p>
+        </details>
+        <details>
+          <summary data-t="faq.6q">Do‘kon yopiq paytda nima bo‘ladi?</summary>
+          <p data-t="faq.6a">Mijoz menyuni ko‘radi va savatga qo‘sha oladi, lekin buyurtma ochilish vaqtigacha qabul qilinmaydi. Do‘konda «Yopiq · ertaga 09:00 da ochiladi» kabi yozuv turadi.</p>
+        </details>
+        <details>
+          <summary data-t="faq.7q">Ilovani har safar yangilash kerakmi?</summary>
+          <p data-t="faq.7a">Odatda yo‘q. Do‘kon serverdan ochiladi, shuning uchun har bir yangilanish sayt, Mini App va ilovaga bir vaqtda yetadi.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="night apply" id="ariza">
+    <div class="wrap">
+      <div class="apply-in">
+        <div class="rv">
+          <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+          <p class="eyebrow" data-t="apply.eyebrow">Ariza</p>
+          <h2 class="h2" data-t="apply.h2">Do‘koningizni birga ochamiz.</h2>
+          <p class="lead" data-t="apply.lead">Ariza qoldiring: qo‘ng‘iroq qilib, savollaringizga javob beramiz va platformani sizning biznesingiz misolida ko‘rsatamiz.</p>
+          <ol class="next">
+            <li><b data-t="apply.n1">Ariza qoldirasiz</b><span data-t="apply.n1d">Bir daqiqa: ismingiz va telefon raqamingiz.</span></li>
+            <li><b data-t="apply.n2">Qo‘ng‘iroq qilamiz</b><span data-t="apply.n2d">Biznesingiz haqida so‘raymiz va hammasini ko‘rsatib beramiz.</span></li>
+            <li><b data-t="apply.n3">Do‘koningiz ochiladi</b><span data-t="apply.n3d">Menyu, botlar va xodimlarni birga sozlaymiz.</span></li>
+          </ol>
+        </div>
+
+        <div class="form-card" id="leadCard">
+          <form class="lead-form" id="leadForm" novalidate>
+            <div>
+              <h3 data-t="form.title">Ariza qoldirish</h3>
+              <p class="sub" data-t="form.sub">Ish vaqtida siz bilan bog‘lanamiz.</p>
+            </div>
+            <div class="field">
+              <label for="leadName" data-t="form.name">Ismingiz</label>
+              <input id="leadName" name="name" autocomplete="name" maxlength="120" required aria-describedby="leadNameErr">
+              <p class="ferr" id="leadNameErr" hidden></p>
+            </div>
+            <div class="field">
+              <label for="leadPhone" data-t="form.phone">Telefon raqam</label>
+              <input id="leadPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+998 90 123 45 67" required aria-describedby="leadPhoneErr">
+              <p class="ferr" id="leadPhoneErr" hidden></p>
+            </div>
+            <div class="field">
+              <label for="leadBusiness"><span data-t="form.business">Biznesingiz nomi</span><span class="opt" data-t="form.optional">ixtiyoriy</span></label>
+              <input id="leadBusiness" name="business" autocomplete="organization" maxlength="120" placeholder="Masalan: Navro‘z Choyxona" data-t-attr="placeholder:form.businessPh">
+            </div>
+            <fieldset class="field">
+              <legend data-t="form.kind">Faoliyat turi</legend>
+              <div class="kinds-row">
+                <label><input type="radio" name="kind" value="cafe"><span data-t="form.cafe">Kafe yoki restoran</span></label>
+                <label><input type="radio" name="kind" value="fastfood"><span data-t="form.fastfood">Fast food</span></label>
+                <label><input type="radio" name="kind" value="shop"><span data-t="form.shop">Do‘kon</span></label>
+                <label><input type="radio" name="kind" value="other"><span data-t="form.other">Boshqa</span></label>
+              </div>
+            </fieldset>
+            <div class="field">
+              <label for="leadComment"><span data-t="form.comment">Izoh</span><span class="opt" data-t="form.optional2">ixtiyoriy</span></label>
+              <textarea id="leadComment" name="comment" rows="3" maxlength="1000" placeholder="Masalan: 2 ta filial, kuniga 50 ta buyurtma" data-t-attr="placeholder:form.commentPh"></textarea>
+            </div>
+            <div class="hp" aria-hidden="true"><label for="leadWebsite">Website</label><input id="leadWebsite" name="website" tabindex="-1" autocomplete="off"></div>
+            <p class="fstatus" id="leadStatus" role="alert" hidden></p>
+            <button class="btn btn-dark" type="submit" id="leadSend" data-t="form.send">Ariza yuborish</button>
+            <p class="fnote" data-t="form.note">Raqamingiz faqat siz bilan bog‘lanish uchun kerak.</p>
+          </form>
+          <div class="lead-done" id="leadDone" hidden tabindex="-1">
+            <span class="ok"><svg aria-hidden="true"><use href="#tick"/></svg></span>
+            <h3 data-t="form.doneTitle">Arizangiz qabul qilindi!</h3>
+            <p data-t="form.doneText">Tez orada siz bilan bog‘lanamiz. Bu orada jonli do‘konni ko‘rib chiqing.</p>
+            <a class="btn btn-light" href="https://navroz-choyxona.sizlarbilan.uz/" target="_blank" rel="noopener"><span data-t="form.doneLink">Jonli do‘konni ochish</span> <svg aria-hidden="true"><use href="#arrow-out"/></svg></a>
+            <p class="preview" id="leadPreview" hidden data-t="form.preview">Bu sahifaning namunasi: haqiqiy saytda ariza paneldagi «Arizalar» bo‘limiga tushadi.</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="foot">
+        <a class="brand" href="#top"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg>DeliveryHub</a>
+        <span data-t="foot.tagline">Yetkazib berish bizneslari uchun platforma · sizlarbilan.uz</span>
+        <span>© 2026 DeliveryHub · <a href="{{login}}" data-t="foot.login">Panelga kirish</a></span>
+      </footer>
+    </div>
+  </section>
+</main>
+
+<div class="stickycta" id="stickyCta"><a class="btn btn-dark" href="#ariza" data-t="sticky.apply">Ariza qoldirish</a></div>

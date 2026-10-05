@@ -7,7 +7,7 @@ from apps.core import images
 from apps.platform import provisioning
 from apps.platform.bots import is_alive, missing_roles, platform_bot
 from apps.platform.current import url_for
-from apps.platform.models import Business, BusinessBot, Domain
+from apps.platform.models import Business, BusinessBot, Domain, Lead
 from apps.platform.overview import business_stats, owner_of
 from ..common.fields import ColorField, LimitedImageField, PhoneField
 from ..common.hours import WorkingHoursSerializer, hours_payload
@@ -153,6 +153,33 @@ class MobileAppSerializer(serializers.Serializer):
     config = AppConfigSerializer(help_text='Exactly what the app receives now')
 
 
+def choices(of):
+    return [key for key, _ in of]
+
+
+class LeadSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    phone = serializers.CharField()
+    business = serializers.CharField()
+    kind = serializers.ChoiceField(choices=[''] + choices(Lead.KIND_CHOICES))
+    comment = serializers.CharField()
+    lang = serializers.ChoiceField(choices=choices(Lead.LANG_CHOICES), help_text='The language of its page')
+    status = serializers.ChoiceField(choices=choices(Lead.STATUS_CHOICES))
+    note = serializers.CharField(help_text="Our staff's")
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    contacted_at = serializers.DateTimeField(allow_null=True, help_text='When it first left "new"')
+
+    def to_representation(self, lead):
+        return {
+            'id': lead.pk, 'name': lead.name, 'phone': lead.phone, 'business': lead.business, 'kind': lead.kind,
+            'comment': lead.comment, 'lang': lead.lang, 'status': lead.status, 'note': lead.note,
+            'created_at': iso(lead.created_at), 'updated_at': iso(lead.updated_at),
+            'contacted_at': iso(lead.contacted_at),
+        }
+
+
 # ---------------------------------------------------------------------------
 # requests
 # ---------------------------------------------------------------------------
@@ -258,3 +285,19 @@ class MobileAppUpdateSerializer(serializers.Serializer):
         if not business.is_active:
             raise serializers.ValidationError('suspended', code='suspended')
         return business
+
+
+class LeadCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    phone = PhoneField(uz_only=True)
+    business = serializers.CharField(max_length=120, required=False, allow_blank=True, default='')
+    kind = serializers.ChoiceField(choices=choices(Lead.KIND_CHOICES), required=False, allow_blank=True, default='')
+    comment = serializers.CharField(max_length=1000, required=False, allow_blank=True, default='')
+    lang = serializers.ChoiceField(choices=choices(Lead.LANG_CHOICES), required=False, default='uz')
+    website = serializers.CharField(required=False, allow_blank=True, default='',
+                                    help_text='Hidden on the page and left empty by people: a trap for bots')
+
+
+class LeadUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=choices(Lead.STATUS_CHOICES), required=False)
+    note = serializers.CharField(max_length=1000, required=False, allow_blank=True)

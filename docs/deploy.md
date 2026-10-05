@@ -11,7 +11,7 @@ Internet ─► server :443 ─► EDGE (TLS: *.sizlarbilan.uz) ─┬─► nor
 
 | Manzil | Nima |
 |---|---|
-| `deliveryhub.sizlarbilan.uz` | bizning platforma panelimiz |
+| `deliveryhub.sizlarbilan.uz` | bizning sahifamiz bizneslar uchun (`landing/`: `/` — sessiyasiz mehmonga, `/ru`) va platforma panelimiz (kirgandan keyin) |
 | `<slug>.sizlarbilan.uz` | biznes do'koni + mijozlar Mini App'i |
 | `<slug>-admin.sizlarbilan.uz` | biznes admin paneli + xodimlar Mini App'i |
 | `sizlarbilan.uz`, `www.` | edge'da hal qilinadi (hozircha → panelga yo'naltirish) |

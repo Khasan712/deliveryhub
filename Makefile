@@ -1,5 +1,5 @@
 # Everyday commands. Each part also works on its own — see its README.
-.PHONY: up down logs ps test test-backend test-bot test-ui test-mobile e2e schema test-db backup restore
+.PHONY: up down logs ps test test-backend test-bot test-ui test-landing test-mobile e2e schema test-db backup restore
 
 up:
 	docker compose up -d --build
@@ -13,7 +13,7 @@ logs:
 ps:
 	docker compose ps
 
-test: test-backend test-bot test-ui
+test: test-backend test-bot test-ui test-landing
 
 # The database of every business + uploaded files → backups/<stamp>/ (scripts/backup.sh).
 backup:
@@ -40,6 +40,10 @@ test-ui:
 	cd admin-ui && npm test && npm run lint && npm run build
 	cd deliveryhub-ui && npm test && npm run lint && npm run build
 
+# Our page for businesses: builds both languages and checks the translations, the links and the form.
+test-landing:
+	cd landing && npm test
+
 # The mobile app (Flutter SDK needed): static checks and the tests of the shell.
 test-mobile:
 	cd mobile && flutter analyze && flutter test
@@ -47,7 +51,7 @@ test-mobile:
 # End-to-end tests in a throwaway stack of their own (port 8200, own database, no bot tokens): built, tested,
 # then removed with its data. Never touches the stack of this machine or production.
 E2E_STACK = docker compose -p deliveryhub-e2e -f docker-compose.yml --env-file e2e/.stack.env
-E2E_SERVICES = db redis backend client-ui admin-ui deliveryhub-ui web
+E2E_SERVICES = db redis backend client-ui admin-ui deliveryhub-ui landing web
 
 e2e:
 	e2e/make-stack-env.sh > e2e/.stack.env

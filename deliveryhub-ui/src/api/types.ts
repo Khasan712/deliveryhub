@@ -158,3 +158,45 @@ export interface MobileApp {
   /** Exactly what the app receives now. */
   config: AppConfig
 }
+
+/** docs/api.md → "Applications": a business that wants its own shop, from the form of our landing page. */
+export type LeadStatus = 'new' | 'contacted' | 'won' | 'lost'
+export type LeadKind = 'cafe' | 'fastfood' | 'shop' | 'other'
+
+export interface Lead {
+  id: number
+  name: string
+  /** "+998901234567". */
+  phone: string
+  business: string
+  /** '' — not picked on the form. */
+  kind: LeadKind | ''
+  comment: string
+  /** The language of the page it came from — the one to speak. */
+  lang: 'uz' | 'ru'
+  status: LeadStatus
+  /** Our staff's note. */
+  note: string
+  created_at: string
+  updated_at: string
+  /** When it first left `new`. */
+  contacted_at: string | null
+}
+
+export type LeadCounts = Record<LeadStatus, number>
+
+/** A page of a paginated list (docs/api.md → Conventions). */
+export interface Page<T> {
+  count: number
+  page: number
+  pages: number
+  results: T[]
+}
+
+export interface LeadList extends Page<Lead> {
+  /** Of all applications, whatever the filter: for the tabs and the menu badge. */
+  counts: LeadCounts
+}
+
+/** PATCH body: either or both. */
+export type LeadPatch = Partial<Pick<Lead, 'status' | 'note'>>

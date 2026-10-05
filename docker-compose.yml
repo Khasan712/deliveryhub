@@ -80,6 +80,11 @@ services:
     container_name: ${STACK_NAME:-deliveryhub}_hub_ui
     restart: always
 
+  landing:
+    build: ./landing
+    container_name: ${STACK_NAME:-deliveryhub}_landing
+    restart: always
+
   web:
     image: caddy:2.11-alpine
     container_name: ${STACK_NAME:-deliveryhub}_web
@@ -97,6 +102,7 @@ services:
       - client-ui
       - admin-ui
       - deliveryhub-ui
+      - landing
 
 volumes:
   db:

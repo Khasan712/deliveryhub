@@ -177,6 +177,11 @@ SPECTACULAR_SETTINGS = {
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     'SCHEMA_PATH_PREFIX': '/api/v1',
     'COMPONENT_SPLIT_REQUEST': True,
+    # Two choice sets share the field name `status`: name them, instead of the generator's numbered names.
+    'ENUM_NAME_OVERRIDES': {
+        'BusinessStatusEnum': ['active', 'suspended'],
+        'LeadStatusEnum': ['new', 'contacted', 'won', 'lost'],
+    },
 }
 
 # ---------------------------------------------------------------------------

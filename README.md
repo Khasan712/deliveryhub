@@ -21,13 +21,14 @@ hech narsa bo'lishmaydi — faqat API orqali gaplashadi.
 | [`bot/`](bot/) | Barcha Telegram botlar: mijozlar, xodimlar va platforma boti | aiogram 3 + SQLAlchemy 2 async (bazaga to'g'ridan-to'g'ri) |
 | [`client-ui/`](client-ui/) | Mijozlar do'koni — sayt va Telegram Mini App | React + Vite + TypeScript |
 | [`admin-ui/`](admin-ui/) | Biznes egalari va xodimlari uchun admin panel (+ admin Mini App) | React + Vite + TypeScript |
-| [`deliveryhub-ui/`](deliveryhub-ui/) | Bizning platforma panelimiz | React + Vite + TypeScript |
+| [`deliveryhub-ui/`](deliveryhub-ui/) | Bizning platforma panelimiz (bizneslar, «Mobil ilova», «Arizalar») | React + Vite + TypeScript |
+| [`landing/`](landing/) | Bizneslar uchun sahifamiz: muammo → yechim, jonli demo, **ariza formasi** (o'zbekcha `/`, ruscha `/ru`) | HTML + CSS + JS, Node bilan yig'iladi |
 | [`mobile/`](mobile/) | Android / iOS ilova: paneldagi «Mobil ilova» bo'limida tanlangan biznesning do'koni | Flutter (WebView) |
 | [`docs/`](docs/) | [Arxitektura](docs/architecture.md), [API shartnomasi](docs/api.md), [OpenAPI](docs/openapi/) | |
 | `docker-compose.yml`, `Caddyfile` | Qismlarni birga ishga tushirish: hostga qarab UI, `/api` → backend, `/media` → fayllar | Docker, Caddy |
 
 ```
-brauzer / Telegram ──► web (Caddy) ──┬── client-ui / admin-ui / deliveryhub-ui (host bo'yicha)
+brauzer / Telegram ──► web (Caddy) ──┬── client-ui / admin-ui / deliveryhub-ui / landing (host bo'yicha)
                                       ├── /api/*   ──► backend (gunicorn)
                                       └── /media/* ──► rasmlar (volume)
 bot ──► PostgreSQL (to'g'ridan-to'g'ri)      backend ──► PostgreSQL, Redis
@@ -47,7 +48,8 @@ docker compose up -d --build  # yoki: make up
 
 Lokal manzillar (`*.localhost` macOS'da o'zi 127.0.0.1 ga boradi):
 
-* platforma paneli — http://hub.localhost:8100 (login: `.env` dagi `PLATFORM_ADMIN_PHONE` / `PLATFORM_ADMIN_PASSWORD`)
+* platforma paneli — http://hub.localhost:8100 (login: `.env` dagi `PLATFORM_ADMIN_PHONE` / `PLATFORM_ADMIN_PASSWORD`);
+  kirmagan mehmon u yerda bizneslar uchun sahifamizni ko'radi (`/`, ruscha `/ru`), arizalar panelda — «Arizalar»
 * biznes do'koni — `http://<slug>.localhost:8100`, admin paneli — `http://<slug>-admin.localhost:8100`
 
 Backend har ishga tushganda barcha biznes sxemalariga migratsiyalarni qo'llaydi va platforma akkauntini yangilaydi.
@@ -62,6 +64,7 @@ make test-backend   # pytest + flake8 (vaqtinchalik PostgreSQL konteyneri bilan)
 make test-bot       # pytest-asyncio
 make test-ui        # har bir UI: vitest + lint + build
 make test-mobile    # mobil ilova: flutter analyze + test
+make test-landing   # bizneslar sahifasi: ikki tilda yig'ish + tarjima, havola va forma tekshiruvi
 make e2e            # Playwright: o'zining vaqtinchalik stack'ida (8200), keyin o'chiriladi
 make schema         # docs/openapi/*.yaml ni koddan yangilash
 ```

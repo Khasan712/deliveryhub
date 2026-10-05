@@ -1,6 +1,14 @@
-import { MutationCache, QueryCache, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { ApiError } from './client'
-import { authApi, businessesApi, mobileAppApi } from './endpoints'
+import { authApi, businessesApi, leadsApi, mobileAppApi } from './endpoints'
 import type {
   Bot,
   BotRole,
@@ -9,6 +17,9 @@ import type {
   BusinessList,
   BusinessProfilePatch,
   BusinessStatus,
+  LeadCounts,
+  LeadPatch,
+  LeadStatus,
   MobileApp,
   PlatformUser,
 } from './types'
@@ -19,6 +30,9 @@ export const queryKeys = {
   business: (slug: string) => ['businesses', 'detail', slug] as const,
   slugCheck: (slug: string) => ['slug-check', slug] as const,
   mobileApp: ['mobile-app'] as const,
+  leadCounts: ['leads', 'counts'] as const,
+  leadLists: ['leads', 'list'] as const,
+  leadList: (status: LeadStatus | null, page: number) => ['leads', 'list', status ?? 'all', page] as const,
 }
 
 const BOT_ROLES: BotRole[] = ['client', 'admin']
@@ -240,5 +254,70 @@ export function useSetMobileApp() {
   return useMutation({
     mutationFn: (business: string | null) => mobileAppApi.set(business),
     onSuccess: (data: MobileApp) => client.setQueryData(queryKeys.mobileApp, data),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Applications (the form of our landing page)
+// ---------------------------------------------------------------------------
+
+/** Applications on a page of the list. */
+const LEADS_PAGE_SIZE = 20
+
+/** How often the counts of applications are re-read while the panel is open (tests shorten it). */
+export const leadsPolling = { intervalMs: 60_000 }
+
+function sameCounts(a: LeadCounts, b: LeadCounts) {
+  return (Object.keys(b) as LeadStatus[]).every((status) => a[status] === b[status])
+}
+
+/**
+ * How many applications there are of each status — the menu badge. Re-read every minute and whenever the window
+ * gets the focus back, so a new application shows up without a reload; when they change, the open list re-reads
+ * too, so the badge, the tabs and the list agree.
+ */
+export function useLeadCounts() {
+  const client = useQueryClient()
+  return useQuery({
+    queryKey: queryKeys.leadCounts,
+    queryFn: async ({ signal }) => {
+      // The smallest page: only the counts that come with it are needed.
+      const { counts } = await leadsApi.list({ pageSize: 1 }, signal)
+      const known = client.getQueryData<LeadCounts>(queryKeys.leadCounts)
+      if (known && !sameCounts(known, counts)) void client.invalidateQueries({ queryKey: queryKeys.leadLists })
+      return counts
+    },
+    refetchInterval: leadsPolling.intervalMs,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * A page of applications, newest first (`status` null — all of them). Every answer brings the counts of all
+ * applications, and they go to the menu badge too. Another tab or page keeps the last answer as a placeholder while
+ * it loads (`isPlaceholderData`).
+ */
+export function useLeads(status: LeadStatus | null, page: number) {
+  const client = useQueryClient()
+  return useQuery({
+    queryKey: queryKeys.leadList(status, page),
+    queryFn: async ({ signal }) => {
+      const list = await leadsApi.list({ status, page, pageSize: LEADS_PAGE_SIZE }, signal)
+      client.setQueryData(queryKeys.leadCounts, list.counts)
+      return list
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * Changes the status or the note of an application. Settles once the lists are re-read: the application may have
+ * moved to another tab, and the new counts reach the tabs and the badge with them.
+ */
+export function useUpdateLead() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: LeadPatch }) => leadsApi.update(id, patch),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.leadLists }),
   })
 }

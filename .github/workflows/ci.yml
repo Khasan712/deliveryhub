@@ -80,6 +80,21 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  landing:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
   mobile:
     runs-on: ubuntu-latest
     defaults:
@@ -98,7 +113,7 @@ jobs:
 
   images:
     runs-on: ubuntu-latest
-    needs: [backend, bot, ui]
+    needs: [backend, bot, ui, landing]
     steps:
       - uses: actions/checkout@v7
       - name: Every Dockerfile builds

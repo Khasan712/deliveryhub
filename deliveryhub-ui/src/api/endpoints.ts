@@ -9,6 +9,10 @@ import type {
   BusinessProfilePatch,
   BusinessStatus,
   Credentials,
+  Lead,
+  LeadList,
+  LeadPatch,
+  LeadStatus,
   MobileApp,
   Place,
   PlatformUser,
@@ -68,4 +72,23 @@ export const businessesApi = {
 export const mobileAppApi = {
   get: () => request<MobileApp>('GET', '/mobile-app'),
   set: (business: string | null) => request<MobileApp>('PUT', '/mobile-app', { json: { business } }),
+}
+
+interface LeadsQuery {
+  /** Left out or null — all of them. */
+  status?: LeadStatus | null
+  page?: number
+  pageSize: number
+}
+
+/** Applications from the form of our landing page, newest first. */
+export const leadsApi = {
+  list: ({ status, page, pageSize }: LeadsQuery, signal?: AbortSignal) => {
+    const query = new URLSearchParams()
+    if (status) query.set('status', status)
+    if (page) query.set('page', String(page))
+    query.set('page_size', String(pageSize))
+    return request<LeadList>('GET', `/leads?${query}`, { signal })
+  },
+  update: (id: number, patch: LeadPatch) => request<Lead>('PATCH', `/leads/${id}`, { json: patch }),
 }

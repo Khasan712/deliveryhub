@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { preloadPages } from '../pages/lazy'
-import { useLogout, useMe } from '../api/queries'
+import { useLeadCounts, useLogout, useMe } from '../api/queries'
 import { cx } from '../lib/cx'
 import { errorMessage } from '../lib/errors'
 import { initialOf } from '../lib/format'
 import { formatPhone } from '../lib/phone'
 import { BrandMark } from './BrandMark'
-import { BuildingIcon, LogoutIcon, PhoneIcon, PlusIcon } from './icons'
+import { BuildingIcon, InboxIcon, LogoutIcon, PhoneIcon, PlusIcon } from './icons'
 import { buttonClass } from './ui/styles'
 import { Spinner } from './ui/Spinner'
 import { useToast } from './ui/toast'
@@ -60,11 +60,28 @@ function useFocusOnNavigation(pathname: string) {
 
 const NAV = [
   { to: '/', label: 'Bizneslar', icon: BuildingIcon },
+  { to: '/leads', label: 'Arizalar', icon: InboxIcon },
   { to: '/mobile', label: 'Mobil ilova', icon: PhoneIcon },
 ]
 
+/** The number of new applications on their menu item: next to the label, over the icon where only icons fit. */
+function NavBadge({ count }: { count: number }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-indigo-600 px-1 text-[11px] leading-none font-extrabold text-white tabular-nums max-md:absolute max-md:top-0 max-md:right-0 max-md:ring-2 max-md:ring-white"
+      >
+        {count > 99 ? '99+' : count}
+      </span>
+      <span className="sr-only">, {count} ta yangi</span>
+    </>
+  )
+}
+
 export function AppLayout() {
   const { data: user } = useMe()
+  const newLeads = useLeadCounts().data?.new ?? 0
   const logout = useLogout()
   const toast = useToast()
   const { pathname } = useLocation()
@@ -100,8 +117,9 @@ export function AppLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5 rounded-xl">
             <BrandMark />
-            <span className="font-extrabold tracking-tight">
-              DeliveryHub <span className="font-semibold text-slate-400 max-sm:sr-only">platforma</span>
+            {/* The words take the room the menu needs on narrow screens: phones show the mark only. */}
+            <span className="font-extrabold tracking-tight max-sm:sr-only">
+              DeliveryHub <span className="font-semibold text-slate-400 max-lg:sr-only">platforma</span>
             </span>
           </Link>
           <nav aria-label="Asosiy menyu" className="flex items-center gap-1 sm:ml-3">
@@ -111,14 +129,15 @@ export function AppLayout() {
                 to={to}
                 aria-current={pathname === to ? 'page' : undefined}
                 className={cx(
-                  'flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-semibold transition sm:px-3',
+                  'relative flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-semibold transition sm:px-3',
                   pathname === to
                     ? 'bg-slate-100/80 text-slate-900 hover:bg-slate-200/70'
                     : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900',
                 )}
               >
-                <Icon size={17} className="sm:hidden" />
-                <span className="max-sm:sr-only">{label}</span>
+                <Icon size={17} className="md:hidden" />
+                <span className="max-md:sr-only">{label}</span>
+                {to === '/leads' && newLeads > 0 && <NavBadge count={newLeads} />}
               </Link>
             ))}
           </nav>
@@ -133,7 +152,7 @@ export function AppLayout() {
             </Link>
             <div className="flex items-center gap-2 border-l border-slate-200 pl-2 sm:pl-3">
               {user && (
-                <div className="hidden items-center gap-2.5 md:flex">
+                <div className="hidden items-center gap-2.5 lg:flex">
                   <span
                     aria-hidden="true"
                     className="grid size-8 place-items-center rounded-full bg-slate-900 text-xs font-extrabold text-white"

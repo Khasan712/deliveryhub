@@ -1,7 +1,17 @@
 // A small in-memory Platform API that follows docs/api.md (session + CSRF, error shapes, every endpoint the
 // panel uses). Tests arrange `backend.state` and inspect `backend.state.requests`.
 import { http, HttpResponse } from 'msw'
-import type { Bot, BotRole, BusinessCard, BusinessDetail, MobileApp, Place, PlatformUser } from '../api/types'
+import type {
+  Bot,
+  BotRole,
+  BusinessCard,
+  BusinessDetail,
+  Lead,
+  LeadStatus,
+  MobileApp,
+  Place,
+  PlatformUser,
+} from '../api/types'
 import { DOMAIN, STAFF, STAFF_PASSWORD } from './fixtures'
 
 export interface RecordedRequest {
@@ -28,6 +38,8 @@ interface State {
   geo: { address: string; places: Place[]; down: boolean }
   /** Slug of the business our mobile app opens. */
   mobileApp: string | null
+  /** Applications from our landing page, in any order (the API answers newest first). */
+  leads: Lead[]
   requests: RecordedRequest[]
 }
 
@@ -50,6 +62,7 @@ function initialState(): State {
       down: false,
     },
     mobileApp: null,
+    leads: [],
     requests: [],
   }
 }
@@ -223,6 +236,35 @@ function mobileApp(): MobileApp {
       store: { android: null, ios: null },
     },
   }
+}
+
+const LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'won', 'lost']
+/** The server's clock for changes of applications. */
+const NOW = '2026-10-05T12:00:00+05:00'
+
+/**
+ * Like the API's paginator: `page_size` 20 (1–100); a page that is not a number gives the first page, one out of range
+ * the last.
+ */
+function paginate<T>(items: T[], url: URL) {
+  const size = Math.min(Math.max(Number.parseInt(url.searchParams.get('page_size') ?? '', 10) || 20, 1), 100)
+  const pages = Math.max(Math.ceil(items.length / size), 1)
+  const asked = Number.parseInt(url.searchParams.get('page') ?? '', 10)
+  const page = Number.isNaN(asked) ? 1 : asked < 1 || asked > pages ? pages : asked
+  return { count: items.length, page, pages, results: items.slice((page - 1) * size, page * size) }
+}
+
+function leadErrors(body: Body): Record<string, string[]> {
+  const fields: Record<string, string[]> = {}
+  if ('status' in body && !LEAD_STATUSES.includes(body.status as LeadStatus)) {
+    fields.status = [body.status === null ? 'null' : 'invalid_choice']
+  }
+  if ('note' in body) {
+    if (typeof body.note !== 'string') fields.note = [body.note === null ? 'null' : 'invalid']
+    // Trimmed first, counted in characters (not UTF-16 units), like Django.
+    else if (Array.from(body.note.trim()).length > 1000) fields.note = ['max_length']
+  }
+  return fields
 }
 
 export const handlers = [
@@ -418,5 +460,33 @@ export const handlers = [
     if (business && business.status !== 'active') return validation({ business: ['suspended'] })
     backend.state.mobileApp = slug
     return HttpResponse.json(mobileApp())
+  }),
+
+  // --- applications (the form of our landing page) ---------------------------------------------------------
+  route('get', '/leads', ({ url }) => {
+    const status = url.searchParams.get('status')
+    if (status && !LEAD_STATUSES.includes(status as LeadStatus)) return validation({ status: ['invalid_choice'] })
+    const all = backend.state.leads.toSorted(
+      (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id,
+    )
+    const counts = Object.fromEntries(
+      LEAD_STATUSES.map((each) => [each, all.filter((lead) => lead.status === each).length]),
+    )
+    return HttpResponse.json({ ...paginate(status ? all.filter((lead) => lead.status === status) : all, url), counts })
+  }),
+  route('patch', '/leads/:id', ({ body, params }) => {
+    const lead = backend.state.leads.find((each) => String(each.id) === params.id)
+    if (!lead) return error(404, 'not_found')
+    const fields = leadErrors(body)
+    if (Object.keys(fields).length > 0) return validation(fields)
+    const status = body.status as LeadStatus | undefined
+    if (status) {
+      // Leaving "new" for the first time: when we called.
+      if (status !== 'new' && lead.contacted_at === null) lead.contacted_at = NOW
+      lead.status = status
+    }
+    if (typeof body.note === 'string') lead.note = body.note.trim()
+    lead.updated_at = NOW
+    return HttpResponse.json(lead)
   }),
 ]

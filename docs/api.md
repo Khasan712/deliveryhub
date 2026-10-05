@@ -327,6 +327,32 @@ phone, the way its customers would use it.
   `MOBILE_MIN_VERSION`, `MOBILE_ANDROID_URL`, `MOBILE_IOS_URL`) asks to be updated from its store — needed only for
   changes of the app itself: the shop inside it is always the one on the server.
 
+### Applications
+A business that wants its own shop leaves an application on our landing page (`landing/`, served on this host to
+visitors without a session: `/`, `/ru`); our staff see it in the panel ("Arizalar") and call back.
+* `POST /api/v1/leads` — **no sign-in** (the landing's form):
+  ```json
+  {"name": "Aziz", "phone": "+998 90 123 45 67", "business": "Navro'z Choyxona", "kind": "cafe", "comment": "", "lang": "uz"}
+  ```
+  → `201 {"ok": true}`. `business`, `kind` (`cafe` | `fastfood` | `shop` | `other`), `comment` and `lang` (`uz` | `ru`,
+  the language of the page) may be left out. Errors: `validation` (`fields.name`: `required` / `blank` /
+  `max_length`; `fields.phone`: `required` / `blank` / `invalid` — Uzbek numbers only;
+  `fields.kind`, `fields.lang`: `invalid_choice`), `429 too_many_requests` (10 an hour from
+  one address). The same phone again within a day, while its application is still `new`, updates that application
+  instead of making a second one. A filled hidden field `website` (a bot) is answered `201` and dropped.
+* `GET /api/v1/leads?status=new|contacted|won|lost` *(paginated, newest first; without `status` — all)* →
+  `{"count", "page", "pages", "results": [Lead], "counts": {"new": 3, "contacted": 1, "won": 0, "lost": 0}}`
+  (`counts` — of all applications, for the tabs and the badge of new ones).
+* `PATCH /api/v1/leads/{id}` `{"status"?, "note"?}` → `Lead`. Leaving `new` sets `contacted_at` (once). Errors:
+  `validation` (`fields.status`: `invalid_choice`; `fields.note`: `max_length` — 1000).
+
+`Lead`:
+```json
+{"id": 7, "name": "Aziz", "phone": "+998901234567", "business": "Navro'z Choyxona", "kind": "cafe" | "fastfood" | "shop" | "other" | "",
+ "comment": "", "lang": "uz" | "ru", "status": "new" | "contacted" | "won" | "lost", "note": "",
+ "created_at": "...", "updated_at": "...", "contacted_at": "..." | null}
+```
+
 ### Bots of a business
 * `POST /api/v1/businesses/{slug}/bots/setup-link` → `{"url": "https://t.me/<platform bot>?start=setup_...", "qr_svg", "expires_at"}`
   — the owner opens it and creates both bots in two taps (Telegram Managed Bots). `400 platform_bot_missing`.

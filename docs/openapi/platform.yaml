@@ -438,6 +438,102 @@ paths:
               schema:
                 $ref: '#/components/schemas/GeoSearch'
           description: ''
+  /api/v1/leads:
+    get:
+      operationId: leads_list
+      description: |-
+        GET — our staff; POST — anyone (the landing page's form): no session, so no CSRF either, even when one of us
+        sends the form while signed in.
+      summary: Applications, newest first
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - contacted
+          - lost
+          - new
+          - won
+        description: Only these; all without it
+      tags:
+      - leads
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Leads'
+          description: ''
+    post:
+      operationId: leads_create
+      description: |-
+        GET — our staff; POST — anyone (the landing page's form): no session, so no CSRF either, even when one of us
+        sends the form while signed in.
+      summary: Leave an application (the landing page's form; no sign-in)
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LeadCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LeadCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadCreated'
+          description: ''
+  /api/v1/leads/{id}:
+    patch:
+      operationId: leads_partial_update
+      summary: Change the status of an application or our note on it
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadUpdateRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
   /api/v1/mobile-app:
     get:
       operationId: mobile_app_retrieve
@@ -543,6 +639,9 @@ components:
       required:
       - android
       - ios
+    BlankEnum:
+      enum:
+      - ''
     Bot:
       type: object
       properties:
@@ -608,7 +707,7 @@ components:
         name:
           type: string
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/BusinessStatusEnum'
         logo:
           type: string
           nullable: true
@@ -729,7 +828,7 @@ components:
         name:
           type: string
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/BusinessStatusEnum'
         logo:
           type: string
           nullable: true
@@ -799,6 +898,14 @@ components:
       - support_phone
       - tagline
       - working_hours
+    BusinessStatusEnum:
+      enum:
+      - active
+      - suspended
+      type: string
+      description: |-
+        * `active` - active
+        * `suspended` - suspended
     BusinessTotals:
       type: object
       properties:
@@ -874,6 +981,168 @@ components:
           items:
             $ref: '#/components/schemas/Place'
       required:
+      - results
+    KindEnum:
+      enum:
+      - cafe
+      - fastfood
+      - shop
+      - other
+      type: string
+      description: "* `` - \n* `cafe` - cafe\n* `fastfood` - fastfood\n* `shop` -
+        shop\n* `other` - other"
+    LangEnum:
+      enum:
+      - uz
+      - ru
+      type: string
+      description: |-
+        * `uz` - uz
+        * `ru` - ru
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        business:
+          type: string
+        kind:
+          oneOf:
+          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        comment:
+          type: string
+        lang:
+          allOf:
+          - $ref: '#/components/schemas/LangEnum'
+          description: |-
+            The language of its page
+
+            * `uz` - uz
+            * `ru` - ru
+        status:
+          $ref: '#/components/schemas/LeadStatusEnum'
+        note:
+          type: string
+          description: Our staff's
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        contacted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it first left "new"
+      required:
+      - business
+      - comment
+      - contacted_at
+      - created_at
+      - id
+      - kind
+      - lang
+      - name
+      - note
+      - phone
+      - status
+      - updated_at
+    LeadCounts:
+      type: object
+      properties:
+        new:
+          type: integer
+        contacted:
+          type: integer
+        won:
+          type: integer
+        lost:
+          type: integer
+      required:
+      - contacted
+      - lost
+      - new
+      - won
+    LeadCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 30
+        business:
+          type: string
+          default: ''
+          maxLength: 120
+        kind:
+          default: ''
+          oneOf:
+          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        comment:
+          type: string
+          default: ''
+          maxLength: 1000
+        lang:
+          allOf:
+          - $ref: '#/components/schemas/LangEnum'
+          default: uz
+        website:
+          type: string
+          default: ''
+          description: 'Hidden on the page and left empty by people: a trap for bots'
+      required:
+      - name
+      - phone
+    LeadCreated:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+      - ok
+    LeadStatusEnum:
+      enum:
+      - new
+      - contacted
+      - won
+      - lost
+      type: string
+      description: |-
+        * `new` - new
+        * `contacted` - contacted
+        * `won` - won
+        * `lost` - lost
+    Leads:
+      type: object
+      properties:
+        counts:
+          $ref: '#/components/schemas/LeadCounts'
+        count:
+          type: integer
+        page:
+          type: integer
+        pages:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+      required:
+      - count
+      - counts
+      - page
+      - pages
       - results
     Links:
       type: object
@@ -999,6 +1268,14 @@ components:
           type: string
           format: binary
           nullable: true
+    PatchedLeadUpdateRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/LeadStatusEnum'
+        note:
+          type: string
+          maxLength: 1000
     Place:
       type: object
       properties:
@@ -1094,19 +1371,11 @@ components:
       - orders_today
       - orders_total
       - revenue_today
-    StatusEnum:
-      enum:
-      - active
-      - suspended
-      type: string
-      description: |-
-        * `active` - active
-        * `suspended` - suspended
     StatusRequest:
       type: object
       properties:
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/BusinessStatusEnum'
       required:
       - status
     WorkingHours:

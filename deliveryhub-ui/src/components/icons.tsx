@@ -301,6 +301,15 @@ export function BuildingIcon(props: IconProps) {
   )
 }
 
+export function InboxIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 13h5l1.5 2.5h5L16 13h5" />
+      <path d="M5.4 5.6A2 2 0 0 1 7.2 4.5h9.6a2 2 0 0 1 1.8 1.1L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z" />
+    </Svg>
+  )
+}
+
 export function ChevronDownIcon(props: IconProps) {
   return (
     <Svg {...props}>

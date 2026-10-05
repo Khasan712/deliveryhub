@@ -113,3 +113,34 @@ class MobileApp(models.Model):
     @classmethod
     def current(cls):
         return cls.objects.select_related('business').get_or_create(pk=1)[0]
+
+
+class Lead(models.Model):
+    """An application from the form of our landing page (landing/): a business that wants its own shop. Our staff
+    call it back and keep its status in our panel ("Arizalar")."""
+    STATUS_NEW = 'new'
+    STATUS_CONTACTED = 'contacted'
+    STATUS_WON = 'won'
+    STATUS_LOST = 'lost'
+    STATUS_CHOICES = [(STATUS_NEW, 'Yangi'), (STATUS_CONTACTED, "Bog'lanildi"), (STATUS_WON, "Mijoz bo'ldi"),
+                      (STATUS_LOST, 'Rad etildi')]
+    KIND_CHOICES = [('cafe', 'Kafe yoki restoran'), ('fastfood', 'Fast food'), ('shop', "Do'kon"), ('other', 'Boshqa')]
+    LANG_CHOICES = [('uz', "O'zbekcha"), ('ru', 'Русский')]
+
+    name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=20, db_index=True)
+    business = models.CharField(max_length=120, blank=True, default='')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, blank=True, default='')
+    comment = models.TextField(max_length=1000, blank=True, default='')
+    lang = models.CharField(max_length=2, choices=LANG_CHOICES, default='uz')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_NEW)
+    note = models.TextField(max_length=1000, blank=True, default='')  # our staff's, not the business's
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    contacted_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.name} {self.phone}'

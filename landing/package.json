@@ -1,0 +1,20 @@
+{
+  "name": "deliveryhub-landing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DeliveryHub's own page for businesses: the problem, the solution, a live demo and the application form",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:artifact": "node build.mjs --artifact",
+    "test": "node build.mjs && node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "node-html-parser": "^9.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

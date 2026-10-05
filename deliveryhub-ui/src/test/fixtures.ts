@@ -1,4 +1,4 @@
-import type { BusinessDetail, PlatformUser } from '../api/types'
+import type { BusinessDetail, Lead, PlatformUser } from '../api/types'
 
 export const DOMAIN = 'portex.uz'
 
@@ -64,6 +64,71 @@ export function sampleBusinesses(): BusinessDetail[] {
       stats: { orders_today: 0, revenue_today: 0, orders_total: 3, customers: 2 },
       bots: { client: null, admin: null },
       missing_roles: ['client', 'admin'],
+    }),
+  ]
+}
+
+export function makeLead(overrides: Partial<Lead> = {}): Lead {
+  return {
+    id: 3,
+    name: 'Aziz Karimov',
+    phone: '+998935551122',
+    business: "Navro'z Choyxona",
+    kind: 'cafe',
+    comment: "Menyuda 40 ta taom bor, o'zimiz yetkazib beramiz",
+    lang: 'uz',
+    status: 'new',
+    note: '',
+    created_at: '2026-10-05T09:30:00+05:00',
+    updated_at: '2026-10-05T09:30:00+05:00',
+    contacted_at: null,
+    ...overrides,
+  }
+}
+
+/**
+ * Four applications: two new ones (one from the Russian page), one we have called (only a name and a phone on it),
+ * one that became our customer.
+ */
+export function sampleLeads(): Lead[] {
+  return [
+    makeLead(),
+    makeLead({
+      id: 4,
+      name: 'Ольга Ким',
+      phone: '+998977001020',
+      business: 'Sushi Time',
+      kind: 'fastfood',
+      comment: 'Хотим принимать заказы через Telegram',
+      lang: 'ru',
+      created_at: '2026-10-05T10:15:00+05:00',
+      updated_at: '2026-10-05T10:15:00+05:00',
+    }),
+    makeLead({
+      id: 2,
+      name: 'Jasur',
+      phone: '+998901112244',
+      business: '',
+      kind: '',
+      comment: '',
+      status: 'contacted',
+      note: "Ertaga qayta qo'ng'iroq qilamiz",
+      created_at: '2026-10-04T18:05:00+05:00',
+      updated_at: '2026-10-04T19:00:00+05:00',
+      contacted_at: '2026-10-04T19:00:00+05:00',
+    }),
+    makeLead({
+      id: 1,
+      name: 'Malika Yusupova',
+      phone: '+998712003040',
+      business: 'Gul Market',
+      kind: 'shop',
+      comment: '',
+      status: 'won',
+      note: 'Shartnoma imzolandi',
+      created_at: '2026-10-02T11:00:00+05:00',
+      updated_at: '2026-10-02T12:30:00+05:00',
+      contacted_at: '2026-10-02T12:30:00+05:00',
     }),
   ]
 }

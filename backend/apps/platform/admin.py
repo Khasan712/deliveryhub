@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Business, BusinessBot, Domain
+from .models import Business, BusinessBot, Domain, Lead
 
 
 class DomainInline(admin.TabularInline):
@@ -20,3 +20,10 @@ class BusinessAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug', 'schema_name', 'status', 'created_at')
     search_fields = ('name', 'slug')
     inlines = [DomainInline, BotInline]
+
+
+@admin.register(Lead)
+class LeadAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'business', 'kind', 'status', 'created_at')
+    list_filter = ('status', 'kind', 'lang')
+    search_fields = ('name', 'phone', 'business')

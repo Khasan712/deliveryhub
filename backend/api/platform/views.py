@@ -1,7 +1,10 @@
 """Platform API: our own panel — businesses, their owners and bots (docs/api.md, Platform API)."""
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
+from django.db.models import Count
+from django.utils import timezone
 from django_tenants.utils import tenant_context
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers
@@ -13,14 +16,16 @@ from rest_framework.views import APIView
 from apps.core import images
 from apps.platform import provisioning
 from apps.platform.bots import BotInUse, connect_bot, create_setup_link, release_bot
-from apps.platform.models import Business, BusinessBot, MobileApp
+from apps.platform.models import Business, BusinessBot, Lead, MobileApp
 from apps.platform.overview import businesses, owner_of
 from apps.platform.telegram_api import TelegramError
 from ..common import geo
 from ..common.auth import BaseLoginView, SessionAuthentication, login_schema
 from ..common.errors import ApiError
+from ..common.pagination import Pagination
 from ..common.permissions import IsPlatformStaff
 from ..common.qr import qr_svg
+from ..common.ratelimit import client_ip, throttle
 from ..common.representations import iso
 from . import serializers as s
 
@@ -263,3 +268,95 @@ class MobileAppView(PlatformView):
         mobile.business = data.validated_data['business']
         mobile.save()
         return self.answer(request)
+
+
+# ---------------------------------------------------------------------------
+# applications: the form of our landing page (landing/) → our staff call back
+# ---------------------------------------------------------------------------
+
+LEADS_PER_HOUR = 10  # from one address; mobile networks put many phones behind one
+SAME_LEAD_WINDOW = timedelta(days=1)
+
+LeadCounts = inline_serializer('LeadCounts', {status: serializers.IntegerField() for status, _ in Lead.STATUS_CHOICES})
+LeadList = inline_serializer('Leads', {
+    'count': serializers.IntegerField(), 'page': serializers.IntegerField(), 'pages': serializers.IntegerField(),
+    'results': s.LeadSerializer(many=True),
+    'counts': LeadCounts,
+})
+
+
+def lead_counts():
+    counted = dict(Lead.objects.order_by().values_list('status').annotate(n=Count('id')))
+    return {status: counted.get(status, 0) for status, _ in Lead.STATUS_CHOICES}
+
+
+class LeadsView(PlatformView):
+    """GET — our staff; POST — anyone (the landing page's form): no session, so no CSRF either, even when one of us
+    sends the form while signed in."""
+
+    def initialize_request(self, request, *args, **kwargs):
+        self.public = request.method == 'POST'
+        return super().initialize_request(request, *args, **kwargs)
+
+    def get_authenticators(self):
+        return [] if self.public else super().get_authenticators()
+
+    def get_permissions(self):
+        return [AllowAny()] if self.public else super().get_permissions()
+
+    @extend_schema(summary='Applications, newest first', operation_id='leads_list', responses=LeadList,
+                   parameters=[OpenApiParameter('status', str, enum=[key for key, _ in Lead.STATUS_CHOICES],
+                                                description='Only these; all without it'),
+                               OpenApiParameter('page', int), OpenApiParameter('page_size', int)])
+    def get(self, request):
+        leads = Lead.objects.all()
+        status = request.query_params.get('status')
+        if status:
+            if status not in dict(Lead.STATUS_CHOICES):
+                raise serializers.ValidationError({'status': [serializers.ErrorDetail('', code='invalid_choice')]})
+            leads = leads.filter(status=status)
+        pagination = Pagination()
+        page = pagination.paginate_queryset(leads, request, self)
+        response = pagination.get_paginated_response(s.LeadSerializer(page, many=True).data)
+        response.data['counts'] = lead_counts()
+        return response
+
+    @extend_schema(summary='Leave an application (the landing page\'s form; no sign-in)', auth=[],
+                   request=s.LeadCreateSerializer,
+                   responses={201: inline_serializer('LeadCreated', {'ok': serializers.BooleanField()})})
+    def post(self, request):
+        throttle(f'lead:{client_ip(request)}', LEADS_PER_HOUR, 3600)
+        data = s.LeadCreateSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        fields = dict(data.validated_data)
+        if fields.pop('website'):
+            return Response({'ok': True}, status=201)  # a bot filled the field people never see
+        # Sent twice (or corrected) before we called: one application, with the newest details.
+        same = Lead.objects.filter(phone=fields['phone'], status=Lead.STATUS_NEW,
+                                   created_at__gte=timezone.now() - SAME_LEAD_WINDOW).first()
+        if same:
+            for key, value in fields.items():
+                if value:
+                    setattr(same, key, value)
+            same.save()
+        else:
+            Lead.objects.create(**fields)
+        return Response({'ok': True}, status=201)
+
+
+class LeadView(PlatformView):
+    @extend_schema(summary='Change the status of an application or our note on it',
+                   request=s.LeadUpdateSerializer, responses=s.LeadSerializer)
+    def patch(self, request, pk):
+        lead = get_object_or_404(Lead, pk=pk)
+        data = s.LeadUpdateSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        status = data.validated_data.get('status')
+        if status:
+            if status != Lead.STATUS_NEW and lead.contacted_at is None:
+                lead.contacted_at = timezone.now()
+            lead.status = status
+        if 'note' in data.validated_data:
+            lead.note = data.validated_data['note']
+        lead.save()
+        return Response(s.LeadSerializer(lead).data)

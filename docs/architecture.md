@@ -11,6 +11,8 @@ deliveryhub/
 ├── client-ui/        React + Vite + TS — customer shop + Telegram Mini App          (<slug>.<domain>)
 ├── admin-ui/         React + Vite + TS — business admin panel + admin Mini App     (<slug>-admin.<domain>)
 ├── deliveryhub-ui/   React + Vite + TS — our platform panel                        (deliveryhub.<domain>)
+├── landing/          HTML + CSS + JS — our page for businesses, uz/ru, with the application form
+│                     (deliveryhub.<domain>: "/" for visitors without a session, "/ru")
 ├── mobile/           Flutter — the Android / iOS app: the shop of the business chosen in our panel, in a web view
 ├── docker-compose.yml, Caddyfile   — how the parts run together
 └── docs/             architecture.md, api.md
@@ -19,7 +21,7 @@ deliveryhub/
 ## How the parts talk
 
 ```
-browser / Telegram / mobile app ──► web (Caddy) ──┬── client-ui / admin-ui / deliveryhub-ui containers (by host)
+browser / Telegram / mobile app ──► web (Caddy) ──┬── client-ui / admin-ui / deliveryhub-ui / landing containers (by host)
                                       ├── /api/*   ──► backend (gunicorn)
                                       └── /media/* ──► media volume (product images, logos)
 
@@ -52,6 +54,10 @@ browsers ──► OpenFreeMap (map tiles of the checkout and our panel)
   reloads itself onto a new build at a calm moment (`/version.json`, `src/lib/updates.ts`). The shell only does what
   a web page cannot: links to Telegram, the phone and maps go to their apps, Android's back button and location
   permission, the status bar in the shop's colours.
+* **Our page for businesses** (`landing/`) is a static page in two languages on the platform host: `/` for a visitor
+  without a session cookie (our staff, signed in, get the panel at the same address), `/uz`, `/ru` for anyone. Its
+  form sends `POST /api/v1/leads` (no account; rate limited, a hidden field traps bots); our staff see the
+  applications in the panel ("Arizalar", `GET/PATCH /api/v1/leads`) and call back.
 * **Speed on phones**: photos are stored as WebP at the size they are shown (`thumb` for cards, `image` for the product
   sheet), `/media` files are cached for good, API `GET`s revalidate with ETags (`304` without a body), the shop asks
   for its menu before the Telegram SDK has loaded and keeps the last menu for an instant start.
@@ -64,4 +70,5 @@ browsers ──► OpenFreeMap (map tiles of the checkout and our panel)
 * The API is the contract (`docs/api.md`, OpenAPI at `/api/v1/schema/` on each host).
 * Same-origin everywhere: every UI calls `/api/v1/...` on its own host, so cookies + CSRF work and no CORS is needed.
 * Tests at every layer: backend (pytest + Django), bot (pytest-asyncio), UIs (Vitest + Testing Library + MSW),
-  mobile app (flutter test); the busiest endpoints have a query-count test (no query per row).
+  mobile app (flutter test), landing (node:test against its build); the busiest endpoints have a query-count test
+  (no query per row).
