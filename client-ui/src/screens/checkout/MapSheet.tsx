@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useEffectEvent, useRef, useState, type FormE
 import { reverseGeocode, searchPlaces } from '../../api/shop'
 import type { Place } from '../../api/types'
 import { Button } from '../../components/Button'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Icon } from '../../components/Icon'
 import { Sheet, SheetGrabber, SheetHeader } from '../../components/Sheet'
 import { useI18n } from '../../i18n/i18n'
@@ -220,6 +221,18 @@ function MapPicker({ value, onPick }: Pick<MapSheetProps, 'value' | 'onPick'>) {
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden bg-surface-2">
+        <ErrorBoundary
+          fallback={
+            <div className="grid size-full place-items-center p-8 text-center">
+              <div>
+                <p className="text-[15px] font-bold text-muted">{t('mapLoadFailed')}</p>
+                <Button variant="dark" size="md" icon="refresh" className="mt-4" onClick={() => window.location.reload()}>
+                  {t('retry')}
+                </Button>
+              </div>
+            </div>
+          }
+        >
         <Suspense
           fallback={
             <div className="grid size-full place-items-center">
@@ -249,6 +262,7 @@ function MapPicker({ value, onPick }: Pick<MapSheetProps, 'value' | 'onPick'>) {
             }
           />
         </Suspense>
+        </ErrorBoundary>
         <CenterPin lifted={moving} />
         <button
           type="button"

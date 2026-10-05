@@ -23,9 +23,10 @@
 		reverse_proxy backend:8000
 	}
 
+	# An uploaded file never changes at its address (a new upload gets a new name), so it is cached for good.
 	handle_path /media/* {
 		root * /srv/media
-		header Cache-Control "public, max-age=86400"
+		header Cache-Control "public, max-age=31536000, immutable"
 		file_server
 	}
 

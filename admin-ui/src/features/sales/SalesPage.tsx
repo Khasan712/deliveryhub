@@ -5,7 +5,7 @@ import { useCreateSale, useSales } from '../../api/queries'
 import type { SalesProduct, VoiceState } from '../../api/types'
 import { Money } from '../../components/badges'
 import { useToast } from '../../components/feedback/feedback'
-import { IconCheck } from '../../components/icons'
+import { IconCheck, IconChevronDown } from '../../components/icons'
 import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -27,7 +27,7 @@ import { VoiceController, displayEngine, type UnderstandInput } from './voice/co
 import { applyVoiceResult, voiceErrorKey, type Snapshot } from './voiceResult'
 
 export function SalesPage() {
-  const { t, lang } = useI18n()
+  const { t, tn, lang } = useI18n()
   const toast = useToast()
   const sales = useSales()
   const create = useCreateSale()
@@ -126,6 +126,18 @@ export function SalesPage() {
     },
     [dispatch, flash],
   )
+
+  const setQuantity = useCallback(
+    (product: SalesProduct, quantity: number) => {
+      dispatch({ type: 'qty', productId: product.id, quantity })
+      if (quantity > 0) flash(`item-${product.id}`)
+    },
+    [dispatch, flash],
+  )
+
+  // Phones show the order panel above the tiles: the bar at the bottom brings it back into view.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const showOrder = () => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   const reset = useCallback(() => {
     const controller = controllerRef.current
@@ -250,17 +262,19 @@ export function SalesPage() {
             cardRef={cardRef}
             waveRef={waveRef}
           />
-          <OrderPanel
-            state={state}
-            lines={lines}
-            count={count}
-            total={total}
-            dispatch={dispatch}
-            isFlashed={isFlashed}
-            onCreate={createOrder}
-            onReset={reset}
-            creating={create.isPending}
-          />
+          <div ref={panelRef} className="scroll-mt-24">
+            <OrderPanel
+              state={state}
+              lines={lines}
+              count={count}
+              total={total}
+              dispatch={dispatch}
+              isFlashed={isFlashed}
+              onCreate={createOrder}
+              onReset={reset}
+              creating={create.isPending}
+            />
+          </div>
         </div>
         <div className="xl:sticky xl:top-24 xl:order-1 xl:col-span-7">
           <ProductPicker
@@ -268,6 +282,7 @@ export function SalesPage() {
             categories={data.categories}
             items={state.items}
             onAdd={addProduct}
+            onQty={setQuantity}
             searchRef={searchRef}
           />
         </div>
@@ -281,10 +296,18 @@ export function SalesPage() {
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
           <div className="mx-auto flex max-w-3xl items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted">{t('total')}</p>
+            <button
+              type="button"
+              className="-my-1 -ml-2 min-w-0 flex-1 rounded-xl px-2 py-1 text-left transition-colors hover:bg-subtle"
+              onClick={showOrder}
+              aria-label={`${t('order_items')}: ${tn('items', count)}`}
+            >
+              <span className="flex items-center gap-1 text-xs text-muted">
+                {t('total')} · {tn('items', count)}
+                <IconChevronDown size={14} strokeWidth={2.4} className="rotate-180" />
+              </span>
               <Money value={total} className="block truncate text-lg font-bold text-fg" />
-            </div>
+            </button>
             <button
               type="button"
               className="create-btn w-auto! px-5!"
@@ -292,7 +315,9 @@ export function SalesPage() {
               onClick={createOrder}
             >
               <IconCheck size={18} strokeWidth={2.5} />
-              {t('create_order')}
+              {/* A narrow phone keeps the room for the total. */}
+              <span className="min-[420px]:hidden">{t('create')}</span>
+              <span className="max-[419px]:hidden">{t('create_order')}</span>
             </button>
           </div>
         </div>

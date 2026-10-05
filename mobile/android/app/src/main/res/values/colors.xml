@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The shop's own background while the app starts (its brand colours come right after). -->
+    <color name="launch_background">#F6F5F2</color>
+</resources>

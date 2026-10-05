@@ -1,9 +1,11 @@
 """Bot API helpers shared by every bot: HTML messages without link previews, edits that ignore "message is not
 modified", callback answers and button removals that never fail the caller, voice downloads, error
-classification, and the factory of Bot objects (one HTTP session for all of them)."""
+classification, flood control, and the factory of Bot objects (one HTTP session for all of them)."""
 import asyncio
 import logging
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import aiohttp
 from aiogram import Bot
@@ -11,7 +13,8 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.session.middlewares.base import BaseRequestMiddleware
 from aiogram.client.telegram import TelegramAPIServer
 from aiogram.exceptions import (
-    TelegramAPIError, TelegramBadRequest, TelegramForbiddenError, TelegramNetworkError, TelegramRetryAfter,
+    ClientDecodeError, TelegramAPIError, TelegramBadRequest, TelegramForbiddenError, TelegramNetworkError,
+    TelegramRetryAfter, TelegramServerError, TelegramUnauthorizedError,
 )
 from aiogram.types import InlineKeyboardMarkup, LinkPreviewOptions, ReplyParameters
 
@@ -22,11 +25,26 @@ logger = logging.getLogger('bots')
 PARSE_MODE = 'HTML'
 REQUEST_TIMEOUT = 20
 MAX_RETRY_AFTER = 30
+# How long a bot's background rounds pause after Telegram did not answer or failed (flood control names its own).
+BACKOFF_SECONDS = 10
 TOKEN_RE = re.compile(r'\d{3,}:[A-Za-z0-9_-]{20,}')
+# What a Bot API call may raise: Telegram's error answer, no answer at all, or an answer that is not the Bot API's
+# JSON (e.g. the HTML error page of a proxy — aiogram's ClientDecodeError is not a TelegramAPIError).
+ERRORS = (TelegramAPIError, ClientDecodeError)
 
 
 class DownloadError(Exception):
     """A voice message could not be fetched: missing, too large or a network problem."""
+
+
+class Backoff(Exception):
+    """Telegram is unreachable, failing or asked to slow down. A background round (staff cards, customer messages)
+    stops at once and the bot is left alone for `delay` seconds — instead of every remaining message waiting for
+    its own timeout or flood wait."""
+
+    def __init__(self, error):
+        super().__init__(describe(error))
+        self.delay = error.retry_after if isinstance(error, TelegramRetryAfter) else BACKOFF_SECONDS
 
 
 def hide_tokens(text):
@@ -36,6 +54,8 @@ def hide_tokens(text):
 
 def describe(exc):
     """A short description of an error, safe for logs and the database."""
+    if isinstance(exc, ClientDecodeError):  # its str() carries the whole answer (an HTML page)
+        return f'{exc.message}: {type(exc.original).__name__}'
     return hide_tokens(exc.message if isinstance(exc, TelegramAPIError) else exc)
 
 
@@ -47,6 +67,14 @@ def is_blocked(exc):
 def is_network(exc):
     """No answer from the Bot API (as opposed to an answer with an error code)."""
     return isinstance(exc, TelegramNetworkError)
+
+
+def is_retryable(exc):
+    """Trouble on Telegram's side — no answer, 5xx, an unreadable answer, flood control — or a bot token that does
+    not work (401): the request may work later, and the rest of a round would fail the same way (unlike "blocked",
+    "chat not found", "message is not modified")."""
+    return isinstance(exc, (TelegramNetworkError, TelegramServerError, TelegramRetryAfter, ClientDecodeError,
+                            TelegramUnauthorizedError))
 
 
 def is_not_modified(exc):
@@ -80,7 +108,7 @@ async def edit(bot: Bot, chat_id, message_id, text, markup=None):
 async def clear_buttons(bot: Bot, chat_id, message_id):
     try:
         await bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=no_buttons())
-    except TelegramAPIError:
+    except ERRORS:
         pass
 
 
@@ -88,21 +116,21 @@ async def delete(bot: Bot, chat_id, message_id):
     """Messages older than 48 hours cannot be deleted: their buttons are removed instead."""
     try:
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
-    except TelegramAPIError:
+    except ERRORS:
         await clear_buttons(bot, chat_id, message_id)
 
 
 async def answer(bot: Bot, callback_id, text=None, alert=False):
     try:
         await bot.answer_callback_query(callback_query_id=callback_id, text=text or '', show_alert=alert)
-    except TelegramAPIError:
+    except ERRORS:
         pass  # the query may be older than 15 minutes
 
 
 async def download(bot: Bot, file_id, max_bytes) -> bytes:
     try:
         info = await bot.get_file(file_id)
-    except TelegramAPIError as exc:
+    except ERRORS as exc:
         raise DownloadError(describe(exc)) from None
     if not info.file_path or (info.file_size or 0) > max_bytes:
         raise DownloadError('file is missing or too large')
@@ -116,14 +144,28 @@ async def download(bot: Bot, file_id, max_bytes) -> bytes:
     return data
 
 
+_flood_wait = ContextVar('flood_wait', default=True)
+
+
+@contextmanager
+def no_flood_wait():
+    """Inside: flood control raises TelegramRetryAfter at once. Background rounds hold row locks and serve many
+    chats — they stop (Backoff) and come back later instead of sleeping."""
+    token = _flood_wait.set(False)
+    try:
+        yield
+    finally:
+        _flood_wait.reset(token)
+
+
 class RetryAfterMiddleware(BaseRequestMiddleware):
-    """Flood control: when Telegram asks to wait a little, wait once and repeat the request."""
+    """Flood control: when Telegram asks to wait a little, wait once and repeat the request (not in no_flood_wait)."""
 
     async def __call__(self, make_request, bot, method):
         try:
             return await make_request(bot, method)
         except TelegramRetryAfter as exc:
-            if exc.retry_after > MAX_RETRY_AFTER:
+            if exc.retry_after > MAX_RETRY_AFTER or not _flood_wait.get():
                 raise
             await asyncio.sleep(exc.retry_after)
             return await make_request(bot, method)

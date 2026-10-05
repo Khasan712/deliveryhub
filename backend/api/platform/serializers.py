@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from apps.core import images
 from apps.platform import provisioning
 from apps.platform.bots import is_alive, missing_roles, platform_bot
 from apps.platform.current import url_for
@@ -110,6 +111,49 @@ class BusinessDetailSerializer(BusinessCardSerializer):
 
 
 # ---------------------------------------------------------------------------
+# the mobile app
+# ---------------------------------------------------------------------------
+
+class AppShopSerializer(serializers.Serializer):
+    """The shop the mobile app opens. Needs `request` in the context: the app is not on our host, so every address
+    is absolute."""
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    tagline = serializers.CharField()
+    logo = serializers.URLField(allow_null=True)
+    brand_color = serializers.CharField(help_text='"#rrggbb" or "" (the app then uses its own colour)')
+    url = serializers.URLField(help_text='The shop the app shows')
+
+    def to_representation(self, business):
+        request = self.context['request']
+        return {
+            'slug': business.slug,
+            'name': business.name,
+            'tagline': business.tagline,
+            'logo': request.build_absolute_uri(business.logo.url) if business.logo else None,
+            'brand_color': business.brand_color,
+            'url': url_for(request, business, Domain.KIND_SHOP),
+        }
+
+
+class AppStoreSerializer(serializers.Serializer):
+    android = serializers.URLField(allow_null=True)
+    ios = serializers.URLField(allow_null=True)
+
+
+class AppConfigSerializer(serializers.Serializer):
+    shop = AppShopSerializer(allow_null=True, help_text='null: no business chosen, or it is suspended')
+    min_version = serializers.CharField(help_text='An older app asks to be updated from the store')
+    store = AppStoreSerializer()
+
+
+class MobileAppSerializer(serializers.Serializer):
+    business = BusinessCardSerializer(allow_null=True, help_text='Chosen in our panel')
+    updated_at = serializers.DateTimeField()
+    config = AppConfigSerializer(help_text='Exactly what the app receives now')
+
+
+# ---------------------------------------------------------------------------
 # requests
 # ---------------------------------------------------------------------------
 
@@ -142,7 +186,7 @@ class BusinessProfileSerializer(serializers.Serializer):
     def apply(self, business):
         for field, value in self.validated_data.items():
             if field == 'logo':
-                business.logo = value or ''
+                business.logo = images.logo(value) if value else ''
             else:
                 setattr(business, field, value)
         business.save()
@@ -200,3 +244,17 @@ class PlatformUserSerializer(serializers.Serializer):
 
     def to_representation(self, user):
         return {'id': user.pk, 'phone_number': user.phone_number, 'first_name': user.first_name or ''}
+
+
+class MobileAppUpdateSerializer(serializers.Serializer):
+    business = serializers.SlugField(allow_null=True, help_text='Slug of an active business; null: none')
+
+    def validate_business(self, slug):
+        if slug is None:
+            return None
+        business = Business.objects.filter(slug=slug).first()
+        if business is None:
+            raise serializers.ValidationError('does_not_exist', code='does_not_exist')
+        if not business.is_active:
+            raise serializers.ValidationError('suspended', code='suspended')
+        return business

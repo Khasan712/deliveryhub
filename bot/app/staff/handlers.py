@@ -176,7 +176,10 @@ async def confirm(bot, db, business, staff, draft, callback_id=None):
         if callback_id:
             await api.answer(bot, callback_id, t(lang, 'created_toast', id=order_id))
         if order.status in cards.ACTIVE_STATUSES:
-            await service.push_order(session, bot, order, ticket, exclude_user_id=staff.user_id)
+            try:
+                await service.push_order(session, bot, schema, order, ticket, exclude_user_id=staff.user_id)
+            except api.Backoff as exc:  # accepted by its author already: it is not pushed again later
+                logger.warning('Order #%s: not every staff chat got the card: %s', order_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +236,10 @@ async def on_order_button(query: CallbackQuery, bot: Bot, db, business, staff, r
         if ticket:
             if message_id:
                 await service.remember_card(session, ticket.id, chat_id, message_id)
-            await service.refresh_cards(session, bot, order.id)
+            try:
+                await service.refresh_cards(session, bot, order.id)
+            except api.Backoff as exc:
+                logger.warning('Order #%s: card copies not refreshed: %s', order.id, exc)
 
 
 async def on_language(query: CallbackQuery, bot: Bot, db, business, staff, rest: str):

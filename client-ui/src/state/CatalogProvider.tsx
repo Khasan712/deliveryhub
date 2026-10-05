@@ -2,26 +2,21 @@ import { useQuery } from '@tanstack/react-query'
 import { isApiError } from '../api/client'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { applyBrandVariables, brandVariables } from '../lib/color'
-import { readStorage, removeStorage, writeStorage } from '../lib/storage'
+import { removeStorage, writeStorage } from '../lib/storage'
 import { useAuth } from './auth'
 import {
   buildSections,
   CatalogContext,
   fetchShop,
   popularProducts,
+  readCachedCatalog,
   shopQueryKey,
   type CatalogContextValue,
-  type ShopResult,
 } from './catalog'
 
 /** The server says the whole shop is gone (suspended business, unknown host): a cached menu must not hide it. */
 function isClosed(error: unknown) {
   return isApiError(error) && ['business_suspended', 'unknown_host'].includes(error.code)
-}
-
-interface CachedCatalog {
-  savedAt: number
-  data: ShopResult
 }
 
 /**
@@ -30,7 +25,7 @@ interface CachedCatalog {
  */
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const { token, syncFromShop } = useAuth()
-  const [cached] = useState(() => readStorage<CachedCatalog | null>('catalog', null))
+  const [cached] = useState(readCachedCatalog)
 
   const query = useQuery({
     queryKey: shopQueryKey,
@@ -39,8 +34,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     initialDataUpdatedAt: cached?.savedAt,
     staleTime: 60_000,
     // The offline copy is only a head start: always ask the server on start (fresh prices, and the
-    // stored token is validated by the `client` of the response).
-    refetchOnMount: 'always',
+    // stored token is validated by the `client` of the response) — main.tsx usually has asked already.
+    refetchOnMount: (current) => (current.state.dataUpdatedAt === cached?.savedAt ? 'always' : true),
   })
   const { data, dataUpdatedAt, error, refetch } = query
   const fresh = Boolean(data) && dataUpdatedAt !== cached?.savedAt

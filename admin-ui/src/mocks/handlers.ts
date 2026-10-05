@@ -444,6 +444,7 @@ export const handlers = [
               ? { id: category.id, name_uz: category.name_uz, name_ru: category.name_ru }
               : null,
         image: image === undefined ? (existing?.image ?? null) : image,
+        thumb: image === undefined ? (existing?.thumb ?? null) : image,
         frozen: isFrozen,
         // The moment of freezing is kept until the product returns to sale.
         frozen_at: !isFrozen ? null : existing?.frozen ? existing.frozen_at : new Date().toISOString(),
@@ -653,6 +654,7 @@ export const handlers = [
         unit_ru: product.unit?.name_ru ?? '',
         category_id: product.category?.id ?? null,
         image: product.image,
+        thumb: product.thumb,
         frozen: product.frozen,
       })),
       recent: orders.filter((order) => order.source === 'admin').reverse().slice(0, 8).map(saleSummary),

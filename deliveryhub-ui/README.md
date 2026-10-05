@@ -6,7 +6,10 @@ account, its place on the map) and manage it — status, profile, location, owne
 them in its admin panel. Uzbek UI. The place of a business is picked on a map (MapLibre
 GL + OpenFreeMap tiles, loaded only on those pages): a click or a dragged pin, a search (an address through
 `GET /geo/search`, or coordinates / a Yandex or Google Maps link pasted in); the address fills in from the point
-(`GET /geo/reverse`) and can be edited — customers see it for pickup. Talks only to the **Platform API** on its own host (`/api/v1/...`, see
+(`GET /geo/reverse`) and can be edited — customers see it for pickup. **Mobil ilova** (`/mobile`): which business
+our Android/iOS app (`../mobile`) opens — pick one of the active businesses (saved at once, `PUT /mobile-app`), with a
+live phone preview of its shop and what the app receives. After a deploy, a page that misses a lazy chunk of the old
+build reloads once. Talks only to the **Platform API** on its own host (`/api/v1/...`, see
 [`../docs/api.md`](../docs/api.md)): session cookie + `X-CSRFToken`.
 
 React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanStack Query 5 · Tailwind CSS 4 ·

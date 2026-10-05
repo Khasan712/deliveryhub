@@ -324,7 +324,9 @@ async def understand(catalog, state, text=None, audio=None, mime_type=None, lang
     if not is_configured():
         if not text:
             raise VoiceError('not_configured')
-        return sanitize(local_understand(catalog, state, text), catalog), 'local'
+        # Up to seconds of plain Python: in a thread, so that the other bots and chats are not held up.
+        result = await asyncio.to_thread(local_understand, catalog, state, text)
+        return sanitize(result, catalog), 'local'
 
     if audio and not text:
         try:

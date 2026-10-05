@@ -1,5 +1,8 @@
 import re
+from datetime import datetime, time, timedelta
 from decimal import Decimal
+
+from django.utils import timezone
 
 
 def parse_price(value):
@@ -20,6 +23,14 @@ def parse_price(value):
         integer_part = re.sub(r'[.,]', '', number[:decimal_part.start()])
         return int(round(float(f'{integer_part or 0}.{decimal_part.group(1)}')))
     return int(re.sub(r'[.,]', '', number) or 0)
+
+
+def created_on(day, until=None):
+    """Filter kwargs for rows created on a local calendar day (or from `day` through `until`). A range on the
+    column itself, unlike `created_at__date`, can use the index on created_at."""
+    def start(value):
+        return timezone.make_aware(datetime.combine(value, time.min))
+    return {'created_at__gte': start(day), 'created_at__lt': start((until or day) + timedelta(days=1))}
 
 
 def parse_quantity(value, default=1):

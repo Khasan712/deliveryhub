@@ -115,3 +115,16 @@ describe('an out-of-date menu at checkout', () => {
     expect((await screen.findAllByText(uz.closedNoticeNoTime)).length).toBeGreaterThan(0)
   })
 })
+
+describe('product photos', () => {
+  it('cards load the small copy, the product sheet the full photo', async () => {
+    const { user } = renderApp()
+    const card = await findCard('Klassik burger')
+    const small = card.querySelector('img')
+    expect(small).toHaveAttribute('src', '/media/burger_house/products/classic.thumb.jpg')
+
+    await user.click(within(card).getByRole('button', { name: 'Klassik burger' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Klassik burger' })
+    expect(sheet.querySelector('img')).toHaveAttribute('src', '/media/burger_house/products/classic.jpg')
+  })
+})

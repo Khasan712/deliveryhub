@@ -1,10 +1,10 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from apps.core.enums import OrderEnum
-from apps.core.models import Order
+from apps.core.models import Order, Product
 from apps.telegram.outbox import queue_order_status
 from ..serializers import OrderDetailSerializer, OrderStatusSerializer, OrderSummarySerializer
 from .base import StaffListView, StaffView, search_term
@@ -43,7 +43,8 @@ class OrderListView(StaffListView):
 
 
 def order_detail(pk):
-    return get_object_or_404(orders().select_related('created_by').prefetch_related('order_items__product'), pk=pk)
+    items = Prefetch('order_items__product', Product.objects.light())
+    return get_object_or_404(orders().select_related('created_by').prefetch_related(items), pk=pk)
 
 
 class OrderDetailView(StaffView):

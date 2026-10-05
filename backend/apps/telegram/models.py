@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Now
 from django.utils import timezone
 
@@ -101,7 +102,10 @@ class Outbox(models.Model):
     error = models.CharField(max_length=200, blank=True, default='', db_default='')
 
     class Meta:
-        indexes = [models.Index(fields=['sent_at', 'id'], name='adminbot_outbox_pending')]
+        # What the bot service polls every few seconds (bot/app/outbox.py): only the rows still to send, however
+        # long the history of sent and given-up ones grows. MAX_ATTEMPTS there is 5.
+        indexes = [models.Index(fields=['id'], condition=Q(sent_at__isnull=True, attempts__lt=5),
+                                name='adminbot_outbox_due')]
 
     def __str__(self):
         return f'{self.kind} #{self.order_id}'

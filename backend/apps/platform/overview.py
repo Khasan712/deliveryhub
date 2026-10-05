@@ -12,10 +12,11 @@ def businesses():
 
 def business_stats(business):
     from apps.core.models import Client, Order
+    from apps.core.utils import created_on
 
     with tenant_context(business):
         orders = Order.objects.exclude(status__in=(OrderEnum.new.value, OrderEnum.rejected.value))
-        today = list(orders.filter(created_at__date=timezone.localdate()).prefetch_related('order_items'))
+        today = list(orders.filter(**created_on(timezone.localdate())).prefetch_related('order_items'))
         return {
             'orders_today': len(today),
             'revenue_today': sum(order.get_total() for order in today),

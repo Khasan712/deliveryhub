@@ -6,12 +6,14 @@ from django_tenants.utils import tenant_context
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core import images
 from apps.platform import provisioning
 from apps.platform.bots import BotInUse, connect_bot, create_setup_link, release_bot
-from apps.platform.models import Business, BusinessBot
+from apps.platform.models import Business, BusinessBot, MobileApp
 from apps.platform.overview import businesses, owner_of
 from apps.platform.telegram_api import TelegramError
 from ..common import geo
@@ -91,7 +93,7 @@ class BusinessListView(PlatformView):
         except provisioning.ProvisioningError as exc:  # taken in the meantime
             raise ApiError('validation', fields={'slug': [exc.code]})
         if logo:
-            business.logo = logo
+            business.logo = images.logo(logo)
             business.save(update_fields=['logo'])
         return Response({
             'business': self.detail(businesses().get(pk=business.pk)),
@@ -216,3 +218,48 @@ class GeoReverseView(geo.GeoReverseMixin, PlatformView):
 
 class GeoSearchView(geo.GeoSearchMixin, PlatformView):
     pass
+
+
+# ---------------------------------------------------------------------------
+# the mobile app (mobile/): which shop it opens
+# ---------------------------------------------------------------------------
+
+def app_config(request):
+    business = MobileApp.current().business
+    shown = business if business and business.is_active else None
+    return {
+        'shop': s.AppShopSerializer(shown, context={'request': request}).data if shown else None,
+        'min_version': settings.MOBILE_MIN_VERSION,
+        'store': {'android': settings.MOBILE_ANDROID_URL or None, 'ios': settings.MOBILE_IOS_URL or None},
+    }
+
+
+class AppConfigView(APIView):
+    """Asked by the app on every start and return to the foreground; no account."""
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(summary='What the mobile app opens', responses=s.AppConfigSerializer)
+    def get(self, request):
+        return Response(app_config(request))
+
+
+class MobileAppView(PlatformView):
+    def answer(self, request):
+        mobile = MobileApp.current()
+        card = s.BusinessCardSerializer(mobile.business, context={'request': request}).data if mobile.business else None
+        return Response({'business': card, 'updated_at': iso(mobile.updated_at), 'config': app_config(request)})
+
+    @extend_schema(summary='Which business the mobile app shows', responses=s.MobileAppSerializer)
+    def get(self, request):
+        return self.answer(request)
+
+    @extend_schema(summary='Show another business in the mobile app (at once: the app asks on every start)',
+                   request=s.MobileAppUpdateSerializer, responses=s.MobileAppSerializer)
+    def put(self, request):
+        data = s.MobileAppUpdateSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        mobile = MobileApp.current()
+        mobile.business = data.validated_data['business']
+        mobile.save()
+        return self.answer(request)

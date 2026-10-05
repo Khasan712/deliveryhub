@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Count, F, Func, Value
+from django.db.models import Count, F, Func, Prefetch, Value
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers
@@ -44,6 +44,9 @@ TELEGRAM_LOGIN_TTL = timedelta(minutes=5)
 POPULAR_COUNT = 8
 POPULAR_CACHE_SECONDS = 5 * 60
 ORDERS_PER_10_MINUTES = 10
+# A checkout sends a random Idempotency-Key; a repeat of it (an answer lost on a bad network) gets the same order.
+IDEMPOTENCY_SECONDS = 24 * 3600
+IDEMPOTENCY_KEY_RE = re.compile(r'^[A-Za-z0-9_-]{8,64}$')
 
 
 class ShopView(APIView):
@@ -95,7 +98,7 @@ class ShopCatalogView(ShopView):
         'client': s.ClientSerializer(allow_null=True),
     }))
     def get(self, request):
-        products = list(Product.objects.select_related('measure').order_by('category_id', 'id'))
+        products = list(Product.objects.light().select_related('measure').order_by('category_id', 'id'))
         category_ids = {product.category_id for product in products if product.category_id}
         product_ids = {product.pk for product in products}
         bot = client_bot()
@@ -321,7 +324,8 @@ class MeView(CustomerView):
 def client_orders(client):
     return (
         Order.objects.filter(client=client).exclude(status=OrderEnum.new.value)
-        .prefetch_related('order_items__product').order_by('-created_at')
+        .select_related('client').prefetch_related(Prefetch('order_items__product', Product.objects.light()))
+        .order_by('-created_at')
     )
 
 
@@ -342,8 +346,30 @@ class OrdersView(CustomerView):
         orders = client_orders(request.user.client)[:50]
         return Response({'orders': s.OrderSerializer(orders, many=True).data})
 
-    @extend_schema(summary='Place an order', request=s.OrderCreateSerializer, responses={201: OrderEnvelope})
+    @extend_schema(summary='Place an order', request=s.OrderCreateSerializer, responses={201: OrderEnvelope},
+                   parameters=[OpenApiParameter('Idempotency-Key', str, OpenApiParameter.HEADER, description=(
+                       'Random per checkout: sent again, it returns the order already placed (409 '
+                       'order_in_progress while the first try is still running)'))])
     def post(self, request):
+        client = request.user.client
+        key = request.headers.get('Idempotency-Key', '')
+        if not IDEMPOTENCY_KEY_RE.match(key):
+            return self.place(request)
+        done_key, busy_key = f'order-key:{client.pk}:{key}', f'order-key-busy:{client.pk}:{key}'
+        placed = cache.get(done_key)
+        order = client_orders(client).filter(pk=placed).first() if placed else None
+        if order:
+            return Response({'order': s.OrderSerializer(order).data}, status=201)
+        if not cache.add(busy_key, 1, 60):
+            raise ApiError('order_in_progress', 409)
+        try:
+            response = self.place(request)
+            cache.set(done_key, response.data['order']['id'], IDEMPOTENCY_SECONDS)
+            return response
+        finally:
+            cache.delete(busy_key)
+
+    def place(self, request):
         client, data, business = request.user.client, request.data, request.tenant
         now = hours.status(business.working_hours)
         if not now['open']:

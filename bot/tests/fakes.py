@@ -36,6 +36,13 @@ class NetworkFailure:
     message: str = 'ClientConnectorError: Cannot connect to host api.telegram.org:443'
 
 
+@dataclass
+class BrokenAnswer:
+    """An answer that is not the Bot API's JSON, e.g. a proxy's error page (aiogram raises ClientDecodeError)."""
+    status: int = 502
+    body: str = '<html><body><h1>502 Bad Gateway</h1></body></html>'
+
+
 class FakeSession(BaseSession):
     def __init__(self, telegram):
         super().__init__(api=TelegramAPIServer.from_base(API_BASE))
@@ -50,9 +57,14 @@ class FakeSession(BaseSession):
                 payload[key] = prepared
         call = Call(bot.token, method.__api_method__, payload)
         self.telegram.calls.append(call)
+        for held, gate, when in self.telegram.gates:
+            if held == call.method and (when is None or when(call)):
+                await gate.wait()
         failure = self.telegram.failure_for(call)
         if isinstance(failure, NetworkFailure):
             raise TelegramNetworkError(method=method, message=failure.message)
+        if isinstance(failure, BrokenAnswer):
+            self.check_response(bot=bot, method=method, status_code=failure.status, content=failure.body)
         if isinstance(failure, ApiFailure):
             status = failure.code
             content = {'ok': False, 'error_code': failure.code, 'description': failure.description}
@@ -81,6 +93,7 @@ class FakeTelegram:
         self.managed_tokens = {}  # managed bot id -> token
         self.updates = defaultdict(list)  # token -> pending updates (dicts)
         self.failures = []  # (method, failure, predicate, remaining)
+        self.gates = []  # (method, asyncio.Event, predicate): matching requests wait for the event
         self.session = FakeSession(self)
         self.factory = BotFactory(session=self.session)
 
@@ -100,6 +113,12 @@ class FakeTelegram:
 
     def heal(self, method=None):
         self.failures = [rule for rule in self.failures if method is not None and rule[0] != method]
+
+    def hold(self, method, when=None):
+        """Matching `method` calls hang (a slow Telegram) until the returned event is set."""
+        gate = asyncio.Event()
+        self.gates.append((method, gate, when))
+        return gate
 
     def failure_for(self, call):
         for rule in self.failures:

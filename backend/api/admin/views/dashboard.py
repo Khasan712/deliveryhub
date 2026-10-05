@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from apps.core.enums import OrderEnum
 from apps.core.models import Category, Client, Order, Product
+from apps.core.utils import created_on
 from ..serializers import OrderSummarySerializer
 from .base import StaffView
 
@@ -35,7 +36,7 @@ class DashboardView(StaffView):
         orders = Order.objects.exclude(status=OrderEnum.new.value)  # unfinished bot carts never count
 
         by_status = {row['status']: row['count'] for row in orders.values('status').annotate(count=Count('id'))}
-        recent = orders.filter(created_at__date__gte=first_day)
+        recent = orders.filter(**created_on(first_day, today))
         per_day = {
             row['day']: row['count']
             for row in recent.annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('id'))
@@ -52,7 +53,7 @@ class DashboardView(StaffView):
             },
             'clients': {
                 'total': Client.objects.count(),
-                'new_7_days': Client.objects.filter(created_at__date__gte=first_day).count(),
+                'new_7_days': Client.objects.filter(**created_on(first_day, today)).count(),
             },
             'products': {'total': Product.objects.count()},
             'categories': {'total': Category.objects.count()},

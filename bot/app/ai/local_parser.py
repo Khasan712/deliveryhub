@@ -6,6 +6,10 @@ from difflib import SequenceMatcher
 from app.utils import normalize_phone
 
 MAX_QUANTITY = 99
+# Only the beginning of a text is analysed: matching costs grow with its length, and an order is never that long.
+MAX_TEXT = 500
+# How similar a window of the text must be to a product name.
+MATCH = 0.84
 FORM_FIELDS = ('customer_name', 'phone', 'address', 'delivery_type', 'payment_method', 'status', 'comment')
 
 NUMBER_WORDS = {
@@ -89,6 +93,15 @@ def _assign_quantities(tokens, matches):
     return quantities
 
 
+def _similarity(matcher, window):
+    """The matcher's ratio() for `window` against its name — or 0 when even the cheap upper bounds of ratio() stay
+    below MATCH, as they do for most windows (so the result is the same, only faster)."""
+    matcher.set_seq1(window)
+    if matcher.real_quick_ratio() < MATCH or matcher.quick_ratio() < MATCH:
+        return 0
+    return matcher.ratio()
+
+
 def _find_products(text, catalog):
     tokens = _tokens(text)
     candidates = []
@@ -97,14 +110,14 @@ def _find_products(text, catalog):
             name_tokens = _tokens(name)
             if not name_tokens:
                 continue
+            matcher = SequenceMatcher(None, '', name)  # the name is indexed once, the windows come as seq1
             for size in {len(name_tokens), len(name_tokens) + 1}:
                 for start in range(0, max(len(tokens) - size + 1, 0)):
                     window = ' '.join(tokens[start:start + size])
                     # Allow Uzbek plural/case endings: "chizburgerlar", "chizburgerni"
                     window_stem = re.sub(r"(lar|ni|ga|dan|ы|и|а|ов)$", '', window)
-                    score = max(SequenceMatcher(None, window, name).ratio(),
-                                SequenceMatcher(None, window_stem, name).ratio())
-                    if score >= 0.84:
+                    score = max(_similarity(matcher, window), _similarity(matcher, window_stem))
+                    if score >= MATCH:
                         candidates.append((score, start, start + size, product['id']))
 
     matches, used = [], set()
@@ -122,14 +135,17 @@ def _match_phrase(text, phrases):
 
 
 def local_understand(catalog, state, text):
-    raw = str(text or '').strip()
+    """Plain Python that may take a while for a long text and a big catalog: run it in a thread (asyncio.to_thread),
+    not on the event loop. Only the first MAX_TEXT characters are analysed; the transcript keeps the whole text."""
+    transcript = str(text or '').strip()
+    raw = transcript[:MAX_TEXT]
     norm = _normalize(raw)
     result = {field: state.get(field, '') or '' for field in FORM_FIELDS}
     items = {int(item['product_id']): int(item['quantity']) for item in state.get('items', [])}
 
     if _match_phrase(norm, CLEAR_PHRASES):
         return {**{field: '' for field in FORM_FIELDS}, 'items': [], 'unmatched': [], 'submit': False,
-                'transcript': raw, 'reply': ''}
+                'transcript': transcript, 'reply': ''}
 
     tokens, matches = _find_products(norm, catalog)
     for (start, end, _score, product_id), quantity in zip(matches, _assign_quantities(tokens, matches)):
@@ -179,6 +195,6 @@ def local_understand(catalog, state, text):
         'items': [{'product_id': product_id, 'quantity': quantity} for product_id, quantity in items.items()],
         'unmatched': [],
         'submit': _match_phrase(norm, SUBMIT_PHRASES),
-        'transcript': raw,
+        'transcript': transcript,
         'reply': '',
     }

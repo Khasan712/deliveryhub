@@ -30,7 +30,7 @@ export function CartLines({ lines }: { lines: CartLine[] }) {
               className="size-[60px] shrink-0 overflow-hidden rounded-[14px]"
             >
               <ProductImage
-                src={product.image}
+                src={product.thumb}
                 name={title}
                 className={cn('size-full', product.frozen && '[&_img]:grayscale [&_img]:opacity-60')}
                 letterClassName="text-xl"

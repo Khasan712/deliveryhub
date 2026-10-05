@@ -269,6 +269,13 @@ paths:
     post:
       operationId: orders_create
       summary: Place an order
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: 'Random per checkout: sent again, it returns the order already
+          placed (409 order_in_progress while the first try is still running)'
       tags:
       - orders
       requestBody:
@@ -741,6 +748,11 @@ components:
         image:
           type: string
           nullable: true
+          description: 'Up to 1280 px: the product sheet'
+        thumb:
+          type: string
+          nullable: true
+          description: 'Up to 512 px (or the image): cards and lists'
         frozen:
           type: boolean
           description: 'Not available right now: shown, but cannot be ordered'
@@ -754,6 +766,7 @@ components:
       - name_ru
       - name_uz
       - price
+      - thumb
       - unit_ru
       - unit_uz
     ReverseGeocode:

@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import { isApiError } from '../api/client'
 import { getShop } from '../api/shop'
+import { readStorage } from '../lib/storage'
 import type { Business, Category, Product, ShopData } from '../api/types'
 
 export interface ShopResult extends ShopData {
@@ -32,6 +33,14 @@ export interface CatalogContextValue {
 }
 
 export const shopQueryKey = ['shop'] as const
+
+/** The last menu this device saw (without the customer): shown at once while the fresh one loads. */
+export interface CachedCatalog {
+  savedAt: number
+  data: ShopResult
+}
+
+export const readCachedCatalog = () => readStorage<CachedCatalog | null>('catalog', null)
 
 export async function fetchShop(token: string | null, signal?: AbortSignal): Promise<ShopResult> {
   try {

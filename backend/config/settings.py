@@ -57,10 +57,17 @@ INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_
 TENANT_MODEL = 'hub.Business'
 TENANT_DOMAIN_MODEL = 'hub.Domain'
 DATABASE_ROUTERS = ('django_tenants.routers.TenantSyncRouter',)
+# `SET search_path` only when the schema changes (once per request), not before every query: half the round
+# trips to the database. Safe here: requests run in autocommit and a full rollback makes django-tenants set it
+# again.
+TENANT_LIMIT_SET_CALLS = True
 
 MIDDLEWARE = [
     'apps.platform.middleware.BusinessMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # An unchanged answer is a 304 without a body (ETag): menus and order lists cost nothing on mobile data.
+    'django.middleware.http.ConditionalGetMiddleware',
+    'apps.platform.middleware.RevalidateApiMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -189,6 +196,14 @@ TELEGRAM_API_URL = env('TELEGRAM_API_URL', 'https://api.telegram.org')
 CSRF_TRUSTED_ORIGINS += [f'https://*.{PLATFORM_DOMAIN}']
 # Optional: a file listing the subdomains to expose (one per line) for a tunnel supervisor (portex on a Mac).
 TUNNELS_FILE = Path(env('TUNNELS_FILE')) if env('TUNNELS_FILE') else None
+
+# ---------------------------------------------------------------------------
+# Mobile app (mobile/): an installed app older than MOBILE_MIN_VERSION asks to be updated from the store —
+# only for changes of the app itself; the shop inside it is always the one on the server.
+# ---------------------------------------------------------------------------
+MOBILE_MIN_VERSION = env('MOBILE_MIN_VERSION', '1.0.0')
+MOBILE_ANDROID_URL = env('MOBILE_ANDROID_URL')
+MOBILE_IOS_URL = env('MOBILE_IOS_URL')
 
 # ---------------------------------------------------------------------------
 # Maps: addresses ⇄ points for the shops' checkout and our panel (apps/platform/geocoding.py) — a Nominatim

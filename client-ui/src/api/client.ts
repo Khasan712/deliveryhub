@@ -36,7 +36,12 @@ export interface RequestOptions {
   token?: string | null
   query?: Record<string, string | number | undefined>
   signal?: AbortSignal
+  headers?: Record<string, string>
+  /** A request that hangs on a bad mobile network gives up after this long (a `network` error). */
+  timeoutMs?: number
 }
+
+const TIMEOUT_MS = 20_000
 
 type UnauthorizedListener = (token: string) => void
 const unauthorizedListeners = new Set<UnauthorizedListener>()
@@ -58,22 +63,30 @@ export function apiUrl(path: string, query?: RequestOptions['query']): string {
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, token, query, signal } = options
-  const headers: Record<string, string> = { Accept: 'application/json' }
+  const { method = 'GET', body, token, query, signal, timeoutMs = TIMEOUT_MS } = options
+  const headers: Record<string, string> = { Accept: 'application/json', ...options.headers }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
+  // The caller's signal still cancels; the timer only turns an endless wait into an error the UI can show.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const cancel = () => controller.abort(signal?.reason)
+  signal?.addEventListener('abort', cancel)
   let response: Response
   try {
     response = await fetch(apiUrl(path, query), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
+      signal: signal?.aborted ? signal : controller.signal,
     })
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    if (signal?.aborted && error instanceof DOMException && error.name === 'AbortError') throw error
     throw new ApiError('network', 0)
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
   }
 
   let data: unknown = null

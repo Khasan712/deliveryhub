@@ -4,6 +4,7 @@ import { PageSkeleton } from '../components/ui/Skeleton'
 import { useI18n } from '../i18n/context'
 import { cn } from '../lib/cn'
 import { STORAGE_KEYS, storage } from '../lib/storage'
+import { checkForUpdate, reloadIfUpdated } from '../lib/updates'
 import { SIDEBAR_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
@@ -22,6 +23,14 @@ export function AppLayout() {
     setDrawerPath(pathname)
     if (drawerOpen) setDrawerOpen(false)
   }
+
+  // A new version deployed meanwhile loads on the next move to another page (src/lib/updates.ts).
+  const shown = useRef(pathname)
+  useEffect(() => {
+    if (shown.current === pathname) return
+    shown.current = pathname
+    if (!reloadIfUpdated()) void checkForUpdate()
+  }, [pathname])
 
   const toggleCollapsed = () => {
     setCollapsed((value) => {

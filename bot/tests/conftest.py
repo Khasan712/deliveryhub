@@ -4,6 +4,7 @@ created from the service's metadata in the public schema and in two business sch
     docker run --rm -d --name dh-bot-test-db -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:16
 """
 import asyncio
+import inspect
 import os
 from datetime import timedelta
 
@@ -257,10 +258,15 @@ def ago(**delta):
 
 
 async def wait_until(condition, timeout=3.0):
-    """Lets background tasks (pollers, handlers) run until `condition()` holds."""
+    """Lets background tasks (pollers, handlers) run until `condition()` (a plain or an async function) holds."""
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
-    while not condition():
+    while True:
+        met = condition()
+        if inspect.isawaitable(met):
+            met = await met
+        if met:
+            return
         if loop.time() > deadline:
             raise AssertionError('condition not met in time')
         await asyncio.sleep(0.01)

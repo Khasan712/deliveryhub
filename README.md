@@ -22,6 +22,7 @@ hech narsa bo'lishmaydi — faqat API orqali gaplashadi.
 | [`client-ui/`](client-ui/) | Mijozlar do'koni — sayt va Telegram Mini App | React + Vite + TypeScript |
 | [`admin-ui/`](admin-ui/) | Biznes egalari va xodimlari uchun admin panel (+ admin Mini App) | React + Vite + TypeScript |
 | [`deliveryhub-ui/`](deliveryhub-ui/) | Bizning platforma panelimiz | React + Vite + TypeScript |
+| [`mobile/`](mobile/) | Android / iOS ilova: paneldagi «Mobil ilova» bo'limida tanlangan biznesning do'koni | Flutter (WebView) |
 | [`docs/`](docs/) | [Arxitektura](docs/architecture.md), [API shartnomasi](docs/api.md), [OpenAPI](docs/openapi/) | |
 | `docker-compose.yml`, `Caddyfile` | Qismlarni birga ishga tushirish: hostga qarab UI, `/api` → backend, `/media` → fayllar | Docker, Caddy |
 
@@ -60,6 +61,7 @@ make test           # hammasi
 make test-backend   # pytest + flake8 (vaqtinchalik PostgreSQL konteyneri bilan)
 make test-bot       # pytest-asyncio
 make test-ui        # har bir UI: vitest + lint + build
+make test-mobile    # mobil ilova: flutter analyze + test
 make e2e            # Playwright: o'zining vaqtinchalik stack'ida (8200), keyin o'chiriladi
 make schema         # docs/openapi/*.yaml ni koddan yangilash
 ```

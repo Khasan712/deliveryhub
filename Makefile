@@ -1,5 +1,5 @@
 # Everyday commands. Each part also works on its own — see its README.
-.PHONY: up down logs ps test test-backend test-bot test-ui e2e schema test-db backup restore
+.PHONY: up down logs ps test test-backend test-bot test-ui test-mobile e2e schema test-db backup restore
 
 up:
 	docker compose up -d --build
@@ -39,6 +39,10 @@ test-ui:
 	cd client-ui && npm test && npm run lint && npm run build
 	cd admin-ui && npm test && npm run lint && npm run build
 	cd deliveryhub-ui && npm test && npm run lint && npm run build
+
+# The mobile app (Flutter SDK needed): static checks and the tests of the shell.
+test-mobile:
+	cd mobile && flutter analyze && flutter test
 
 # End-to-end tests in a throwaway stack of their own (port 8200, own database, no bot tokens): built, tested,
 # then removed with its data. Never touches the stack of this machine or production.

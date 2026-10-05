@@ -31,6 +31,12 @@ The machine-readable schema of each API: `GET /api/v1/schema/` on its host (Open
 
 * **Pagination** (lists marked *paginated*): `?page=1&page_size=20` (max 100) →
   `{"count": 135, "page": 1, "pages": 7, "results": [...]}`.
+* **Caching**: every `GET` of an API answers with an `ETag` and `Cache-Control: private, no-cache` — the browser keeps
+  the answer and asks again with `If-None-Match`; an unchanged one is a `304` without a body (a menu or an order list
+  costs nothing on mobile data). Uploaded files (`/media/...`) never change at their address: cached for a year.
+* **Images**: uploads are stored as WebP at the size phones show them — a product photo as `image` (up to 1280 px,
+  the product sheet) and `thumb` (up to 512 px, cards and lists; the image itself for photos uploaded before), a logo
+  up to 512 px. Upload limits stay (5 MB a product photo, 2 MB a logo).
 
 ### Authentication
 
@@ -78,7 +84,8 @@ Business profile and the whole catalog in one call.
 }
 ```
 `Product`: `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit_uz", "unit_ru", "category_id", "image",
-"frozen": bool}` (`image`: URL or `null`; `frozen` — not available right now: shown, but cannot be ordered). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
+"thumb", "frozen": bool}` (`image`: URL or `null`, `thumb`: its small copy — see [Images](#conventions); `frozen` — not
+available right now: shown, but cannot be ordered). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
 `business.address` / `lat` / `lng`: where pickup orders are collected (`""` / `null` for a business not yet put on the
 map).
 
@@ -104,7 +111,9 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
 
 ### Orders *(auth)*
 * `GET /api/v1/orders` → `{"orders": [Order]}` (the customer's latest 50, newest first).
-* `POST /api/v1/orders` →  `201 {"order": Order}`
+* `POST /api/v1/orders` →  `201 {"order": Order}`. Header `Idempotency-Key: <random, 8–64 of A-Z a-z 0-9 _ ->` — the
+  same for every try of one checkout: sent again (an answer lost on a bad network) it returns the order already placed
+  instead of a second one; `409 order_in_progress` while the first try is still being placed (try again in a moment).
   ```json
   {"items": [{"product_id": 1, "quantity": 2}], "name": "Aziz", "phone": "+998901234567",
    "delivery_type": "delivery" | "pickup", "address": "Chilonzor 9", "lat": 41.31, "lng": 69.27,
@@ -120,7 +129,7 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
 ```json
 {"id": 131, "status": "ordered" | "on_the_way" | "completed" | "rejected", "source": "web" | "miniapp" | "bot" | "admin",
  "created_at": "...", "updated_at": "...", "total": 82000,
- "items": [{"product_id": 1, "name_uz": "...", "name_ru": "...", "image": "...", "quantity": 2, "price": 35000, "total": 70000}],
+ "items": [{"product_id": 1, "name_uz": "...", "name_ru": "...", "image": "<thumb>", "quantity": 2, "price": 35000, "total": 70000}],
  "customer_name": "Aziz", "phone": "+998901234567", "address": "Chilonzor 9", "lat": "41.31", "lng": "69.27",
  "delivery_type": "delivery", "payment_method": "card", "comment": ""}
 ```
@@ -192,7 +201,7 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * Products — `GET /api/v1/products?search=&category=&frozen=true|false&page=` (*paginated*), `POST /api/v1/products`,
   `GET|PATCH|DELETE /api/v1/products/{id}`.
   `Product` (admin): `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit": Unit | null,
-  "category": Category | null, "image", "frozen": bool, "frozen_at", "created_at"}`.
+  "category": Category | null, "image", "thumb", "frozen": bool, "frozen_at", "created_at"}`.
   Create / update fields (multipart when an image is attached): `name_uz`, `name_ru`, `price` (integer),
   `desc_uz`, `desc_ru`, `unit_id`, `category_id`, `image` (file; `null` or an empty value removes it), `frozen`
   (bool — any staff member; the shop shows the product as unavailable and refuses orders for it, staff may still sell
@@ -211,7 +220,7 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * `GET /api/v1/sales` →
   ```json
   {"categories": [{"id", "name_uz", "name_ru"}],
-   "products": [{"id", "name_uz", "name_ru", "price", "unit_uz", "unit_ru", "category_id", "image", "frozen"}],
+   "products": [{"id", "name_uz", "name_ru", "price", "unit_uz", "unit_ru", "category_id", "image", "thumb", "frozen"}],
    "recent": [SaleSummary], "stats": {"count", "revenue", "average", "all_orders_today"},
    "voice": {"gemini": bool, "live": bool}}
   ```
@@ -299,6 +308,24 @@ Our staff only (superusers of the platform; session auth).
 ### Map
 `GET /api/v1/geo/reverse` and `GET /api/v1/geo/search` — the same as in the [Shop API](#map-addresses--points)
 (without the preference for a business's surroundings).
+
+### Mobile app
+Our Android/iOS app (`mobile/`) opens the shop of one business, chosen here — to show a business its own shop on a
+phone, the way its customers would use it.
+* `GET /api/v1/mobile-app` → `{"business": BusinessCard | null, "updated_at", "config": AppConfig}` (`config` — exactly
+  what the app receives now).
+* `PUT /api/v1/mobile-app` `{"business": "<slug>" | null}` → the same. Errors: `validation` with `fields.business`:
+  `does_not_exist` / `suspended`.
+* `GET /api/v1/app/config` — **no sign-in**: asked by the app on every start and whenever it comes back to the screen →
+  `AppConfig`:
+  ```json
+  {"shop": {"slug": "navroz", "name": "Navro'z Choyxona", "tagline": "", "logo": "https://deliveryhub.<domain>/media/public/logos/a.webp",
+            "brand_color": "#1e5aa8", "url": "https://navroz.<domain>/"} | null,
+   "min_version": "1.0.0", "store": {"android": "<Google Play URL>" | null, "ios": "<App Store URL>" | null}}
+  ```
+  `shop` is `null` when no business is chosen or it is suspended. An app older than `min_version` (settings
+  `MOBILE_MIN_VERSION`, `MOBILE_ANDROID_URL`, `MOBILE_IOS_URL`) asks to be updated from its store — needed only for
+  changes of the app itself: the shop inside it is always the one on the server.
 
 ### Bots of a business
 * `POST /api/v1/businesses/{slug}/bots/setup-link` → `{"url": "https://t.me/<platform bot>?start=setup_...", "qr_svg", "expires_at"}`

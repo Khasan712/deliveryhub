@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import connection
 from django.http import JsonResponse
+from django.utils.cache import patch_cache_control
 from django_tenants.middleware.main import TenantMainMiddleware
 from django_tenants.utils import get_public_schema_name
 
@@ -37,3 +38,17 @@ class BusinessMiddleware(TenantMainMiddleware):
             return JsonResponse({'error': 'business_suspended'}, status=503)
         request.urlconf = settings.SHOP_URLCONF if domain.kind == Domain.KIND_SHOP else settings.ROOT_URLCONF
         return None
+
+
+class RevalidateApiMiddleware:
+    """API answers may be kept by the browser, but only to be checked with the server each time: with the ETag of
+    ConditionalGetMiddleware an unchanged menu or order list comes back as a 304 without a body."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.method == 'GET' and request.path.startswith('/api/') and not response.has_header('Cache-Control'):
+            patch_cache_control(response, private=True, no_cache=True)
+        return response

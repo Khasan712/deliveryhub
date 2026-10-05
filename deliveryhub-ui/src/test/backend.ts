@@ -1,7 +1,7 @@
 // A small in-memory Platform API that follows docs/api.md (session + CSRF, error shapes, every endpoint the
 // panel uses). Tests arrange `backend.state` and inspect `backend.state.requests`.
 import { http, HttpResponse } from 'msw'
-import type { Bot, BotRole, BusinessCard, BusinessDetail, Place, PlatformUser } from '../api/types'
+import type { Bot, BotRole, BusinessCard, BusinessDetail, MobileApp, Place, PlatformUser } from '../api/types'
 import { DOMAIN, STAFF, STAFF_PASSWORD } from './fixtures'
 
 export interface RecordedRequest {
@@ -26,6 +26,8 @@ interface State {
   botsInUse: string[]
   /** The map server behind GET /geo/*: what it finds, or out of reach. */
   geo: { address: string; places: Place[]; down: boolean }
+  /** Slug of the business our mobile app opens. */
+  mobileApp: string | null
   requests: RecordedRequest[]
 }
 
@@ -47,6 +49,7 @@ function initialState(): State {
       ],
       down: false,
     },
+    mobileApp: null,
     requests: [],
   }
 }
@@ -137,7 +140,7 @@ type Body = Record<string, unknown>
 type Handler = (input: { body: Body; params: Record<string, string>; url: URL }) => Response | Promise<Response>
 
 /** Records the request, then applies the API rules: CSRF on unsafe methods, a session unless `open`. */
-function route(method: 'get' | 'post' | 'patch' | 'delete', path: string, handler: Handler, { open = false } = {}) {
+function route(method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, handler: Handler, { open = false } = {}) {
   return http[method](`/api/v1${path}`, async ({ request, params }) => {
     const url = new URL(request.url)
     const body = await readBody(request.clone())
@@ -198,6 +201,27 @@ function applyProfile(business: BusinessDetail, body: Body) {
   if (logo === null || logo === '') business.logo = null
   else if (typeof logo === 'object' && logo.name) {
     business.logo = `/media/${business.slug.replace(/-/g, '_')}/logos/${logo.name}`
+  }
+}
+
+function mobileApp(): MobileApp {
+  const business = backend.state.businesses.find((each) => each.slug === backend.state.mobileApp) ?? null
+  const shown = business?.status === 'active' ? business : null
+  return {
+    business: business && card(business),
+    updated_at: '2026-10-05T10:00:00+05:00',
+    config: {
+      shop: shown && {
+        slug: shown.slug,
+        name: shown.name,
+        tagline: shown.tagline,
+        logo: shown.logo && `https://deliveryhub.${DOMAIN}${shown.logo}`,
+        brand_color: shown.brand_color,
+        url: shown.links.shop,
+      },
+      min_version: '1.0.0',
+      store: { android: null, ios: null },
+    },
   }
 }
 
@@ -384,4 +408,15 @@ export const handlers = [
       return new HttpResponse(null, { status: 204 })
     }),
   ),
+
+  // --- mobile app -------------------------------------------------------------------------------------------
+  route('get', '/mobile-app', () => HttpResponse.json(mobileApp())),
+  route('put', '/mobile-app', ({ body }) => {
+    const slug = body.business === null ? null : String(body.business ?? '')
+    const business = slug === null ? null : backend.state.businesses.find((each) => each.slug === slug)
+    if (slug !== null && !business) return validation({ business: ['does_not_exist'] })
+    if (business && business.status !== 'active') return validation({ business: ['suspended'] })
+    backend.state.mobileApp = slug
+    return HttpResponse.json(mobileApp())
+  }),
 ]

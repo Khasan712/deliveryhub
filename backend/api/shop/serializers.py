@@ -5,7 +5,8 @@ from rest_framework import serializers
 from apps.core.enums import DeliveryTypeEnum, LanguageEnum, OrderSourceEnum, PaymentMethodEnum
 from apps.core.utils import parse_price, parse_quantity
 from ..common.hours import WorkingHoursSerializer, hours_payload
-from ..common.representations import business_point, file_url, iso, order_address, product_image_url
+from ..common.representations import (business_point, file_url, iso, order_address, product_image_url,
+                                      product_thumb_url)
 
 LANGS = tuple(lang.value for lang in LanguageEnum)
 
@@ -57,7 +58,8 @@ class ProductSerializer(serializers.Serializer):
     unit_uz = serializers.CharField()
     unit_ru = serializers.CharField()
     category_id = serializers.IntegerField(allow_null=True)
-    image = serializers.CharField(allow_null=True)
+    image = serializers.CharField(allow_null=True, help_text='Up to 1280 px: the product sheet')
+    thumb = serializers.CharField(allow_null=True, help_text='Up to 512 px (or the image): cards and lists')
     frozen = serializers.BooleanField(help_text='Not available right now: shown, but cannot be ordered')
 
     def to_representation(self, product):
@@ -73,6 +75,7 @@ class ProductSerializer(serializers.Serializer):
             'unit_ru': measure.name_ru if measure else '',
             'category_id': product.category_id,
             'image': product_image_url(product),
+            'thumb': product_thumb_url(product),
             'frozen': product.is_frozen,
         }
 
@@ -119,7 +122,7 @@ class OrderItemSerializer(serializers.Serializer):
             'product_id': item.product_id,
             'name_uz': product.name_uz if product else '—',
             'name_ru': (product.name_ru or product.name_uz) if product else '—',
-            'image': product_image_url(product) if product else None,
+            'image': product_thumb_url(product) if product else None,
             'quantity': parse_quantity(item.quantity),
             'price': parse_price(item.price),
             'total': item.get_total(),

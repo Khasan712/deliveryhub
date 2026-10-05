@@ -260,7 +260,7 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
           product_id: product.id,
           name_uz: product.name_uz,
           name_ru: product.name_ru,
-          image: product.image,
+          image: product.thumb,
           quantity: item.quantity,
           price: product.price,
           total: product.price * item.quantity,

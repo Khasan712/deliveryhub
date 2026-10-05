@@ -37,6 +37,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 1,
     image: '/media/burger_house/products/classic.jpg',
+    thumb: '/media/burger_house/products/classic.thumb.jpg',
     frozen: false,
   },
   {
@@ -50,6 +51,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 1,
     image: null,
+    thumb: null,
     frozen: false,
   },
   {
@@ -63,6 +65,7 @@ export const products: Product[] = [
     unit_ru: 'шт',
     category_id: 2,
     image: null,
+    thumb: null,
     frozen: false,
   },
   {
@@ -76,6 +79,7 @@ export const products: Product[] = [
     unit_ru: '',
     category_id: null,
     image: null,
+    thumb: null,
     frozen: false,
   },
 ]

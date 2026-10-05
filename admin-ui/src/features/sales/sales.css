@@ -315,6 +315,32 @@
   border-radius: 12px;
   transition: background 0.3s ease;
 }
+/* Phones: the name gets the whole width; the line total sits above its stepper on the right. */
+@media (max-width: 639px) {
+  .line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 6px;
+  }
+  .line > :first-child {
+    grid-row: span 2;
+  }
+  .line > .line-info {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .line > .line-total {
+    grid-column: 3;
+    grid-row: 1;
+    width: auto;
+  }
+  .line > .stepper {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
 .line-flash {
   background: rgb(139 92 246 / 0.12);
   animation: line-in 0.5s ease;
@@ -442,7 +468,6 @@
   display: flex;
   flex-direction: column;
   padding: 8px;
-  text-align: left;
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -455,15 +480,23 @@
   transform: translateY(-2px);
   box-shadow: 0 10px 24px -12px rgb(15 23 42 / 0.25);
 }
-.tile:active {
+.tile:has(.tile-main:active) {
   transform: scale(0.98);
 }
 .tile.in-order {
   border-color: var(--color-ai-2);
   box-shadow: 0 0 0 1px var(--color-ai-2);
 }
+.tile-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  text-align: left;
+  border-radius: 11px;
+}
 .tile-media {
   position: relative;
+  display: block;
   aspect-ratio: 4 / 3;
   border-radius: 11px;
   overflow: hidden;
@@ -509,37 +542,66 @@
   background: rgb(14 165 233 / 0.92);
   box-shadow: 0 4px 10px -2px rgb(14 165 233 / 0.45);
 }
-.tile-qty {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+/* The bottom of every tile: "+ Add", or − count + once the product is in the order. Same height in both states,
+   so tapping never moves the grid. */
+.tile-add,
+.tile-stepper {
+  height: 36px;
+  margin-top: 8px;
+  border-radius: 11px;
+}
+.tile-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--subtle);
+  transition: color 0.15s;
+}
+.tile-add:hover {
+  color: var(--fg);
+}
+.tile-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: #fff;
   background: linear-gradient(135deg, var(--color-ai-1), var(--color-ai-3));
-  box-shadow: 0 4px 10px rgb(139 92 246 / 0.45);
+  box-shadow: 0 6px 14px -6px rgb(139 92 246 / 0.6);
+  animation: tile-stepper-in 0.18s ease-out;
 }
-.tile-plus {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
+.tile-stepper button {
+  width: 40px;
+  height: 100%;
   display: grid;
   place-items: center;
-  color: #fff;
-  background: rgb(15 23 42 / 0.75);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.15s;
+  border-radius: 11px;
+  transition: background-color 0.15s;
 }
-.tile:hover .tile-plus,
-.tile:focus-visible .tile-plus {
-  opacity: 1;
-  transform: scale(1);
+.tile-stepper button:hover {
+  background: rgb(255 255 255 / 0.16);
+}
+.tile-stepper button:active {
+  background: rgb(255 255 255 / 0.26);
+}
+.tile-stepper span {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes tile-stepper-in {
+  from {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-stepper {
+    animation: none;
+  }
 }
 .tile-name {
   margin-top: 8px;
@@ -554,6 +616,7 @@
   min-height: 2.6em;
 }
 .tile-price {
+  display: block;
   margin-top: 2px;
   font-size: 13px;
   font-weight: 700;

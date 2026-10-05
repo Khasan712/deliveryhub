@@ -1,7 +1,7 @@
 """The bot runtime: long-polls every active bot of every business and our platform bot, handles each update in
 the schema of its business, pushes new orders to staff chats, keeps their order cards in sync and sends the
 customer messages of the outbox. Bots connected or switched off in the panel are picked up within
-RECONCILE_INTERVAL; a bot whose token changed is restarted."""
+RECONCILE_INTERVAL; a bot whose token changed, or whose poller died, is restarted."""
 import asyncio
 import logging
 import time
@@ -21,16 +21,19 @@ from app.db.models import BusinessBot
 from app.platform import handlers as platform
 from app.staff import handlers as staff
 from app.staff import service as staff_service
-from .api import describe
+from .api import ERRORS, Backoff, describe
 from .configure import configure_bot
 
 logger = logging.getLogger('bots')
 
 POLL_TIMEOUT = 50
+# A bot counts as working while its last successful getUpdates is this recent (a long poll ends within POLL_TIMEOUT).
+ALIVE_WINDOW = POLL_TIMEOUT + 20
 RECONCILE_INTERVAL = 10
 ORDERS_INTERVAL = 3
 HEARTBEAT_INTERVAL = 30
 WORKERS = 16
+# Background rounds (staff cards, customer messages) of different bots running at once.
 BUSINESS_JOBS = 4
 # Docker stops a container with SIGKILL 10 s after SIGTERM.
 SHUTDOWN_TIMEOUT = 8
@@ -107,6 +110,12 @@ class KeyedLocks:
         return len(self._locks)
 
 
+def pause_after(exc):
+    """Seconds a poller waits after a failed call. 409: somebody else polls this bot (an old container?) — back off
+    instead of fighting it; a bad token (401 / 404) will not heal in 3 s either."""
+    return 30 if isinstance(exc, (TelegramUnauthorizedError, TelegramNotFound, TelegramConflictError)) else 3
+
+
 class Poller:
     """The getUpdates loop of one bot."""
 
@@ -115,9 +124,11 @@ class Poller:
         self.target = target
         self.bot = bot
         self.offset = None
-        self.inflight = set()  # ids of the updates taken but not handled yet
         # None — starting, True — Telegram answers, False — the last call failed (bad token, conflict, network).
         self.healthy = None
+        self.polled_at = None  # time.monotonic() of the last successful getUpdates
+        # After Telegram trouble in a background round of this bot, the next one waits until then (monotonic).
+        self.not_before = 0.0
         self.stopped = asyncio.Event()
         self.task = None
 
@@ -129,21 +140,35 @@ class Poller:
     def allowed_updates(self):
         return PLATFORM_UPDATES if self.target.role == PLATFORM else BUSINESS_UPDATES
 
+    def is_alive(self):
+        """Telegram answered its getUpdates lately — a bot that is starting, failing or whose poller died is not."""
+        return bool(self.healthy and self.polled_at is not None and time.monotonic() - self.polled_at <= ALIVE_WINDOW)
+
     def start(self):
         self.task = asyncio.create_task(self.run(), name=f'poll-{self.key}')
 
     async def run(self):
+        """Polls until stop(). No error ends the loop — a poller that died would go unnoticed (it is logged, the
+        poller waits a little and goes on)."""
         if self.target.business is not None:
             try:
                 await configure_bot(self.bot, self.target.role, self.target.business, self.target.username)
             except Exception:  # the bot works without its commands and menu button
                 logger.exception('%s: configuring failed', self.key)
-        try:
-            await self.bot.delete_webhook()  # polling and a webhook cannot be used together
-        except TelegramAPIError as exc:
-            logger.warning('%s: deleteWebhook failed: %s', self.key, describe(exc))
+        webhook_deleted = False
         while not self.stopped.is_set():
-            await self.poll_once()
+            try:
+                if not webhook_deleted:
+                    await self.bot.delete_webhook()  # polling and a webhook cannot be used together
+                    webhook_deleted = True
+                await self.poll_once()
+            except Exception as exc:  # e.g. an HTML error page instead of the Bot API's JSON
+                self.healthy = False
+                if isinstance(exc, TelegramAPIError):
+                    logger.warning('%s: polling failed: %s', self.key, describe(exc))
+                else:
+                    logger.exception('%s: polling failed', self.key)
+                await self.pause(pause_after(exc))
 
     async def poll_once(self, timeout=POLL_TIMEOUT):
         try:
@@ -152,16 +177,14 @@ class Poller:
         except TelegramAPIError as exc:
             self.healthy = False
             logger.warning('%s: getUpdates failed: %s', self.key, describe(exc))
-            # 409: somebody else polls this bot (an old container?) — back off instead of fighting it.
-            backoff = isinstance(exc, (TelegramUnauthorizedError, TelegramNotFound, TelegramConflictError))
-            await self.pause(30 if backoff else 3)
+            await self.pause(pause_after(exc))
             return
         except Exception:  # e.g. an answer aiogram cannot read: keep polling
             self.healthy = False
             logger.exception('%s: getUpdates failed', self.key)
             await self.pause(3)
             return
-        self.healthy = True
+        self.healthy, self.polled_at = True, time.monotonic()
         for update in updates:
             self.offset = update.update_id + 1
             self.runtime.submit(self, update)
@@ -184,15 +207,15 @@ class Poller:
             except Exception:  # pragma: no cover
                 logger.exception('%s: poller failed', self.key)
 
-    async def confirm(self, keep_unfinished=False):
-        """Tells Telegram which updates were taken, so they are not handled again after a restart. With
-        `keep_unfinished`, updates whose handling was cancelled (and the ones after them) are delivered again."""
-        offset = min(self.inflight) if keep_unfinished and self.inflight else self.offset
-        if offset is None:
+    async def confirm(self):
+        """Tells Telegram which updates were taken, so they are not handled again after a restart. (Every
+        getUpdates call does that for the updates before its offset: an update taken is never delivered again,
+        even if its handling is cut short.)"""
+        if self.offset is None:
             return
         try:
-            await self.bot.get_updates(offset=offset, limit=1, timeout=0, request_timeout=5)
-        except TelegramAPIError:
+            await self.bot.get_updates(offset=self.offset, limit=1, timeout=0, request_timeout=5)
+        except ERRORS:
             pass
 
 
@@ -205,13 +228,14 @@ class Runtime:
         self.locks = KeyedLocks()
         self.workers = asyncio.Semaphore(workers)
         self.tasks = set()
+        self.rounds = {}  # bot key → its background round (staff cards or customer messages) while it runs
+        self.round_slots = asyncio.Semaphore(BUSINESS_JOBS)
         self.stopping = asyncio.Event()
         self.unreadable = set()  # bots with a token that cannot be used, already reported
 
     # --- updates -------------------------------------------------------------
 
     def submit(self, poller, update):
-        poller.inflight.add(update.update_id)
         task = asyncio.create_task(self.dispatch(poller, update))
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
@@ -225,7 +249,6 @@ class Runtime:
                     await self.handle(poller, update)
                 except Exception:
                     logger.exception('%s: update %s failed', poller.key, update.update_id)
-        poller.inflight.discard(update.update_id)  # not reached when the handling is cancelled
 
     async def handle(self, poller, update):
         if poller.target.role == PLATFORM:
@@ -258,7 +281,11 @@ class Runtime:
         desired = await self.desired_bots()
         stopped = []
         for key, poller in list(self.pollers.items()):
-            if key not in desired or desired[key].token != poller.target.token:
+            died = poller.task is not None and poller.task.done()
+            if died:  # it should not happen (Poller.run survives errors), so it is not left to chance either
+                error = None if poller.task.cancelled() else poller.task.exception()
+                logger.error('%s: the poller stopped by itself — restarting it', key, exc_info=error)
+            if key not in desired or desired[key].token != poller.target.token or died:
                 del self.pollers[key]
                 stopped.append(poller)
         for poller in stopped:
@@ -282,44 +309,54 @@ class Runtime:
     # --- staff notifications and customer messages ----------------------------
 
     async def notify(self):
-        """Every business with a running bot: new orders → staff chats, statuses changed elsewhere → their
-        cards (staff bot); the outbox → customers (customers' bot)."""
+        """Starts a background round for every business bot that runs: new orders → staff chats and statuses
+        changed elsewhere → their cards (staff bot), the outbox → customers (customers' bot). The rounds run side by
+        side, BUSINESS_JOBS at most, so a slow business does not hold up the others; a bot whose previous round
+        still runs, or that Telegram trouble paused, is skipped. Returns the started rounds."""
         async with self.db.public() as session:
             rows = await businesses.active_bots(session)
-        jobs = []
+        started = []
+        current = time.monotonic()
         for row, business in rows:
-            poller = self.pollers.get(f'bot{row.id}')
-            if poller is None:
+            key = f'bot{row.id}'
+            poller = self.pollers.get(key)
+            if poller is None or key in self.rounds or current < poller.not_before or self.stopping.is_set():
                 continue
-            if row.role == BusinessBot.ROLE_ADMIN:
-                jobs.append(self.staff_job(business, poller.bot))
-            else:
-                jobs.append(self.outbox_job(business, poller.bot))
-        limit = asyncio.Semaphore(BUSINESS_JOBS)
+            job = self.staff_job if row.role == BusinessBot.ROLE_ADMIN else self.outbox_job
+            task = self.rounds[key] = asyncio.create_task(self.limited(job, business, poller), name=f'round-{key}')
+            task.add_done_callback(lambda _task, key=key: self.rounds.pop(key, None))
+            started.append(task)
+        return started
 
-        async def limited(job):
-            async with limit:
-                await job
+    async def limited(self, job, business, poller):
+        async with self.round_slots:
+            if not self.stopping.is_set():
+                await job(business, poller)
 
-        await asyncio.gather(*(limited(job) for job in jobs))
-
-    async def staff_job(self, business, bot):
+    async def staff_job(self, business, poller):
         try:
-            await staff_service.push_new_orders(self.db, business, bot)
-            await staff_service.sync_changed_orders(self.db, business, bot)
+            await staff_service.push_new_orders(self.db, business, poller.bot, self.stopping)
+            await staff_service.sync_changed_orders(self.db, business, poller.bot, self.stopping)
+        except Backoff as exc:
+            self.back_off(poller, exc)
         except Exception:
             logger.exception('Order notifications of %s failed', business.slug)
 
-    async def outbox_job(self, business, bot):
+    async def outbox_job(self, business, poller):
         try:
-            await outbox.send_pending(self.db, business, bot)
+            await outbox.send_pending(self.db, business, poller.bot, self.stopping)
+        except Backoff as exc:
+            self.back_off(poller, exc)
         except Exception:
             logger.exception('Customer messages of %s failed', business.slug)
 
+    def back_off(self, poller, exc):
+        poller.not_before = time.monotonic() + exc.delay
+        logger.warning('%s: Telegram trouble (%s) — its next round in %s s', poller.key, exc, exc.delay)
+
     async def heartbeat(self):
         """The admin panels show a bot as working while its last_seen_at is fresh."""
-        alive = [poller.target.bot_id for poller in self.pollers.values()
-                 if poller.target.bot_id and poller.healthy is not False]
+        alive = [poller.target.bot_id for poller in self.pollers.values() if poller.target.bot_id and poller.is_alive()]
         async with self.db.public() as session:
             await businesses.mark_alive(session, alive)
             await session.commit()
@@ -327,42 +364,47 @@ class Runtime:
     # --- main loop -------------------------------------------------------------
 
     async def run(self):
+        """Until request_stop(): reconcile, heartbeat and the background rounds, each on its own schedule — a slow
+        reconcile never holds up the order notifications, nor the other way round."""
         logger.info('Bot runtime started')
-        last = {'reconcile': float('-inf'), 'heartbeat': float('-inf')}
         try:
-            while not self.stopping.is_set():
-                current = time.monotonic()
-                try:
-                    if current - last['reconcile'] >= RECONCILE_INTERVAL:
-                        await self.reconcile()
-                        last['reconcile'] = current
-                    if current - last['heartbeat'] >= HEARTBEAT_INTERVAL:
-                        await self.heartbeat()
-                        last['heartbeat'] = current
-                    await self.notify()
-                except Exception:
-                    logger.exception('Bot runtime loop failed')
-                try:
-                    await asyncio.wait_for(self.stopping.wait(), timeout=ORDERS_INTERVAL)
-                except TimeoutError:
-                    pass
+            await asyncio.gather(
+                self.every(RECONCILE_INTERVAL, self.reconcile),
+                self.every(HEARTBEAT_INTERVAL, self.heartbeat),
+                self.every(ORDERS_INTERVAL, self.notify),
+            )
         finally:
             await self.shutdown()
+
+    async def every(self, seconds, job):
+        while not self.stopping.is_set():
+            try:
+                await job()
+            except Exception:
+                logger.exception('Bot runtime: %s failed', job.__name__)
+            try:
+                await asyncio.wait_for(self.stopping.wait(), timeout=seconds)
+            except TimeoutError:
+                pass
 
     def request_stop(self):
         self.stopping.set()
 
     async def shutdown(self, timeout=SHUTDOWN_TIMEOUT):
-        """Polling stops at once; updates being handled may finish (`timeout`), the rest are cancelled; then
-        Telegram learns what was handled — the cancelled updates come again after a restart."""
+        """Polling stops at once; updates being handled and background rounds (they stop between two messages) may
+        finish within `timeout`, the rest are cancelled; then Telegram is told which updates were taken. An update
+        cut short is lost: Telegram does not deliver an update again once it was taken."""
         self.stopping.set()
         pollers = list(self.pollers.values())
         self.pollers.clear()
         for poller in pollers:
             await poller.stop()
-        if self.tasks:
-            _done, unfinished = await asyncio.wait(set(self.tasks), timeout=timeout)
+        running = self.tasks | set(self.rounds.values())
+        if running:
+            _done, unfinished = await asyncio.wait(running, timeout=timeout)
             for task in unfinished:
                 task.cancel()
-        await asyncio.gather(*(poller.confirm(keep_unfinished=True) for poller in pollers))
+            if unfinished:
+                logger.warning('Shutdown: %s updates / rounds cut short', len(unfinished))
+        await asyncio.gather(*(poller.confirm() for poller in pollers))
         logger.info('Bot runtime stopped')

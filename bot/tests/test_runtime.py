@@ -1,5 +1,6 @@
-"""The runtime: which bots run, polling, one chat at a time, back-off, heartbeat, the background loop."""
+"""The runtime: which bots run, polling, one chat at a time, back-off, heartbeat, the background rounds."""
 import asyncio
+import time
 
 import pytest
 from aiohttp import web
@@ -8,12 +9,14 @@ from sqlalchemy import select, update
 from app.config import settings
 from app.crypto import encrypt
 from app.db.models import Business, BusinessBot, OrderCard, Outbox
-from app.telegram.api import BotFactory
-from app.telegram.runtime import Poller, Runtime, Target
-from .conftest import CUSTOMER_TOKEN, STAFF_TOKEN, add_bot, wait_until
-from .fakes import ApiFailure, NetworkFailure, raw_message
+from app.telegram import runtime as runtime_module
+from app.telegram.api import BACKOFF_SECONDS, BotFactory
+from app.telegram.runtime import ALIVE_WINDOW, BUSINESS_JOBS, Poller, Runtime, Target
+from .conftest import CUSTOMER_TOKEN, STAFF_TOKEN, add_bot, make_business, wait_until
+from .fakes import ApiFailure, BrokenAnswer, NetworkFailure, raw_message
 
 PLATFORM_TOKEN = '1000:PLATFORM-TOKEN-00000000000000000000'
+OTHER_TOKEN = '3003:OTHER-TOKEN-0000000000000000000000'
 
 
 @pytest.fixture
@@ -110,6 +113,43 @@ async def test_reconcile_configures_starts_stops_and_restarts_bots(runtime, db, 
     assert 'setChatMenuButton' in telegram.methods(new_token)
 
 
+async def test_reconcile_restarts_a_poller_that_died(runtime, db, shop, telegram):
+    row = await add_bot(db, shop, 'client', CUSTOMER_TOKEN, 'a_bot', 2003)
+    await runtime.reconcile()
+    dead = runtime.pollers[f'bot{row.id}']
+    await wait_until(lambda: 'getUpdates' in telegram.methods(CUSTOMER_TOKEN))
+    dead.task.cancel()  # however it happened
+    await asyncio.gather(dead.task, return_exceptions=True)
+
+    await runtime.reconcile()
+    restarted = runtime.pollers[f'bot{row.id}']
+    assert restarted is not dead and not restarted.task.done()
+    await wait_until(lambda: telegram.methods(CUSTOMER_TOKEN).count('deleteWebhook') == 2)
+
+
+async def test_a_poller_survives_any_error(runtime, telegram):
+    """E.g. a proxy's HTML error page: aiogram's ClientDecodeError is no TelegramAPIError. The poller logs it,
+    waits a little and goes on — a poller that died would go unnoticed."""
+    poller = runtime.pollers['bot1'] = Poller(runtime, Target('bot1', CUSTOMER_TOKEN, 'client', 1),
+                                              telegram.bot(CUSTOMER_TOKEN))
+    pauses, seen = [], []
+
+    async def pause(seconds):
+        pauses.append(seconds)
+
+    async def handle(poller, update):
+        seen.append(update.update_id)
+
+    poller.pause, runtime.handle = pause, handle
+    telegram.fail('deleteWebhook', BrokenAnswer(), times=1)
+    telegram.fail('getUpdates', BrokenAnswer(), times=1)
+    telegram.updates[CUSTOMER_TOKEN] = [raw_message(5, 10, 'a')]
+    poller.start()
+    await wait_until(lambda: seen == [5])
+    assert telegram.methods(CUSTOMER_TOKEN)[:4] == ['deleteWebhook', 'deleteWebhook', 'getUpdates', 'getUpdates']
+    assert pauses == [3, 3] and poller.healthy and not poller.task.done()
+
+
 async def test_poll_hands_updates_over_and_moves_the_offset(runtime, telegram):
     seen = []
 
@@ -169,6 +209,7 @@ async def test_a_failing_update_does_not_stop_the_others(runtime, telegram, capl
     (ApiFailure(404, 'Not Found'), 30),
     (ApiFailure(502, 'Bad Gateway'), 3),
     (NetworkFailure(), 3),
+    (BrokenAnswer(), 3),
 ])
 async def test_pollers_back_off(runtime, telegram, failure, pause):
     poller = Poller(runtime, Target('bot1', CUSTOMER_TOKEN, 'client', 1), telegram.bot(CUSTOMER_TOKEN))
@@ -183,18 +224,22 @@ async def test_pollers_back_off(runtime, telegram, failure, pause):
     assert (pauses, poller.healthy) == ([pause], False)
 
 
-async def test_heartbeat_marks_the_bots_that_work(runtime, db, shop, telegram):
+async def test_heartbeat_marks_the_bots_that_polled_lately(runtime, db, shop, other_shop, telegram):
     working = await add_bot(db, shop, 'client', CUSTOMER_TOKEN, 'a_bot', 2003)
-    broken = await add_bot(db, shop, 'admin', STAFF_TOKEN, 'a_admin_bot', 2002)
-    for row, healthy in ((working, True), (broken, False)):
+    failing = await add_bot(db, shop, 'admin', STAFF_TOKEN, 'a_admin_bot', 2002)
+    starting = await add_bot(db, other_shop, 'client', OTHER_TOKEN, 'b_bot', 3003)
+    stuck = await add_bot(db, other_shop, 'admin', '3004:STUCK-TOKEN-0000000000000000000000', 'b_admin_bot', 3004)
+    # (healthy, seconds since the last successful getUpdates): a starting bot or a silent poller is not working.
+    for row, (healthy, age) in {working: (True, 1), failing: (False, 1), starting: (None, None),
+                                stuck: (True, ALIVE_WINDOW + 1)}.items():
         poller = Poller(runtime, Target(f'bot{row.id}', 'x', row.role, row.id), None)
-        poller.healthy = healthy
+        poller.healthy, poller.polled_at = healthy, None if age is None else time.monotonic() - age
         runtime.pollers[poller.key] = poller
     await runtime.heartbeat()
     runtime.pollers.clear()
     async with db.public() as session:
         seen = dict((await session.execute(select(BusinessBot.id, BusinessBot.last_seen_at))).all())
-    assert seen[working.id] is not None and seen[broken.id] is None
+    assert {bot_id for bot_id, seen_at in seen.items() if seen_at} == {working.id}
 
 
 async def test_the_background_loop_notifies_staff_and_customers(runtime, db, shop, telegram):
@@ -206,14 +251,94 @@ async def test_the_background_loop_notifies_staff_and_customers(runtime, db, sho
     await shop.add(Outbox(kind='order_created', order_id=order.id))
 
     await runtime.reconcile()
-    await runtime.notify()
+    await asyncio.gather(*await runtime.notify())
     assert f'#{order.id}' in telegram.last('sendMessage', 5001, token=STAFF_TOKEN)['text']
     assert telegram.last('sendMessage', '777', token=CUSTOMER_TOKEN)['text'].startswith('✅ <b>Ваш заказ принят!</b>')
     assert await shop.count(OrderCard) == 1
     assert (await shop.one(Outbox)).sent_at is not None
 
 
-async def test_run_serves_updates_and_stops_cleanly(db, shop, telegram, test_settings):
+def standing_pollers(runtime, telegram, *bots):
+    """Pollers of (row, token) bots that do not poll — the background rounds work with them all the same."""
+    for row, token in bots:
+        key = f'bot{row.id}'
+        runtime.pollers[key] = Poller(runtime, Target(key, token, row.role, row.id), telegram.bot(token))
+
+
+async def customer_message(shop, tg_id, name='Kola'):
+    product = await shop.product(name, name, '12 000')
+    order = await shop.order([(product, 1)], client=await shop.client(tg_id=tg_id))
+    return await shop.add(Outbox(kind='order_created', order_id=order.id))
+
+
+async def test_a_slow_business_does_not_hold_up_the_others(runtime, db, shop, other_shop, telegram):
+    slow = await add_bot(db, shop, 'client', CUSTOMER_TOKEN, 'a_bot', 2003)
+    fast = await add_bot(db, other_shop, 'client', OTHER_TOKEN, 'b_bot', 3003)
+    standing_pollers(runtime, telegram, (slow, CUSTOMER_TOKEN), (fast, OTHER_TOKEN))
+    await customer_message(shop, '777')
+    await customer_message(other_shop, '888')
+    gate = telegram.hold('sendMessage', when=lambda call: call.token == CUSTOMER_TOKEN)  # Telegram is slow for it
+
+    first = {task.get_name(): task for task in await runtime.notify()}
+    await asyncio.wait_for(first[f'round-bot{fast.id}'], timeout=3)  # done while the slow one hangs
+    assert telegram.last('sendMessage', '888', token=OTHER_TOKEN)
+    # The next round: the slow bot's round still runs, so it is skipped; the other bot goes on.
+    assert [task.get_name() for task in await runtime.notify()] == [f'round-bot{fast.id}']
+    gate.set()
+    await asyncio.gather(*first.values())
+    assert len(telegram.payloads('sendMessage', '777')) == 1
+
+
+async def test_rounds_run_side_by_side_but_at_most_four_at_once(runtime, db, telegram):
+    bots = []
+    for number in range(BUSINESS_JOBS + 2):
+        shop = await make_business(db, f'shop_{number}', f'Shop {number}', f'shop-{number}')
+        token = f'40{number}0:TOKEN-{number}-0000000000000000000000000'
+        bots.append((await add_bot(db, shop, 'client', token, f'bot_{number}', 4000 + number), token))
+    standing_pollers(runtime, telegram, *bots)
+    running, most, gate = set(), [0], asyncio.Event()
+
+    async def round_(business, poller):
+        running.add(poller.key)
+        most[0] = max(most[0], len(running))
+        await gate.wait()
+        running.discard(poller.key)
+
+    runtime.outbox_job = round_
+    started = await runtime.notify()
+    await wait_until(lambda: len(running) == BUSINESS_JOBS)
+    assert len(started) == BUSINESS_JOBS + 2
+    assert await runtime.notify() == []  # every bot's round still runs or waits for its turn
+    gate.set()
+    await asyncio.gather(*started)
+    assert most[0] == BUSINESS_JOBS and runtime.rounds == {}
+
+
+async def test_telegram_trouble_pauses_that_bot_only(runtime, db, shop, other_shop, telegram):
+    troubled = await add_bot(db, shop, 'client', CUSTOMER_TOKEN, 'a_bot', 2003)
+    healthy = await add_bot(db, other_shop, 'client', OTHER_TOKEN, 'b_bot', 3003)
+    standing_pollers(runtime, telegram, (troubled, CUSTOMER_TOKEN), (healthy, OTHER_TOKEN))
+    for tg_id in ('771', '772', '773'):
+        await customer_message(shop, tg_id, name=f'Kola {tg_id}')
+    await customer_message(other_shop, '888')
+    telegram.fail('sendMessage', NetworkFailure(), when=lambda call: call.token == CUSTOMER_TOKEN)
+
+    await asyncio.gather(*await runtime.notify())
+    assert len(telegram.payloads('sendMessage', token=CUSTOMER_TOKEN)) == 1  # one try, not one timeout per message
+    assert telegram.last('sendMessage', '888', token=OTHER_TOKEN)
+    paused = runtime.pollers[f'bot{troubled.id}']
+    assert paused.not_before > time.monotonic() + BACKOFF_SECONDS - 5
+    assert [task.get_name() for task in await runtime.notify()] == [f'round-bot{healthy.id}']
+
+    telegram.heal()
+    paused.not_before = 0  # the pause is over
+    await asyncio.gather(*await runtime.notify())
+    assert [payload['chat_id'] for payload in telegram.payloads('sendMessage', token=CUSTOMER_TOKEN)] == [
+        '771', '772', '773']  # the failed one waits for its retry, the others go
+
+
+async def test_run_serves_updates_and_stops_cleanly(db, shop, telegram, test_settings, monkeypatch):
+    monkeypatch.setattr(runtime_module, 'HEARTBEAT_INTERVAL', 0.05)
     await add_bot(db, shop, 'client', CUSTOMER_TOKEN, 'a_bot', 2003)
     test_settings.platform_bot_token = PLATFORM_TOKEN
     telegram.updates[CUSTOMER_TOKEN] = [raw_message(7, 6001, '/start')]
@@ -226,34 +351,46 @@ async def test_run_serves_updates_and_stops_cleanly(db, shop, telegram, test_set
     assert telegram.last('getUpdates', token=PLATFORM_TOKEN)['allowed_updates'] == [
         'message', 'callback_query', 'managed_bot']
 
+    async def last_seen():
+        async with db.public() as session:
+            return await session.scalar(select(BusinessBot.last_seen_at))
+
+    await wait_until(last_seen)  # the heartbeat, on its own schedule, once the bot has polled
+
     runtime.request_stop()
     await asyncio.wait_for(task, timeout=5)
     assert runtime.pollers == {}
     # Telegram learnt which updates were taken.
     assert telegram.last('getUpdates', token=CUSTOMER_TOKEN)['offset'] == 8
     assert telegram.updates[CUSTOMER_TOKEN] == []
-    async with db.public() as session:
-        assert (await session.scalar(select(BusinessBot.last_seen_at))) is not None
 
 
-async def test_updates_cut_short_by_a_shutdown_come_again(db, telegram):
+async def test_an_update_cut_short_by_a_shutdown_is_not_delivered_again(db, telegram):
+    """Telegram forgets an update once a getUpdates call with a later offset was made — which the poller does right
+    away. So an update whose handling the shutdown cuts short is lost (never handled twice)."""
     runtime = Runtime(db, telegram.factory)
-    started = asyncio.Event()
+    started, cancelled = asyncio.Event(), []
 
     async def handle(poller, update):
         if update.update_id == 22:
             started.set()
-            await asyncio.sleep(60)  # e.g. a voice order waiting for Gemini
+            try:
+                await asyncio.sleep(60)  # e.g. a voice order waiting for Gemini
+            except asyncio.CancelledError:
+                cancelled.append(update.update_id)
+                raise
 
     runtime.handle = handle
     poller = runtime.pollers['bot1'] = Poller(runtime, Target('bot1', CUSTOMER_TOKEN, 'client', 1),
                                               telegram.bot(CUSTOMER_TOKEN))
     telegram.updates[CUSTOMER_TOKEN] = [raw_message(21, 10, 'a'), raw_message(22, 11, 'b'), raw_message(23, 12, 'c')]
-    await poller.poll_once(timeout=0)
+    poller.start()
     await started.wait()
+    await wait_until(lambda: telegram.last('getUpdates').get('offset') == 24)  # the next long poll
     await runtime.shutdown(timeout=0.1)
-    assert telegram.last('getUpdates')['offset'] == 22  # 22 (cut short) and the ones after it come again
-    assert [update['update_id'] for update in telegram.updates[CUSTOMER_TOKEN]] == [22, 23]
+    assert cancelled == [22]
+    assert telegram.last('getUpdates')['offset'] == 24
+    assert telegram.updates[CUSTOMER_TOKEN] == []
 
 
 async def test_the_real_http_session_talks_to_the_bot_api(db, shop, monkeypatch):

@@ -50,7 +50,7 @@ export function Hero() {
   const { t, money, name } = useI18n()
   const { business, popular, products } = useCatalog()
   if (!business) return null
-  const images = (popular.length >= 3 ? popular : products).filter((product) => product.image).slice(0, 3)
+  const images = (popular.length >= 3 ? popular : products).filter((product) => product.thumb).slice(0, 3)
 
   return (
     <section className="flex items-center justify-between gap-6 rounded-[24px] bg-[var(--hero-bg)] p-5 text-[var(--hero-ink)] sm:py-7 sm:pr-7 sm:pl-8">
@@ -78,7 +78,7 @@ export function Hero() {
           {images.map((product) => (
             <ProductImage
               key={product.id}
-              src={product.image}
+              src={product.thumb}
               name={name(product)}
               eager
               className="h-[120px] w-[100px] rounded-[18px] lg:h-[132px] lg:w-[112px]"

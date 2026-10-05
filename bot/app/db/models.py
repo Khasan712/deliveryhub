@@ -15,7 +15,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Identity, Index, MetaData, SmallInteger, String,
-    Text, UniqueConstraint, func,
+    Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -172,7 +172,11 @@ class Client(Base):
 
 class Order(Base):
     __tablename__ = 'app_order'
-    __table_args__ = {'schema': TENANT}
+    __table_args__ = (
+        # What the staff bot polls for new orders (app migration 0020; staff.service.push_new_orders).
+        Index('app_order_ordered_idx', 'updated_at', postgresql_where=text("status = 'ordered'")),
+        {'schema': TENANT},
+    )
 
     id: Mapped[int] = _pk()
     client_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_client.id'), index=True)
@@ -311,7 +315,8 @@ class Outbox(Base):
     __tablename__ = 'adminbot_outbox'
     __table_args__ = (
         CheckConstraint('attempts >= 0', name='adminbot_outbox_attempts_check'),
-        Index('adminbot_outbox_pending', 'sent_at', 'id'),
+        # The rows still to send (adminbot migration 0004); 5 is outbox.MAX_ATTEMPTS.
+        Index('adminbot_outbox_due', 'id', postgresql_where=text('sent_at IS NULL AND attempts < 5')),
         {'schema': TENANT},
     )
     KIND_ORDER_CREATED = 'order_created'

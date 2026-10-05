@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Route, Routes, useLocation } from 'react-router'
 import { isApiError } from '../api/client'
 import { CartBar } from '../components/CartBar'
@@ -6,6 +6,7 @@ import { Header, PAGE_WIDTH } from '../components/Header'
 import { Toaster } from '../components/Toaster'
 import { useI18n } from '../i18n/i18n'
 import { cn } from '../lib/cn'
+import { checkForUpdate, reloadIfUpdated } from '../lib/updates'
 import { useScrollRestoration } from '../lib/useScrollRestoration'
 import { useBackButton } from '../lib/useTelegram'
 import { useCatalog } from '../state/catalog'
@@ -30,6 +31,7 @@ export function AppShell() {
   const [query, setQuery] = useState('')
   const search = useMemo(() => ({ query, setQuery }), [query])
   useScrollRestoration()
+  usePickUpUpdates(location.pathname)
   // Telegram: the native back button closes sheets and leaves screens (browser history does the same on the web).
   useBackButton(location.pathname !== '/' || nav.sheet !== null, nav.back)
 
@@ -67,4 +69,14 @@ export function AppShell() {
       <Toaster />
     </SearchContext>
   )
+}
+
+/** A new version deployed meanwhile loads on the next move to another page (src/lib/updates.ts). */
+function usePickUpUpdates(pathname: string) {
+  const shown = useRef(pathname)
+  useEffect(() => {
+    if (shown.current === pathname) return
+    shown.current = pathname
+    if (!reloadIfUpdated()) void checkForUpdate()
+  }, [pathname])
 }

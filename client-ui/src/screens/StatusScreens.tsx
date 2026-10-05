@@ -28,6 +28,25 @@ export function ShopUnavailable({ error, onRetry }: { error: unknown; onRetry: (
   )
 }
 
+/** Something broke while rendering (ErrorBoundary in App): a calm way back instead of a blank page. */
+export function CrashScreen() {
+  const { t } = useI18n()
+  return (
+    <main className="grid min-h-dvh place-items-center px-4">
+      <EmptyState
+        icon="alert"
+        title={t('appCrashed')}
+        text={t('appCrashedText')}
+        action={
+          <Button variant="dark" size="md" icon="refresh" onClick={() => window.location.reload()}>
+            {t('reload')}
+          </Button>
+        }
+      />
+    </main>
+  )
+}
+
 export function NotFoundScreen() {
   const { t } = useI18n()
   useDocumentTitle(t('pageNotFound'))

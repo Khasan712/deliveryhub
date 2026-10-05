@@ -4,6 +4,23 @@ info:
   version: v1
   description: See docs/api.md for the conventions (errors, pagination, authentication).
 paths:
+  /api/v1/app/config:
+    get:
+      operationId: app_config_retrieve
+      description: Asked by the app on every start and return to the foreground; no
+        account.
+      summary: What the mobile app opens
+      tags:
+      - app
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfig'
+          description: ''
   /api/v1/auth/csrf:
     get:
       operationId: auth_csrf_retrieve
@@ -421,8 +438,111 @@ paths:
               schema:
                 $ref: '#/components/schemas/GeoSearch'
           description: ''
+  /api/v1/mobile-app:
+    get:
+      operationId: mobile_app_retrieve
+      summary: Which business the mobile app shows
+      tags:
+      - mobile-app
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApp'
+          description: ''
+    put:
+      operationId: mobile_app_update
+      summary: 'Show another business in the mobile app (at once: the app asks on
+        every start)'
+      tags:
+      - mobile-app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileAppUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MobileAppUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MobileAppUpdateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApp'
+          description: ''
 components:
   schemas:
+    AppConfig:
+      type: object
+      properties:
+        shop:
+          allOf:
+          - $ref: '#/components/schemas/AppShop'
+          nullable: true
+          description: 'null: no business chosen, or it is suspended'
+        min_version:
+          type: string
+          description: An older app asks to be updated from the store
+        store:
+          $ref: '#/components/schemas/AppStore'
+      required:
+      - min_version
+      - shop
+      - store
+    AppShop:
+      type: object
+      description: |-
+        The shop the mobile app opens. Needs `request` in the context: the app is not on our host, so every address
+        is absolute.
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        brand_color:
+          type: string
+          description: '"#rrggbb" or "" (the app then uses its own colour)'
+        url:
+          type: string
+          format: uri
+          description: The shop the app shows
+      required:
+      - brand_color
+      - logo
+      - name
+      - slug
+      - tagline
+      - url
+    AppStore:
+      type: object
+      properties:
+        android:
+          type: string
+          format: uri
+          nullable: true
+        ios:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - android
+      - ios
     Bot:
       type: object
       properties:
@@ -796,6 +916,36 @@ components:
       description: |-
         * `client` - Customers
         * `admin` - Staff
+    MobileApp:
+      type: object
+      properties:
+        business:
+          allOf:
+          - $ref: '#/components/schemas/BusinessCard'
+          nullable: true
+          description: Chosen in our panel
+        updated_at:
+          type: string
+          format: date-time
+        config:
+          allOf:
+          - $ref: '#/components/schemas/AppConfig'
+          description: Exactly what the app receives now
+      required:
+      - business
+      - config
+      - updated_at
+    MobileAppUpdateRequest:
+      type: object
+      properties:
+        business:
+          type: string
+          nullable: true
+          minLength: 1
+          description: 'Slug of an active business; null: none'
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - business
     Owner:
       type: object
       properties:

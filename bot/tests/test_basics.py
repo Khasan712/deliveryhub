@@ -4,7 +4,7 @@ import hashlib
 import logging
 
 import pytest
-from aiogram.exceptions import TelegramNetworkError
+from aiogram.exceptions import TelegramNetworkError, TelegramRetryAfter
 from cryptography.fernet import Fernet, InvalidToken
 
 from app import crypto
@@ -63,3 +63,16 @@ async def test_edits_ignore_not_modified_and_answers_never_fail(telegram):
     telegram.fail('sendMessage', NetworkFailure())
     with pytest.raises(TelegramNetworkError):
         await api.send(bot, 1, 'x')
+
+
+async def test_flood_control_waits_in_handlers_but_not_in_background_rounds(telegram):
+    bot = telegram.bot('2002:TEST-TOKEN-staff-bot-0000000000000')
+    flood = ApiFailure(429, 'Too Many Requests: retry after 1', retry_after=1)
+    telegram.fail('sendMessage', flood, times=1)
+    await api.send(bot, 1, 'x')  # waits a second and repeats
+    assert len(telegram.payloads('sendMessage')) == 2
+
+    telegram.fail('sendMessage', flood, times=1)
+    with api.no_flood_wait(), pytest.raises(TelegramRetryAfter):
+        await api.send(bot, 1, 'x')
+    assert len(telegram.payloads('sendMessage')) == 3

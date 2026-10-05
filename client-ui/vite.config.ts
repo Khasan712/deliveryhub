@@ -7,6 +7,20 @@ import type { RequestHandler } from 'msw'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+// Every build has its own id; /version.json tells an open page that a newer build is on the server
+// (src/lib/updates.ts).
+const BUILD_ID = process.env.BUILD_ID ?? Date.now().toString(36)
+
+function versionFile(): Plugin {
+  return {
+    name: 'deliveryhub:version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) })
+    },
+  }
+}
+
 // The backend picks the business from the Host header, so the proxy keeps it (changeOrigin: false):
 // http://food.localhost:5173/api/... → http://localhost:8100/api/... with "Host: food.localhost:5173".
 const backend = process.env.BACKEND_URL ?? 'http://localhost:8100'
@@ -81,7 +95,8 @@ function mockApi(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), process.env.MOCK_API ? mockApi() : null],
+  plugins: [react(), tailwindcss(), versionFile(), process.env.MOCK_API ? mockApi() : null],
+  define: { 'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID) },
   server: {
     port: 5173,
     strictPort: true,

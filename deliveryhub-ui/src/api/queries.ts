@@ -1,6 +1,6 @@
 import { MutationCache, QueryCache, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from './client'
-import { authApi, businessesApi } from './endpoints'
+import { authApi, businessesApi, mobileAppApi } from './endpoints'
 import type {
   Bot,
   BotRole,
@@ -9,6 +9,7 @@ import type {
   BusinessList,
   BusinessProfilePatch,
   BusinessStatus,
+  MobileApp,
   PlatformUser,
 } from './types'
 
@@ -17,6 +18,7 @@ export const queryKeys = {
   businesses: ['businesses', 'list'] as const,
   business: (slug: string) => ['businesses', 'detail', slug] as const,
   slugCheck: (slug: string) => ['slug-check', slug] as const,
+  mobileApp: ['mobile-app'] as const,
 }
 
 const BOT_ROLES: BotRole[] = ['client', 'admin']
@@ -222,5 +224,21 @@ export function useDisconnectBot(slug: string) {
   return useMutation({
     mutationFn: (role: BotRole) => businessesApi.disconnectBot(slug, role),
     onSuccess: (_, role) => change(role, null),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Mobile app
+// ---------------------------------------------------------------------------
+
+export function useMobileApp() {
+  return useQuery({ queryKey: queryKeys.mobileApp, queryFn: mobileAppApi.get })
+}
+
+export function useSetMobileApp() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (business: string | null) => mobileAppApi.set(business),
+    onSuccess: (data: MobileApp) => client.setQueryData(queryKeys.mobileApp, data),
   })
 }

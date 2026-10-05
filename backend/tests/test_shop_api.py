@@ -3,6 +3,7 @@ import time
 from datetime import timedelta
 
 from django.core import signing
+from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 
@@ -285,3 +286,50 @@ class ShopApiTests(BusinessTestCase):
         statuses = [self.order(token).status_code for _ in range(11)]
         self.assertEqual(statuses[-1], 429)
         self.assertEqual(statuses.count(201), 10)
+
+
+class FastAnswersTests(BusinessTestCase):
+    """Answers that cost little on a bad mobile network (docs/api.md, Conventions)."""
+
+    def setUp(self):
+        super().setUp()
+        self.unit, self.category, self.burger, self.cola = make_catalog()
+
+    def get(self, path):
+        return self.shop.get(f'/api/v1/{path}')
+
+    def sign_in(self):
+        return issue_token(Client.objects.create(first_name='Ali', phone='+998901234567'))
+
+    def test_an_unchanged_menu_is_a_304_without_a_body(self):
+        first = self.get('shop')
+        self.assertEqual(first['Cache-Control'], 'private, no-cache')
+        again = self.shop.get('/api/v1/shop', HTTP_IF_NONE_MATCH=first['ETag'])
+        self.assertEqual((again.status_code, again.content), (304, b''))
+        Product.objects.filter(pk=self.cola.pk).update(price='13 000')
+        self.assertEqual(self.shop.get('/api/v1/shop', HTTP_IF_NONE_MATCH=first['ETag']).status_code, 200)
+
+    def test_a_repeated_checkout_returns_the_order_it_placed(self):
+        token = self.sign_in()
+        key = {'HTTP_IDEMPOTENCY_KEY': 'checkout-7f3a9c'}
+        body = {'items': [{'product_id': self.cola.id, 'quantity': 2}], 'name': 'Ali', 'phone': '901234567',
+                'delivery_type': 'pickup'}
+        first = self.shop.post('/api/v1/orders', body, format='json', HTTP_AUTHORIZATION=f'Bearer {token}', **key)
+        again = self.shop.post('/api/v1/orders', body, format='json', HTTP_AUTHORIZATION=f'Bearer {token}', **key)
+        self.assertEqual((first.status_code, again.status_code), (201, 201))
+        self.assertEqual(again.json()['order']['id'], first.json()['order']['id'])
+        self.assertEqual(Order.objects.count(), 1)
+
+        other = self.shop.post('/api/v1/orders', body, format='json', HTTP_AUTHORIZATION=f'Bearer {token}',
+                               HTTP_IDEMPOTENCY_KEY='checkout-other1')
+        self.assertNotEqual(other.json()['order']['id'], first.json()['order']['id'])
+
+    def test_a_repeat_while_the_first_try_runs_waits(self):
+        token = self.sign_in()
+        client_id = Client.objects.get().pk
+        cache.add(f'order-key-busy:{client_id}:checkout-7f3a9c', 1, 60)  # the first try is still being placed
+        body = {'items': [{'product_id': self.cola.id, 'quantity': 1}], 'name': 'Ali', 'phone': '901234567',
+                'delivery_type': 'pickup'}
+        response = self.shop.post('/api/v1/orders', body, format='json', HTTP_AUTHORIZATION=f'Bearer {token}',
+                                  HTTP_IDEMPOTENCY_KEY='checkout-7f3a9c')
+        self.assertEqual((response.status_code, response.json()), (409, {'error': 'order_in_progress'}))

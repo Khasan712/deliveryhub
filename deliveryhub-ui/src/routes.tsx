@@ -3,11 +3,11 @@ import { AppLayout } from './components/AppLayout'
 import { RequireAuth, Splash } from './components/RequireAuth'
 import { Root } from './components/Root'
 import { BusinessesPage } from './pages/BusinessesPage'
-import { loadBusinessPage, loadCreatePage } from './pages/lazy'
+import { loadBusinessPage, loadCreatePage, loadMobileAppPage } from './pages/lazy'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage, RouteError } from './pages/NotFoundPage'
 
-/** The same addresses as the old Django panel: /, /new, /b/<slug>, /login. */
+/** The same addresses as the old Django panel: /, /new, /b/<slug>, /login; and /mobile (our mobile app). */
 export const routes: RouteObject[] = [
   {
     element: <Root />,
@@ -30,6 +30,10 @@ export const routes: RouteObject[] = [
               {
                 path: 'b/:slug',
                 lazy: async () => ({ Component: (await loadBusinessPage()).BusinessPage }),
+              },
+              {
+                path: 'mobile',
+                lazy: async () => ({ Component: (await loadMobileAppPage()).MobileAppPage }),
               },
               { path: '*', element: <NotFoundPage /> },
             ],

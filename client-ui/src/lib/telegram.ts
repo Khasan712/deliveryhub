@@ -129,6 +129,9 @@ export function telegram(): TelegramWebApp | null {
 
 export const isTelegram = () => telegram() !== null
 
+/** Opened as a Mini App (index.html saw Telegram's launch parameters) — known before the SDK has loaded. */
+export const isTelegramLaunch = () => document.documentElement.hasAttribute('data-tg')
+
 function supports(webApp: TelegramWebApp, version: string): boolean {
   try {
     return webApp.isVersionAtLeast(version)

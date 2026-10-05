@@ -145,7 +145,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
       </div>
       <div className="relative shrink-0">
         <ProductImage
-          src={product.image}
+          src={product.thumb}
           name={title}
           className={cn('size-[92px] rounded-[14px] sm:size-[104px]', product.frozen ? PHOTO_FROZEN : PHOTO_HOVER)}
         />
@@ -168,7 +168,7 @@ export function FeaturedCard({ product, className }: { product: Product; classNa
       )}
     >
       <div className="relative">
-        <ProductImage src={product.image} name={title} className={cn('aspect-[4/3] w-full', product.frozen ? PHOTO_FROZEN : PHOTO_HOVER)} />
+        <ProductImage src={product.thumb} name={title} className={cn('aspect-[4/3] w-full', product.frozen ? PHOTO_FROZEN : PHOTO_HOVER)} />
         {product.frozen && <UnavailableBadge className="top-2.5 left-2.5" />}
       </div>
       <div className="flex flex-1 flex-col pt-3.5 pr-3 pb-3 pl-3.5">

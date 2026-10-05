@@ -265,3 +265,44 @@ describe('checkout', () => {
     expect(storedCart()).toEqual([])
   })
 })
+
+describe('placing an order on a bad network', () => {
+  it('sends the same key again after a lost answer, so the order is not placed twice', async () => {
+    const keys: (string | null)[] = []
+    let first = true
+    server.use(
+      http.post('/api/v1/orders', ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key'))
+        if (first) {
+          first = false
+          return HttpResponse.error() // the answer never arrives
+        }
+        return undefined // the regular handler places the order
+      }),
+    )
+    const { user } = renderApp({ route: '/checkout', signedIn: true, cart: [{ id: 1, qty: 2 }] })
+    await screen.findByDisplayValue('Aziz Karimov')
+
+    await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
+    expect((await screen.findAllByText(uz.errNetwork)).length).toBeGreaterThan(0)
+    await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
+
+    await waitFor(() => expect(location.current?.pathname).toMatch(/^\/orders\/\d+$/))
+    expect(keys).toHaveLength(2)
+    expect(keys[0]).toMatch(/^[\w-]{8,64}$/)
+    expect(keys[1]).toBe(keys[0])
+  })
+
+  it('waits while the first try of the same checkout is still being placed', async () => {
+    let busy = 2
+    server.use(
+      http.post('/api/v1/orders', () =>
+        busy-- > 0 ? HttpResponse.json({ error: 'order_in_progress' }, { status: 409 }) : undefined,
+      ),
+    )
+    const { user } = renderApp({ route: '/checkout', signedIn: true, cart: [{ id: 1, qty: 2 }] })
+    await screen.findByDisplayValue('Aziz Karimov')
+    await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
+    await waitFor(() => expect(location.current?.pathname).toMatch(/^\/orders\/\d+$/), { timeout: 8000 })
+  })
+})

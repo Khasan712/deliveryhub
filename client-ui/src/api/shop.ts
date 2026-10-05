@@ -1,5 +1,5 @@
 /** Shop API endpoints (docs/api.md → "Shop API"). */
-import { api } from './client'
+import { api, isApiError } from './client'
 import type {
   AuthResult,
   Client,
@@ -42,8 +42,34 @@ export const getOrders = (token: string, signal?: AbortSignal) => api<{ orders: 
 export const getOrder = (token: string, id: number, signal?: AbortSignal) =>
   api<{ order: Order }>(`orders/${id}`, { token, signal })
 
-export const createOrder = (token: string, body: NewOrder) =>
-  api<{ order: Order }>('orders', { method: 'POST', token, body })
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Places an order. `key` is the same for every try of one checkout: when an answer is lost on a bad network and
+ * the customer taps again, the server returns the order already placed instead of a second one.
+ */
+export async function createOrder(token: string, body: NewOrder, key: string): Promise<{ order: Order }> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await api<{ order: Order }>('orders', {
+        method: 'POST',
+        token,
+        body,
+        headers: { 'Idempotency-Key': key },
+        timeoutMs: 30_000,
+      })
+    } catch (error) {
+      // The earlier try of this checkout is still being placed: its order comes back in a moment.
+      if (!(isApiError(error) && error.code === 'order_in_progress') || attempt >= 5) throw error
+      await wait(1500)
+    }
+  }
+}
+
+/** A new key for one checkout (see createOrder). */
+export function checkoutKey(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+}
 
 // --- map -------------------------------------------------------------------------------------
 export const reverseGeocode = (lat: number, lng: number, lang: string, signal?: AbortSignal) =>

@@ -80,6 +80,22 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
   images:
     runs-on: ubuntu-latest
     needs: [backend, bot, ui]

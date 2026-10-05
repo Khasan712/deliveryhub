@@ -102,3 +102,14 @@ class BotSetup(models.Model):
     telegram_user_id = models.BigIntegerField(blank=True, null=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
+
+
+class MobileApp(models.Model):
+    """Our mobile app (mobile/ — Android and iOS) opens the shop of one business, chosen in our panel: we show a
+    business its own shop on a phone, as its customers would use it. A single row (pk 1)."""
+    business = models.ForeignKey(Business, on_delete=models.SET_NULL, blank=True, null=True, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.select_related('business').get_or_create(pk=1)[0]

@@ -18,7 +18,7 @@ const product = (
   desc_ru = '',
   unit: [string, string] = ['dona', 'шт'],
   frozen = false,
-): Product => ({ id, category_id, name_uz, name_ru, price, image, desc_uz, desc_ru, unit_uz: unit[0], unit_ru: unit[1], frozen })
+): Product => ({ id, category_id, name_uz, name_ru, price, image, thumb: image, desc_uz, desc_ru, unit_uz: unit[0], unit_ru: unit[1], frozen })
 
 const products: Product[] = [
   product(1, 1, 'Klassik burger', 'Классический бургер', 35000, img('Klassik_Burger.jpg'), 'Mol go‘shti kotleti, cheddar, pomidor, tuzlangan bodring va maxsus sous.', 'Говяжья котлета, чеддер, томат, маринованный огурец и фирменный соус.'),

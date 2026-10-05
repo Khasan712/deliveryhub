@@ -51,7 +51,10 @@ export interface Product {
   unit_uz: string
   unit_ru: string
   category_id: number | null
+  /** Up to 1280 px: the product sheet. */
   image: string | null
+  /** Up to 512 px (or the image): cards, the cart and lists. */
+  thumb: string | null
   /** Not available right now (frozen by the business): shown, but cannot be ordered. */
   frozen: boolean
 }

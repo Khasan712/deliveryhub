@@ -36,7 +36,7 @@ def resolve_items(raw_items):
     if not quantities:
         raise OrderError('empty')
 
-    products = Product.objects.in_bulk(list(quantities))
+    products = Product.objects.light().in_bulk(list(quantities))
     missing = [product_id for product_id in quantities if product_id not in products]
     if missing:
         raise OrderError('product_not_found', missing)

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from apps.core.enums import DeliveryTypeEnum, OrderEnum, OrderSourceEnum
 from apps.core.models import Category, Order, Product
 from apps.core.services import OrderError, create_order, resolve_items
-from apps.core.utils import normalize_phone
+from apps.core.utils import created_on, normalize_phone
 from apps.voice import understanding as voice
 from ...common.errors import ApiError
 from ..serializers import (PosCategorySerializer, PosProductSerializer, SaleCreateSerializer, SalesStatsSerializer,
@@ -20,22 +20,23 @@ RECENT_SALES = 8
 
 
 def catalog_products():
-    return Product.objects.select_related('measure').order_by('category_id', 'id')
+    return Product.objects.light().select_related('measure').order_by('category_id', 'id')
 
 
 def sales():
-    return Order.objects.filter(source=OrderSourceEnum.admin.value).prefetch_related('order_items')
+    return Order.objects.filter(source=OrderSourceEnum.admin.value).select_related('client').prefetch_related(
+        'order_items')
 
 
 def today_stats():
     today = timezone.localdate()
-    today_sales = list(sales().filter(created_at__date=today).exclude(status=OrderEnum.rejected.value))
+    today_sales = list(sales().filter(**created_on(today)).exclude(status=OrderEnum.rejected.value))
     revenue = sum(order.get_total() for order in today_sales)
     return {
         'count': len(today_sales),
         'revenue': revenue,
         'average': revenue // len(today_sales) if today_sales else 0,
-        'all_orders_today': Order.objects.filter(created_at__date=today).exclude(status=OrderEnum.new.value).count(),
+        'all_orders_today': Order.objects.filter(**created_on(today)).exclude(status=OrderEnum.new.value).count(),
     }
 
 

@@ -17,6 +17,8 @@ urlpatterns = [
     path('businesses/<slug:slug>/bots/setup-link', views.BotSetupLinkView.as_view(), name='bot-setup-link'),
     path('businesses/<slug:slug>/bots', views.BotConnectView.as_view(), name='bots'),
     path('businesses/<slug:slug>/bots/<str:role>', views.BotDisconnectView.as_view(), name='bot'),
+    path('mobile-app', views.MobileAppView.as_view(), name='mobile-app'),
+    path('app/config', views.AppConfigView.as_view(), name='app-config'),
     path('geo/reverse', views.GeoReverseView.as_view(), name='geo-reverse'),
     path('geo/search', views.GeoSearchView.as_view(), name='geo-search'),
 ]

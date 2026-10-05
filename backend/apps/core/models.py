@@ -48,8 +48,18 @@ class Category(models.Model):
         return f'{self.name_uz}: {self.name_ru}'
 
 
+class ProductQuerySet(models.QuerySet):
+    def light(self):
+        """Without the base64 images old products keep in the database (megabytes each), only whether there is
+        one (`has_img_64`, read by api.common.representations.product_image_url)."""
+        return self.defer('img_64').annotate(has_img_64=models.ExpressionWrapper(
+            models.Q(img_64__isnull=False) & ~models.Q(img_64=''), output_field=models.BooleanField()))
+
+
 class Product(models.Model):
     img = models.ImageField(upload_to='products/')
+    # A small copy of `img` for cards and lists (apps.core.images); empty: only the full image exists.
+    thumb = models.ImageField(upload_to='products/', blank=True, default='', db_default='')
     # Images of old products kept in the database (base64); served by GET /api/v1/products/<id>/image.
     img_64 = models.TextField(blank=True, null=True)
     name_uz = models.CharField(max_length=255)
@@ -67,6 +77,8 @@ class Product(models.Model):
     frozen_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ProductQuerySet.as_manager()
 
     def __str__(self):
         return f'{self.name_uz}'
@@ -114,6 +126,15 @@ class Order(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            # Every list is newest first and every "today" is a range of created_at.
+            models.Index(fields=['created_at'], name='app_order_created_at_idx'),
+            # The bot service looks for new orders to announce to staff every few seconds
+            # (bot/app/staff/service.py, push_new_orders): only the waiting ones, however long the history.
+            models.Index(fields=['updated_at'], condition=models.Q(status='ordered'), name='app_order_ordered_idx'),
+        ]
 
     def __str__(self):
         return f'{self.id}'

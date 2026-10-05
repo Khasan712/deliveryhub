@@ -9,8 +9,9 @@ from sqlalchemy import update
 from app.ai import understanding
 from app.db.models import Draft, Order, OrderCard, OrderItem, OrderTicket, Outbox, Product, StaffInvite, StaffLink, User
 from app.staff import service
+from app.telegram.api import Backoff
 from app.utils import now
-from .fakes import ApiFailure, NetworkFailure, callback, message, voice
+from .fakes import ApiFailure, NetworkFailure, callback, message, user, voice
 
 OPERATOR = 5001
 COURIER = 5002
@@ -154,6 +155,25 @@ async def test_messages_mark_the_staff_member_as_seen(staff_bot, shop, team):
     await staff_bot.send(message(OPERATOR, '/help'))
     link = await shop.one(StaffLink, StaffLink.telegram_id == OPERATOR)
     assert link.blocked_at is None and link.last_seen_at is not None and link.username == 'ali'
+
+
+async def test_the_visit_is_written_at_most_once_a_minute(staff_bot, shop, team):
+    async def seen():
+        return (await shop.one(StaffLink, StaffLink.telegram_id == OPERATOR)).last_seen_at
+
+    await staff_bot.send(message(OPERATOR, '/help'))
+    first = await seen()
+    await staff_bot.send(message(OPERATOR, '/help'))
+    assert await seen() == first  # nothing new to write
+
+    await staff_bot.send(message(OPERATOR, '/help', sender=user(OPERATOR, username='ali_new')))
+    link = await shop.one(StaffLink, StaffLink.telegram_id == OPERATOR)
+    assert link.username == 'ali_new' and link.last_seen_at > first  # a change is written at once
+
+    await shop.update(update(StaffLink).where(StaffLink.id == team.operator.id)
+                      .values(last_seen_at=first - timedelta(minutes=2)))
+    await staff_bot.send(message(OPERATOR, '/help', sender=user(OPERATOR, username='ali_new')))
+    assert await seen() > first
 
 
 async def test_group_chats_are_ignored(staff_bot, telegram, team):
@@ -430,6 +450,76 @@ async def test_cards_deleted_in_the_chat_are_forgotten(staff_bot, telegram, shop
     await shop.update(update(Order).where(Order.id == order.id).values(status='rejected', updated_at=now()))
     await service.sync_changed_orders(staff_bot.db, shop.info, staff_bot.bot)
     assert [card.chat_id for card in await shop.all(OrderCard)] == [OPERATOR]
+
+
+def order_cards(telegram, chat_id, order):
+    return [payload for payload in telegram.payloads('sendMessage', chat_id) if f'#{order.id}' in payload['text']]
+
+
+@pytest.mark.parametrize('failing', [OPERATOR, COURIER])
+async def test_a_card_that_did_not_go_out_is_sent_in_a_later_round_once(staff_bot, telegram, shop, team, failing):
+    order = await customer_order(shop, team)
+    telegram.fail('sendMessage', NetworkFailure(), when=lambda call: call.payload['chat_id'] == failing, times=1)
+    with pytest.raises(Backoff):  # the round stops at the failure (the next chats wait too)
+        await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    if failing == OPERATOR:
+        assert order_cards(telegram, COURIER, order) == []
+
+    await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)  # Telegram is fine again
+    await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    for chat_id in (OPERATOR, COURIER):
+        assert len(order_cards(telegram, chat_id, order)) == (2 if chat_id == failing else 1)  # the failed try
+        assert await shop.count(OrderCard, OrderCard.chat_id == chat_id) == 1
+    assert await shop.count(OrderTicket) == 1
+
+
+@pytest.mark.parametrize('change', ['accepted', 'on_the_way', 'too_old'])
+async def test_failed_cards_are_not_sent_once_the_order_moved_on(staff_bot, telegram, shop, team, change):
+    order = await customer_order(shop, team)
+    telegram.fail('sendMessage', NetworkFailure(), times=1)
+    with pytest.raises(Backoff):
+        await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    if change == 'accepted':
+        await shop.update(update(OrderTicket).values(accepted_at=now(), accepted_by_id=team.admin.id))
+    elif change == 'on_the_way':
+        await shop.update(update(Order).where(Order.id == order.id).values(status='on_the_way', updated_at=now()))
+    else:
+        await shop.update(update(OrderTicket).values(created_at=now() - service.REPUSH_WINDOW - timedelta(minutes=1)))
+    await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    assert len(telegram.payloads('sendMessage')) == 1  # only the failed try
+
+
+async def test_a_chat_never_gets_the_same_new_order_twice(staff_bot, telegram, shop, team):
+    order = await customer_order(shop, team)
+    await staff_bot.send(callback(OPERATOR, f'order:{order.id}:open', 150))  # opened from today's list: a card
+    ticket = await shop.one(OrderTicket)
+    async with shop.session() as other:  # another service is sending this order's cards right now
+        assert await other.scalar(service._push_lock(shop.schema, ticket.id))
+        await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+        assert order_cards(telegram, COURIER, order) == []
+        await other.rollback()
+
+    await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    assert len(order_cards(telegram, OPERATOR, order)) == 1  # the one they opened
+    assert len(order_cards(telegram, COURIER, order)) == 1
+
+
+async def test_a_card_refresh_cut_short_is_repeated(staff_bot, telegram, shop, team):
+    order = await customer_order(shop, team)
+    await service.push_new_orders(staff_bot.db, shop.info, staff_bot.bot)
+    await shop.update(update(Order).where(Order.id == order.id).values(status='on_the_way', updated_at=now()))
+    telegram.fail('editMessageText', NetworkFailure(), when=lambda call: call.payload['chat_id'] == COURIER, times=1)
+    with pytest.raises(Backoff):
+        await service.sync_changed_orders(staff_bot.db, shop.info, staff_bot.bot)
+    assert (await shop.one(OrderTicket)).status_seen == 'ordered'  # not every card shows it yet: comes again
+
+    await service.sync_changed_orders(staff_bot.db, shop.info, staff_bot.bot)
+    await service.sync_changed_orders(staff_bot.db, shop.info, staff_bot.bot)
+    ticket = await shop.one(OrderTicket)
+    assert (ticket.status_seen, ticket.changed_by_id) == ('on_the_way', None)
+    assert [edit['chat_id'] for edit in telegram.payloads('editMessageText')] == [OPERATOR, COURIER, OPERATOR, COURIER]
+    assert all("Yo'lda" in telegram.last('editMessageText', chat_id)['text'] for chat_id in (OPERATOR, COURIER))
+    assert len(telegram.payloads('sendMessage')) == 2  # no new cards
 
 
 async def test_blocked_staff_are_skipped(staff_bot, telegram, shop, team):

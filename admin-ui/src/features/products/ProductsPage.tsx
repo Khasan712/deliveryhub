@@ -69,7 +69,7 @@ export function ProductsPage() {
         const other = lang === 'ru' ? product.name_uz : product.name_ru
         return (
           <div className="flex items-center gap-3.5">
-            <ProductThumb src={product.image} frozen={product.frozen} />
+            <ProductThumb src={product.thumb} frozen={product.frozen} />
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <Link
@@ -253,7 +253,7 @@ export function ProductsPage() {
                 onClick={() => navigate(`/products/${product.id}/edit`)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                <ProductThumb src={product.image} frozen={product.frozen} />
+                <ProductThumb src={product.thumb} frozen={product.frozen} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold text-fg">{name(product)}</span>
                   <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted">

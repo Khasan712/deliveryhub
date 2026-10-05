@@ -1,4 +1,6 @@
-"""Customer messages from the outbox: texts, language, retries, giving up, order of messages."""
+"""Customer messages from the outbox: texts, language, retries, giving up, order of messages, Telegram trouble."""
+import asyncio
+import time
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -7,8 +9,9 @@ from sqlalchemy import select, update
 
 from app import outbox
 from app.db.models import Outbox, StaffLink
+from app.telegram.api import BACKOFF_SECONDS, Backoff
 from .conftest import ago
-from .fakes import ApiFailure, NetworkFailure, callback
+from .fakes import ApiFailure, BrokenAnswer, NetworkFailure, callback
 
 
 @pytest.fixture
@@ -80,7 +83,8 @@ async def test_failed_messages_are_retried_after_a_pause(customer_bot, telegram,
     row = await queue(shop, order, event='accepted')
     telegram.fail('sendMessage', NetworkFailure(), times=1)
 
-    assert await send(customer_bot, shop) == 0
+    with pytest.raises(Backoff):
+        await send(customer_bot, shop)
     row = await shop.one(Outbox)
     assert (row.attempts, row.sent_at) == (1, None)
     assert 'Cannot connect' in row.error
@@ -99,7 +103,8 @@ async def test_gives_up_after_five_attempts(customer_bot, telegram, shop, menu):
     await queue(shop, order, event='on_the_way', created_at=ago(hours=1))
     telegram.fail('sendMessage', ApiFailure(502, 'Bad Gateway'))
     for attempt in range(1, 6):
-        await send(customer_bot, shop)
+        with pytest.raises(Backoff):
+            await send(customer_bot, shop)
         assert (await shop.one(Outbox)).attempts == attempt
     await send(customer_bot, shop)
     assert len(telegram.payloads('sendMessage')) == 5
@@ -107,13 +112,51 @@ async def test_gives_up_after_five_attempts(customer_bot, telegram, shop, menu):
     assert (row.attempts, row.sent_at, row.error) == (5, None, 'Bad Gateway')
 
 
-async def test_flood_control_waits_and_repeats(customer_bot, telegram, shop, menu):
+async def test_telegram_trouble_stops_the_round_at_once(customer_bot, telegram, shop, menu):
+    """Telegram unreachable: one request (one timeout) per round, not one per pending message."""
+    for tg_id in ('911', '912', '913'):
+        await queue(shop, await shop.order([(menu.burger, 1)], client=await shop.client(tg_id=tg_id)), event='accepted')
+    telegram.fail('sendMessage', NetworkFailure())
+    with pytest.raises(Backoff) as raised:
+        await send(customer_bot, shop)
+    assert raised.value.delay == BACKOFF_SECONDS
+    assert len(telegram.payloads('sendMessage')) == 1
+    assert [row.attempts for row in await shop.all(Outbox)] == [1, 0, 0]
+
+    telegram.heal()
+    telegram.fail('sendMessage', BrokenAnswer(), times=1)  # a proxy's HTML error page is trouble as well
+    with pytest.raises(Backoff):
+        await send(customer_bot, shop)
+    assert [row.attempts for row in await shop.all(Outbox)] == [1, 1, 0]
+    assert (await shop.all(Outbox))[1].error == 'Failed to decode object: JSONDecodeError'
+
+    assert await send(customer_bot, shop) == 1  # healthy again: the third one; the others wait for their retry
+    assert [row.sent_at is not None for row in await shop.all(Outbox)] == [False, False, True]
+
+
+async def test_flood_control_pauses_the_bot_instead_of_sleeping(customer_bot, telegram, shop, menu):
+    """No sleeping while the row is locked: the round stops, the bot waits as long as Telegram asks."""
     order = await shop.order([(menu.burger, 1)], client=await shop.client())
     await queue(shop, order, event='accepted')
-    telegram.fail('sendMessage', ApiFailure(429, 'Too Many Requests: retry after 1', retry_after=1), times=1)
-    assert await send(customer_bot, shop) == 1
-    assert len(telegram.payloads('sendMessage')) == 2
-    assert (await shop.one(Outbox)).attempts == 0
+    await queue(shop, await shop.order([(menu.cola, 1)], client=await shop.client(tg_id='914')), event='accepted')
+    telegram.fail('sendMessage', ApiFailure(429, 'Too Many Requests: retry after 7', retry_after=7), times=1)
+    started = time.monotonic()
+    with pytest.raises(Backoff) as raised:
+        await send(customer_bot, shop)
+    assert time.monotonic() - started < 2 and raised.value.delay == 7
+    assert len(telegram.payloads('sendMessage')) == 1
+    rows = await shop.all(Outbox)
+    assert [(row.attempts, row.sent_at, row.error) for row in rows] == [(0, None, '')] * 2  # no attempt counted
+
+    assert await send(customer_bot, shop) == 2
+
+
+async def test_a_stopping_service_ends_the_round_between_two_messages(customer_bot, telegram, shop, menu):
+    stopping = asyncio.Event()
+    stopping.set()
+    await queue(shop, await shop.order([(menu.burger, 1)], client=await shop.client()), event='accepted')
+    assert await outbox.send_pending(customer_bot.db, shop.info, customer_bot.bot, stopping) == 0
+    assert telegram.payloads('sendMessage') == []
 
 
 async def test_blocked_bots_and_unknown_chats_are_given_up_at_once(customer_bot, telegram, shop, menu):
@@ -151,7 +194,9 @@ async def test_messages_about_one_order_keep_their_order(customer_bot, telegram,
     await queue(shop, second, event='accepted')
     telegram.fail('sendMessage', NetworkFailure(), times=1, when=lambda call: 'принят!' in call.payload['text'])
 
-    await send(customer_bot, shop)  # the first message failed: the second waits, the other order goes
+    with pytest.raises(Backoff):  # the first message failed: the round stops
+        await send(customer_bot, shop)
+    await send(customer_bot, shop)  # the second message waits for the first; the other order goes
     assert [payload['chat_id'] for payload in telegram.payloads('sendMessage')] == ['904', '905']
     await send(customer_bot, shop)
     assert len(telegram.payloads('sendMessage')) == 2

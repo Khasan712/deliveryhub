@@ -137,6 +137,7 @@ export function createDb(): MockDb {
       return category ? { id: category.id, name_uz: category.name_uz, name_ru: category.name_ru } : null
     })(),
     image: index === 10 ? null : foodImage(emoji, from, to),
+    thumb: index === 10 ? null : foodImage(emoji, from, to),
     // «Naggetslar» is sold out for now: frozen (the shop refuses it, the point of sale warns).
     frozen: index === FROZEN_INDEX,
     frozen_at: index === FROZEN_INDEX ? iso(now - 3 * 3_600_000) : null,

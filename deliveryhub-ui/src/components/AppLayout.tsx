@@ -7,7 +7,7 @@ import { errorMessage } from '../lib/errors'
 import { initialOf } from '../lib/format'
 import { formatPhone } from '../lib/phone'
 import { BrandMark } from './BrandMark'
-import { LogoutIcon, PlusIcon } from './icons'
+import { BuildingIcon, LogoutIcon, PhoneIcon, PlusIcon } from './icons'
 import { buttonClass } from './ui/styles'
 import { Spinner } from './ui/Spinner'
 import { useToast } from './ui/toast'
@@ -58,6 +58,11 @@ function useFocusOnNavigation(pathname: string) {
   return main
 }
 
+const NAV = [
+  { to: '/', label: 'Bizneslar', icon: BuildingIcon },
+  { to: '/mobile', label: 'Mobil ilova', icon: PhoneIcon },
+]
+
 export function AppLayout() {
   const { data: user } = useMe()
   const logout = useLogout()
@@ -99,14 +104,23 @@ export function AppLayout() {
               DeliveryHub <span className="font-semibold text-slate-400 max-sm:sr-only">platforma</span>
             </span>
           </Link>
-          <nav aria-label="Asosiy menyu" className="ml-3 hidden sm:block">
-            <Link
-              to="/"
-              aria-current={pathname === '/' ? 'page' : undefined}
-              className="rounded-lg bg-slate-100/80 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200/70"
-            >
-              Bizneslar
-            </Link>
+          <nav aria-label="Asosiy menyu" className="flex items-center gap-1 sm:ml-3">
+            {NAV.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                aria-current={pathname === to ? 'page' : undefined}
+                className={cx(
+                  'flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-semibold transition sm:px-3',
+                  pathname === to
+                    ? 'bg-slate-100/80 text-slate-900 hover:bg-slate-200/70'
+                    : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900',
+                )}
+              >
+                <Icon size={17} className="sm:hidden" />
+                <span className="max-sm:sr-only">{label}</span>
+              </Link>
+            ))}
           </nav>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Link

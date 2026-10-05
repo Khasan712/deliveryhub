@@ -19,6 +19,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-deliveryhub}
       POSTGRES_USER: ${POSTGRES_USER:-deliveryhub}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    # SSD storage: reading by index costs almost what reading in order does, so the planner should not fall back
+    # to scanning whole tables (the default 4.0 assumes spinning disks).
+    command: ["postgres", "-c", "random_page_cost=1.1"]
     volumes:
       - db:/var/lib/postgresql/data
     ports:

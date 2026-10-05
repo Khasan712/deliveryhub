@@ -66,8 +66,8 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
           <ul aria-label={t('order_items')}>
             {lines.map((line) => (
               <li key={line.product_id} className={cn('line', isFlashed(`item-${line.product_id}`) && 'line-flash')}>
-                <ProductThumb src={line.product.image} frozen={line.product.frozen} />
-                <div className="min-w-0 flex-1">
+                <ProductThumb src={line.product.thumb} frozen={line.product.frozen} />
+                <div className="line-info min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-fg">{name(line.product)}</p>
                   <p className="flex items-center gap-1.5 text-xs text-muted">
                     <Money value={line.product.price} />
@@ -91,7 +91,10 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
                     <IconPlus size={14} strokeWidth={2.5} />
                   </button>
                 </div>
-                <Money value={line.product.price * line.quantity} className="w-24 shrink-0 text-right text-sm font-semibold text-fg sm:w-28" />
+                <Money
+                  value={line.product.price * line.quantity}
+                  className="line-total w-24 shrink-0 text-right text-sm font-semibold text-fg sm:w-28"
+                />
               </li>
             ))}
           </ul>

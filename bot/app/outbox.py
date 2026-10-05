@@ -3,21 +3,23 @@ change a status — write to adminbot_outbox. They are sent from the business's 
 Telegram chat (app_client.tg_id), in the customer's language.
 
 A row is finished when `sent_at` is set (delivered) or `attempts` reaches MAX_ATTEMPTS (given up; `error` says
-why). Network trouble, flood limits and Telegram server errors count an attempt and are retried with growing
-pauses (RETRY_DELAYS); a blocked bot, an unknown chat, a customer without Telegram or a message older than
-MAX_AGE are given up at once. Messages about one order go out in order: a row waits while an earlier row of
-the same order is still pending. Each row is sent in its own transaction holding the row lock, so two running
-services never send the same message."""
+why). Network trouble and Telegram server errors count an attempt and are retried with growing pauses
+(RETRY_DELAYS); a blocked bot, an unknown chat, a customer without Telegram or a message older than MAX_AGE are
+given up at once. Messages about one order go out in order: a row waits while an earlier row of the same order is
+still pending. Each row is sent in its own transaction holding the row lock, so two running services never send
+the same message. On the first sign of Telegram trouble (no answer, 5xx, flood control, a revoked token) the
+round stops with Backoff — nobody sleeps holding a row lock, and the rest of the round is not tried row by row;
+flood control is not the message's fault, so it costs no attempt."""
 import logging
 from datetime import timedelta
 
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
-from sqlalchemy import and_, select, update
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound, TelegramRetryAfter
+from sqlalchemy import and_, literal, select, update
 
 from .customer.texts import STATUS_EVENTS, order_created_text, order_language, order_status_text
 from .db.models import Outbox
 from .orders import load_order
-from .telegram.api import PARSE_MODE, describe
+from .telegram.api import ERRORS, PARSE_MODE, Backoff, describe, is_retryable, no_flood_wait
 from .utils import now
 
 logger = logging.getLogger('outbox')
@@ -41,7 +43,10 @@ class Undeliverable(Exception):
 
 
 def pending():
-    return and_(Outbox.sent_at.is_(None), Outbox.attempts < MAX_ATTEMPTS)
+    """Rows still to send. MAX_ATTEMPTS is written into the SQL, not bound as a parameter: only then may every
+    execution of the prepared statement (generic plans too) use the partial index adminbot_outbox_due
+    (id) WHERE sent_at IS NULL AND attempts < 5 — whose 5 is this MAX_ATTEMPTS."""
+    return and_(Outbox.sent_at.is_(None), Outbox.attempts < literal(MAX_ATTEMPTS, literal_execute=True))
 
 
 def is_due(row, stamp):
@@ -84,22 +89,29 @@ async def send_one(session, bot, business, row_id):
         return GAVE_UP
 
     try:
-        await bot.send_message(chat_id=chat_id, text=text, parse_mode=PARSE_MODE)
-    except TelegramAPIError as exc:
+        with no_flood_wait():
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode=PARSE_MODE)
+    except ERRORS as exc:
+        if isinstance(exc, TelegramRetryAfter):
+            await session.rollback()  # untouched: it goes out once the bot may send again
+            raise Backoff(exc) from None
         final = isinstance(exc, PERMANENT_ERRORS)
         row.attempts = MAX_ATTEMPTS if final else row.attempts + 1
         row.error = describe(exc)[:200]
         await session.commit()
         logger.warning('%s: message %s about order #%s %s: %s', business.slug, row.id, row.order_id,
                        'given up' if final else f'failed (attempt {row.attempts})', row.error)
+        if is_retryable(exc):
+            raise Backoff(exc) from None
         return GAVE_UP if final else RETRY
     row.sent_at = now()
     await session.commit()
     return SENT
 
 
-async def send_pending(db, business, bot):
-    """Sends the due customer messages of one business. Returns how many were sent."""
+async def send_pending(db, business, bot, stopping=None):
+    """Sends the due customer messages of one business. Returns how many were sent. Stops between two messages
+    once `stopping` (an asyncio.Event) is set; raises Backoff on Telegram trouble."""
     stamp = now()
     async with db.tenant(business.schema_name) as session:
         # A status message that comes hours late only confuses: such rows are dropped.
@@ -113,6 +125,8 @@ async def send_pending(db, business, bot):
     sent = 0
     waiting = set()  # orders whose earlier message is not out yet: their later messages wait
     for row in rows:
+        if stopping is not None and stopping.is_set():
+            break
         if row.order_id in waiting:
             continue
         if not is_due(row, stamp):

@@ -16,6 +16,7 @@ const product = (id: number, price: number, category: number | null = 1, name = 
   unit_ru: 'шт',
   category_id: category,
   image: null,
+  thumb: null,
   frozen: false,
 })
 
@@ -174,14 +175,38 @@ describe('point of sale', () => {
   })
 })
 
+describe('the count on a tile', () => {
+  it('goes up and down right where the product was added', async () => {
+    const { user } = renderApp('/sales')
+    await user.click(await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ }))
+
+    const tile = screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,.* · Buyurtmada: 1$/ }).closest('.tile')!
+    const stepper = within(tile as HTMLElement).getByRole('group', { name: 'Chizburger: Buyurtmada' })
+    await user.click(within(stepper).getByRole('button', { name: "Ko'paytirish: Chizburger" }))
+    await user.click(within(stepper).getByRole('button', { name: "Ko'paytirish: Chizburger" }))
+    expect(stepper).toHaveTextContent('3')
+    expect(within(orderPanel()).getByText('3 ta')).toBeInTheDocument()
+
+    await user.click(within(stepper).getByRole('button', { name: 'Kamaytirish: Chizburger' }))
+    expect(within(orderPanel()).getByText('2 ta')).toBeInTheDocument()
+    await user.click(within(stepper).getByRole('button', { name: 'Kamaytirish: Chizburger' }))
+    await user.click(within(stepper).getByRole('button', { name: 'Kamaytirish: Chizburger' }))
+    // Back to zero: out of the order, the tile offers "+ Qo'shish" again.
+    expect(within(tile as HTMLElement).queryByRole('group')).not.toBeInTheDocument()
+    expect(within(orderPanel()).queryByText('Chizburger')).not.toBeInTheDocument()
+  })
+})
+
 describe('frozen products at the point of sale', () => {
   it('shows them muted, warns in the order panel and still sells them', async () => {
     const creates = recordRequests('post', '/api/v1/sales')
     const { user } = renderApp('/sales')
 
     const tile = await screen.findByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,.* · Muzlatilgan$/ })
-    expect(tile).toHaveClass('is-frozen')
-    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ })).not.toHaveClass('is-frozen')
+    expect(tile.closest('.tile')).toHaveClass('is-frozen')
+    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Chizburger,/ }).closest('.tile')).not.toHaveClass(
+      'is-frozen',
+    )
     expect(within(orderPanel()).queryByText(/Muzlatilgan mahsulot/)).not.toBeInTheDocument()
 
     await user.click(tile)
@@ -216,7 +241,9 @@ describe('frozen products at the point of sale', () => {
     // The order keeps both lines; the tile is an ordinary one again.
     expect(within(panel).getByText('Naggetslar')).toBeInTheDocument()
     expect(within(panel).getByText('Chizburger')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,/ })).not.toHaveClass('is-frozen')
+    expect(screen.getByRole('button', { name: /^Buyurtmaga qo'shish: Naggetslar,/ }).closest('.tile')).not.toHaveClass(
+      'is-frozen',
+    )
   })
 
   it('lists several frozen products, each with its own button', async () => {

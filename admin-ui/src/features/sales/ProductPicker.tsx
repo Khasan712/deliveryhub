@@ -1,6 +1,6 @@
 import { useMemo, useState, type Ref } from 'react'
 import type { CartItem, SalesCategory, SalesProduct } from '../../api/types'
-import { IconPlus, IconSnowflake } from '../../components/icons'
+import { IconMinus, IconPlus, IconSnowflake } from '../../components/icons'
 import { SearchInput } from '../../components/ui/Form'
 import { useI18n } from '../../i18n/context'
 import { cn } from '../../lib/cn'
@@ -12,10 +12,11 @@ interface ProductPickerProps {
   categories: SalesCategory[]
   items: CartItem[]
   onAdd: (product: SalesProduct) => void
+  onQty: (product: SalesProduct, quantity: number) => void
   searchRef: Ref<HTMLInputElement>
 }
 
-export function ProductPicker({ products, categories, items, onAdd, searchRef }: ProductPickerProps) {
+export function ProductPicker({ products, categories, items, onAdd, onQty, searchRef }: ProductPickerProps) {
   const { t, name, lang } = useI18n()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<number | null>(null)
@@ -57,37 +58,61 @@ export function ProductPicker({ products, categories, items, onAdd, searchRef }:
           const qty = qtyOf(items, product.id)
           const unit = lang === 'ru' ? product.unit_ru : product.unit_uz
           // A frozen product can still be sold here: it only looks different (and the order panel warns).
+          // The count is changed right on the tile (a phone shows the order panel far above the tiles).
           return (
-            <button
-              key={product.id}
-              type="button"
-              className={cn('tile', qty > 0 && 'in-order', product.frozen && 'is-frozen')}
-              onClick={() => onAdd(product)}
-              aria-label={`${t('add_to_order')}: ${name(product)}, ${formatMoney(product.price, lang)}${product.frozen ? ` · ${t('frozen_badge')}` : ''}${qty ? ` · ${t('in_order')}: ${qty}` : ''}`}
-            >
-              <div className="tile-media">
-                {product.image ? (
-                  <img src={product.image} alt="" loading="lazy" decoding="async" />
-                ) : (
-                  <span className="tile-ph">{name(product).trim().charAt(0).toUpperCase() || '?'}</span>
-                )}
-                {product.frozen && (
-                  <span className="tile-frozen" aria-hidden="true">
-                    <IconSnowflake size={11} strokeWidth={2.6} />
-                    {t('frozen_badge')}
-                  </span>
-                )}
-                {qty > 0 && <span className="tile-qty">×{qty}</span>}
-                <span className="tile-plus">
-                  <IconPlus size={16} strokeWidth={2.5} />
+            <div key={product.id} className={cn('tile', qty > 0 && 'in-order', product.frozen && 'is-frozen')}>
+              <button
+                type="button"
+                className="tile-main"
+                onClick={() => onAdd(product)}
+                aria-label={`${t('add_to_order')}: ${name(product)}, ${formatMoney(product.price, lang)}${product.frozen ? ` · ${t('frozen_badge')}` : ''}${qty ? ` · ${t('in_order')}: ${qty}` : ''}`}
+              >
+                <span className="tile-media">
+                  {product.thumb ? (
+                    <img src={product.thumb} alt="" loading="lazy" decoding="async" />
+                  ) : (
+                    <span className="tile-ph">{name(product).trim().charAt(0).toUpperCase() || '?'}</span>
+                  )}
+                  {product.frozen && (
+                    <span className="tile-frozen" aria-hidden="true">
+                      <IconSnowflake size={11} strokeWidth={2.6} />
+                      {t('frozen_badge')}
+                    </span>
+                  )}
                 </span>
-              </div>
-              <p className="tile-name">{name(product)}</p>
-              <p className="tile-price">
-                {formatMoney(product.price, lang)}
-                {unit && <span className="ml-1 text-[11px] font-medium text-faint">{t('per_unit', { unit })}</span>}
-              </p>
-            </button>
+                <span className="tile-name">{name(product)}</span>
+                <span className="tile-price">
+                  {formatMoney(product.price, lang)}
+                  {unit && <span className="ml-1 text-[11px] font-medium text-faint">{t('per_unit', { unit })}</span>}
+                </span>
+              </button>
+              {qty > 0 ? (
+                <fieldset className="tile-stepper">
+                  <legend className="sr-only">{`${name(product)}: ${t('in_order')}`}</legend>
+                  <button
+                    type="button"
+                    onClick={() => onQty(product, qty - 1)}
+                    aria-label={`${t('decrease')}: ${name(product)}`}
+                  >
+                    <IconMinus size={15} strokeWidth={2.6} />
+                  </button>
+                  <span aria-live="polite">{qty}</span>
+                  <button
+                    type="button"
+                    onClick={() => onQty(product, qty + 1)}
+                    aria-label={`${t('increase')}: ${name(product)}`}
+                  >
+                    <IconPlus size={15} strokeWidth={2.6} />
+                  </button>
+                </fieldset>
+              ) : (
+                // Same as tapping the tile; the tile button above is the one for keyboards and screen readers.
+                <button type="button" className="tile-add" tabIndex={-1} aria-hidden="true" onClick={() => onAdd(product)}>
+                  <IconPlus size={15} strokeWidth={2.6} />
+                  {t('add')}
+                </button>
+              )}
+            </div>
           )
         })}
         {visible.length === 0 && (

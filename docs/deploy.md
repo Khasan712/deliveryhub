@@ -125,6 +125,7 @@ Tekshirish: `https://deliveryhub.sizlarbilan.uz` (login), `https://food.sizlarbi
 | Ish | Buyruq |
 |---|---|
 | Yangilash | `git pull && docker compose up -d --build` (migratsiyalar o'zi qo'llanadi) |
+| Eski rasmlarni kichraytirish (bir marta, rasm optimallashtirish kelgan deploy'dan keyin; qayta ishlatsa bo'ladi) | `docker compose exec backend python manage.py optimize_images` |
 | Holat / log | `docker compose ps`, `docker compose logs -f backend bot` |
 | Zaxira (cron, har kuni 03:30 — o'rnatilgan) | `30 3 * * * cd /home/deploy/deliveryhub && BACKUP_DIR=/home/deploy/backups/deliveryhub BACKUP_KEEP=14 scripts/backup.sh >> /home/deploy/backups/deliveryhub.log 2>&1` |
 | Zaxiradan tiklash | `scripts/restore.sh /home/deploy/backups/deliveryhub/<stamp>` |

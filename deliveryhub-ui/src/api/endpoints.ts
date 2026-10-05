@@ -9,6 +9,7 @@ import type {
   BusinessProfilePatch,
   BusinessStatus,
   Credentials,
+  MobileApp,
   Place,
   PlatformUser,
   SetupLink,
@@ -61,4 +62,10 @@ export const businessesApi = {
   connectBot: (slug: string, role: BotRole, token: string) =>
     request<{ bot: Bot }>('POST', `${business(slug)}/bots`, { json: { role, token } }),
   disconnectBot: (slug: string, role: BotRole) => request<void>('DELETE', `${business(slug)}/bots/${role}`),
+}
+
+/** Which business our mobile app opens (the app asks on every start). */
+export const mobileAppApi = {
+  get: () => request<MobileApp>('GET', '/mobile-app'),
+  set: (business: string | null) => request<MobileApp>('PUT', '/mobile-app', { json: { business } }),
 }

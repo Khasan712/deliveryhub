@@ -164,7 +164,10 @@ export interface Product {
   price: number
   unit: Unit | null
   category: Category | null
+  /** Up to 1280 px: the edit form. */
   image: string | null
+  /** Up to 512 px (or the image): lists and the point of sale. */
+  thumb: string | null
   /** Not available right now: the shop shows it but refuses orders for it; staff may still sell it. */
   frozen: boolean
   frozen_at: string | null
@@ -225,6 +228,8 @@ export interface SalesProduct {
   unit_ru: string
   category_id: number | null
   image: string | null
+  /** Up to 512 px (or the image): the tiles and the order panel. */
+  thumb: string | null
   /** Frozen: customers cannot order it right now, the point of sale still sells it (with a warning). */
   frozen: boolean
 }

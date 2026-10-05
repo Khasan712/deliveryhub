@@ -19,6 +19,13 @@ def business_point(business):
     return {'lat': float(business.latitude), 'lng': float(business.longitude)}
 
 
+def product_thumb_url(product):
+    """The small copy for cards and lists; the full image when there is none."""
+    if product.thumb and product.thumb.name:
+        return product.thumb.url
+    return product_image_url(product)
+
+
 def product_image_url(product):
     """The uploaded image (media/<business>/products/…), or the image an old product keeps in the database."""
     if product.img and product.img.name:
@@ -27,7 +34,8 @@ def product_image_url(product):
                 return product.img.url
         except (OSError, ValueError):
             pass
-    if product.img_64:
+    legacy = getattr(product, 'has_img_64', None)  # Product.objects.light() leaves the image itself out
+    if legacy if legacy is not None else product.img_64:
         return PRODUCT_IMAGE_PATH.format(id=product.pk)
     return None
 

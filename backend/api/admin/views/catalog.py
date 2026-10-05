@@ -9,7 +9,7 @@ from .base import StaffListView, StaffView, search_term
 
 
 def products():
-    return Product.objects.select_related('category', 'measure').order_by('-created_at', '-id')
+    return Product.objects.light().select_related('category', 'measure').order_by('-created_at', '-id')
 
 
 @extend_schema(parameters=[OpenApiParameter('search', str), OpenApiParameter('category', int),

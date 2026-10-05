@@ -133,3 +133,28 @@ export interface SetupLink {
   qr_svg: string
   expires_at: string
 }
+
+/** docs/api.md → "Mobile app": the shop our Android/iOS app opens (addresses are absolute). */
+export interface AppShop {
+  slug: string
+  name: string
+  tagline: string
+  logo: string | null
+  brand_color: string
+  url: string
+}
+
+export interface AppConfig {
+  /** null: no business chosen, or it is suspended — the app says the shop is not available. */
+  shop: AppShop | null
+  /** An installed app older than this asks to be updated from the store. */
+  min_version: string
+  store: { android: string | null; ios: string | null }
+}
+
+export interface MobileApp {
+  business: BusinessCard | null
+  updated_at: string
+  /** Exactly what the app receives now. */
+  config: AppConfig
+}

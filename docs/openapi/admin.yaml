@@ -1734,6 +1734,11 @@ components:
         image:
           type: string
           nullable: true
+          description: 'Up to 1280 px: the product sheet'
+        thumb:
+          type: string
+          nullable: true
+          description: 'Up to 512 px (or the image): cards and lists'
         frozen:
           type: boolean
           description: 'Not available right now: shown, but cannot be ordered'
@@ -1747,6 +1752,7 @@ components:
       - name_ru
       - name_uz
       - price
+      - thumb
       - unit_ru
       - unit_uz
     Product:
@@ -1775,6 +1781,11 @@ components:
         image:
           type: string
           nullable: true
+          description: Up to 1280 px
+        thumb:
+          type: string
+          nullable: true
+          description: 'Up to 512 px (or the image): lists and the POS'
         frozen:
           type: boolean
           description: The shop shows it as unavailable; staff may still sell it
@@ -1797,6 +1808,7 @@ components:
       - name_ru
       - name_uz
       - price
+      - thumb
       - unit
     ProductWriteRequest:
       type: object

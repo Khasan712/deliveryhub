@@ -2,12 +2,14 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.core import images
 from apps.core.enums import OrderEnum, UserRole
 from apps.core.models import Category, Client, Descriptions, User
 from apps.core.utils import parse_price, parse_quantity
 from apps.telegram.models import StaffLink
 from ..common.fields import LimitedImageField, PhoneField
-from ..common.representations import iso, items_count, order_address, person_name, product_image_url
+from ..common.representations import (iso, items_count, order_address, person_name, product_image_url,
+                                      product_thumb_url)
 from ..shop import serializers as shop
 
 ROLES = [role.value for role in UserRole]
@@ -106,7 +108,8 @@ class ProductSerializer(serializers.Serializer):
     price = serializers.IntegerField()
     unit = UnitSerializer(allow_null=True)
     category = CategoryRefSerializer(allow_null=True)
-    image = serializers.CharField(allow_null=True)
+    image = serializers.CharField(allow_null=True, help_text='Up to 1280 px')
+    thumb = serializers.CharField(allow_null=True, help_text='Up to 512 px (or the image): lists and the POS')
     frozen = serializers.BooleanField(help_text='The shop shows it as unavailable; staff may still sell it')
     frozen_at = serializers.DateTimeField(allow_null=True)
     created_at = serializers.DateTimeField()
@@ -124,6 +127,7 @@ class ProductSerializer(serializers.Serializer):
             'category': ({'id': category.pk, 'name_uz': category.name_uz, 'name_ru': category.name_ru}
                          if category else None),
             'image': product_image_url(product),
+            'thumb': product_thumb_url(product),
             'frozen': product.is_frozen,
             'frozen_at': iso(product.frozen_at),
             'created_at': iso(product.created_at),
@@ -165,7 +169,7 @@ class ProductWriteSerializer(serializers.Serializer):
         if 'category_id' in data:
             product.category_id = data['category_id']
         if 'image' in data:
-            product.img = data['image'] or ''
+            product.img, product.thumb = images.product_photos(data['image']) if data['image'] else ('', '')
             product.img_64 = None
         if 'frozen' in data and data['frozen'] != product.is_frozen:
             product.is_frozen = data['frozen']

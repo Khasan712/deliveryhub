@@ -9,6 +9,20 @@ import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
 const backend: ProxyOptions = { target: 'http://localhost:8100', changeOrigin: false }
 const proxy = { '/api': backend, '/media': backend }
 
+// Every build has its own id; /version.json tells an open page that a newer build is on the server
+// (src/lib/updates.ts).
+const BUILD_ID = process.env.BUILD_ID ?? Date.now().toString(36)
+
+function versionFile(): Plugin {
+  return {
+    name: 'admin-ui:version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) })
+    },
+  }
+}
+
 /** `npm run dev:mock` serves the MSW service worker so the UI runs on mocked API data (dev only). */
 function mockServiceWorker(): Plugin {
   const require = createRequire(import.meta.url)
@@ -25,7 +39,8 @@ function mockServiceWorker(): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), tailwindcss(), mode === 'mock' && mockServiceWorker()],
+  plugins: [react(), tailwindcss(), versionFile(), mode === 'mock' && mockServiceWorker()],
+  define: { 'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID) },
   server: {
     port: 5174,
     strictPort: true,

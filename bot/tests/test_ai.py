@@ -1,12 +1,13 @@
 """Order understanding: the local parser and the (mocked) Gemini pipeline — transcription, hedged parsing."""
 import asyncio
 import json
+import threading
 from types import SimpleNamespace
 
 import pytest
 
 from app.ai import understanding
-from app.ai.local_parser import local_understand
+from app.ai.local_parser import MAX_TEXT, local_understand
 from app.ai.understanding import VoiceError, clean_state, sanitize, understand
 
 CATALOG = [
@@ -62,6 +63,26 @@ async def test_without_a_key_text_goes_to_the_local_parser_and_voice_is_refused(
     with pytest.raises(VoiceError) as raised:
         await understand(CATALOG, {}, audio=b'OggS', mime_type='audio/ogg')
     assert raised.value.code == 'not_configured'
+
+
+async def test_the_local_parser_runs_off_the_event_loop(monkeypatch):
+    threads = []
+
+    def parser(catalog, state, text):
+        threads.append(threading.current_thread())
+        return local_understand(catalog, state, text)
+
+    monkeypatch.setattr(understanding, 'local_understand', parser)
+    result, _ = await understand(CATALOG, {}, text='bitta kola')
+    assert result['items'] == [{'product_id': 2, 'quantity': 1}]
+    assert threads and threads[0] is not threading.main_thread()
+
+
+def test_the_local_parser_reads_the_beginning_of_a_long_text():
+    text = 'ikkita chizburger, ' + 'piyozsiz bo‘lsin ' * 40 + 'bitta kola'
+    result = parse(text)
+    assert len(text) > MAX_TEXT and result['items'] == [{'product_id': 1, 'quantity': 2}]  # the kola is too far
+    assert result['transcript'] == text
 
 
 # ---------------------------------------------------------------------------

@@ -29,6 +29,11 @@ class Database:
 
 
 def create_database(url=None, **engine_options) -> Database:
-    options = {'pool_size': 20, 'max_overflow': 10, 'pool_pre_ping': True, 'pool_recycle': 1800}
+    # A 2 GB server: few idle PostgreSQL backends (4 kept; more only under load, closed when returned), the most
+    # recently used first — it has the warm prepared statements. Every business schema has SQL texts of its own
+    # (schema_translate_map), so that per-connection statement cache (an asyncpg DBAPI argument, 100 by default) is
+    # sized for many schemas.
+    options = {'pool_size': 4, 'max_overflow': 16, 'pool_use_lifo': True, 'pool_pre_ping': True, 'pool_recycle': 1800,
+               'connect_args': {'prepared_statement_cache_size': 500}}
     options.update(engine_options)
     return Database(create_async_engine(url or settings.database_url, **options))

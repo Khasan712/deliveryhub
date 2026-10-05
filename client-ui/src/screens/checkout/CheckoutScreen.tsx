@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate } from 'react-router'
 import { isApiError } from '../../api/client'
-import { createOrder } from '../../api/shop'
+import { checkoutKey, createOrder } from '../../api/shop'
 import type { Order } from '../../api/types'
 import { Button } from '../../components/Button'
 import { Card, PageTitle } from '../../components/Card'
@@ -122,6 +122,13 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const [form, setForm] = useState<CheckoutForm>(initialForm)
   const [errors, setErrors] = useState<CheckoutErrors>({})
   const [placing, setPlacing] = useState(false)
+  // One key per checkout: tapping again after an answer got lost returns the same order (api/shop.ts). A changed
+  // cart is a new order.
+  const attemptKey = useRef<string | null>(null)
+  const cartContent = cart.lines.map(({ product, qty }) => `${product.id}x${qty}`).join(',')
+  useEffect(() => {
+    attemptKey.current = null
+  }, [cartContent])
   const [formError, setFormErrorState] = useState('')
   // The map's address for the chosen point when the customer's own text was kept (one tap puts it in).
   const [mapAddress, setMapAddress] = useState('')
@@ -218,7 +225,10 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
     setPlacing(true)
     setFormError('')
     try {
-      const { order } = await createOrder(token, orderBody(form, cart.lines, lang, inTelegram ? 'miniapp' : 'web'))
+      attemptKey.current ??= checkoutKey()
+      const body = orderBody(form, cart.lines, lang, inTelegram ? 'miniapp' : 'web')
+      const { order } = await createOrder(token, body, attemptKey.current)
+      attemptKey.current = null
       onPlaced()
       rememberContact(form)
       queryClient.setQueryData<Order[]>(ordersKey(token), (old) => [order, ...(old ?? []).filter((item) => item.id !== order.id)])
@@ -512,7 +522,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
               {cart.lines.map(({ product, qty, total }) => (
                 <li key={product.id} className="flex items-center gap-3">
                   <ProductImage
-                    src={product.image}
+                    src={product.thumb}
                     name={name(product)}
                     className={cn('size-11 shrink-0 rounded-xl', product.frozen && '[&_img]:grayscale [&_img]:opacity-60')}
                     letterClassName="text-base"

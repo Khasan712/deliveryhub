@@ -17,6 +17,14 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   (the search exactly as wide as the hero); every page keeps the same width. `brand_color` becomes the accent (`--brand*` CSS variables,
   readable text colour is computed; a navy or near-black brand turns into light buttons on the dark theme) and is
   cached so the next visit paints in the right colour.
+- Speed and deploys: cards, the cart and lists load the small photo (`thumb`, 512 px WebP), the product sheet the
+  full one; the menu request starts before the Telegram SDK has loaded and the last menu shows at once; API answers
+  revalidate with ETags. After a deploy the shop picks up the new build at a calm moment — a lazy chunk gone from the
+  server reloads once, `/version.json` (written by the build) is checked when the shop comes back from the background
+  and on page changes (`src/lib/updates.ts`); an error boundary shows "Qayta yuklash" instead of a blank page, and one
+  around the map. Requests give up after 20 s (30 s for placing an order) with a network error; one checkout sends the
+  same `Idempotency-Key` on every try, so a lost answer never makes a second order. Inside our mobile app (`../mobile`)
+  the shop is the same page — the user agent ends with `DeliveryHubApp/<version>`.
 - Cart: persisted per shop host, synced between tabs, minimum-order progress, "clear" with undo; always-open side
   panel on desktop (lines with unit price, delivery time, total), bottom sheet + floating bar on phones.
 - Working hours (`business.working_hours`, the business sets them in its admin panel): the banner shows "Ochiq ·
