@@ -63,6 +63,17 @@ export const strings = {
         order: 'Buyurtma #128', accepted: 'Qabul qilindi', on_the_way: 'Yo‘lda', completed: 'Yetkazildi',
         rejected: 'Bekor qilindi',
       },
+      // What happens at each stretch of scroll (the demo steps itself while the page scrolls).
+      story: [
+        'Pastga varaqlang: buyurtma qadam-baqadam o‘zi bajariladi.',
+        'Mijoz Telegram’dagi do‘konni ochib, Osh tanladi.',
+        'Yana bitta osh va bir choynak ko‘k choy: savat tayyor.',
+        'Rasmiylashtirish: manzil xaritada, to‘lov naqd.',
+        'Buyurtma xodimlar botiga tayyor karta bo‘lib keldi. Qo‘ng‘iroq ham, yozishma ham yo‘q.',
+        'Xodim «✅ Qabul qilish»ni bosdi. Mijozga darhol xabar ketdi.',
+        'Kuryer yo‘lga chiqdi. Mijoz holatni telefonida ko‘rib turadi.',
+        'Yetkazildi! Xodim 3 marta bosdi, birorta qo‘ng‘iroq bo‘lmadi.',
+      ],
       hint: {
         empty: 'Mijoz sifatida boshlang: «+» bilan bir-ikkita taom qo‘shing.',
         cart: 'Savat tayyor. Pastdagi «Rasmiylashtirish» tugmasini bosing.',
@@ -147,6 +158,16 @@ export const strings = {
         rejected: '😔 К сожалению, ваш заказ #128 отменён. Если есть вопросы — свяжитесь с нами.',
       },
       packet: { order: 'Заказ #128', accepted: 'Принят', on_the_way: 'В пути', completed: 'Доставлен', rejected: 'Отменён' },
+      story: [
+        'Листайте вниз: заказ пройдёт все шаги сам.',
+        'Клиент открыл магазин в Telegram и выбрал плов.',
+        'Ещё один плов и чайник зелёного чая: корзина готова.',
+        'Оформление: адрес на карте, оплата наличными.',
+        'Заказ пришёл в бот сотрудников готовой карточкой. Ни звонков, ни переписки.',
+        'Сотрудник нажал «✅ Принять». Клиенту сразу ушло сообщение.',
+        'Курьер выехал. Клиент видит статус у себя в телефоне.',
+        'Доставлено! Сотрудник нажал 3 раза, и ни одного звонка.',
+      ],
       hint: {
         empty: 'Начните как клиент: добавьте пару блюд кнопкой «+».',
         cart: 'Корзина готова. Нажмите «Оформить» внизу.',
@@ -314,6 +335,7 @@ Mini App · 19:42
     'demo.eyebrow': 'Как это работает',
     'demo.h2': 'Один заказ от начала до конца.',
     'demo.lead': 'Слева телефон клиента, справа бот сотрудников. Сделайте заказ как клиент, а потом примите его как сотрудник. Тексты на экранах такие же, как в настоящей системе, упрощён только сам процесс.',
+    'demo.leadScroll': 'Телефон клиента и бот сотрудников рядом. Листайте вниз: заказ пройдёт все шаги сам. Тексты на экранах такие же, как в настоящей системе.',
     'demo.s1': 'Выберите блюда',
     'demo.s2': 'Оформите заказ',
     'demo.s3': 'Примите',
@@ -465,7 +487,6 @@ Mini App · 19:42
     'form.doneLink': 'Открыть живой магазин',
     'form.preview': 'Это пример страницы: на настоящем сайте заявка попадает в раздел «Arizalar» нашей панели.',
     'foot.tagline': 'Платформа для бизнеса с доставкой · sizlarbilan.uz',
-    'foot.login': 'Вход в панель',
     'sticky.apply': 'Оставить заявку',
   },
 }

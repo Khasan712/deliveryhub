@@ -5,20 +5,31 @@ step, a live demo of one order (the customer's shop ↔ the staff bot), what the
 questions — and the **application form**: a business leaves its name and phone, our staff see it in the panel
 ("Arizalar") and call back. Uzbek and Russian.
 
-It lives on the platform host (`deliveryhub.<domain>`, `../Caddyfile`):
+It lives at the bare domain — `sizlarbilan.uz` (`PLATFORM_DOMAIN`; `localhost` on a developer's machine; the edge
+sends `www.` there), routed by `../Caddyfile`:
 
 | Address | |
 |---|---|
-| `/` | Uzbek — for a visitor without a session; our staff, signed in, get the panel there |
-| `/uz`, `/ru` | Uzbek / Russian, for anyone |
+| `/`, `/uz` | Uzbek |
+| `/ru` | Russian |
 | `/landing/*` | fonts, photos, the icon (content-hashed names, cached for a year) |
 
-The form sends `POST /api/v1/leads` to the same host (docs/api.md, "Applications") — no account, rate limited, with a
-hidden field as a trap for bots.
+The form sends `POST /api/v1/leads` to its own host; the web container passes that path to the backend as our panel's
+host (docs/api.md, "Applications") — no account, rate limited, with a hidden field as a trap for bots. Nothing of our
+panel is linked from the page.
 
 Light by default; the ☀️/🌙 switch in the menu turns it dark, and the choice is kept (`localStorage`, applied
 before the first paint). Plain HTML, CSS and JavaScript — no framework; Node only builds it. Fonts are served from
 here (Manrope and JetBrains Mono, Latin + Cyrillic), the photos are the demo shop's (Navro'z Choyxona).
+
+**Scroll-driven stages.** The problem chat (5 steps) and the order demo (8 states) stay in place while the page
+scrolls through them (`position: sticky` in a tall `.scrolly` wrapper — the page's own scroll, nothing is hijacked):
+each stretch of scroll is one step, scrolling back goes back, and after the last step the page scrolls on. The
+script turns a stage on only when it fits the screen: the phone shrinks to 80 % on a wide screen and then gets
+shorter (on a phone only shorter, so its text keeps its size); on a short screen the step list keeps only the text of
+the step it is on. Not pinned — and working as before (the chat plays when seen, the demo by clicking or "▶ O‘zi
+ko‘rsatsin") — with "reduce motion", on a screen too short (a phone on its side, below ~640 px of height) or without
+the script.
 
 ## Build and test
 

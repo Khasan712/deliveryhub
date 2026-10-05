@@ -22,7 +22,7 @@ hech narsa bo'lishmaydi — faqat API orqali gaplashadi.
 | [`client-ui/`](client-ui/) | Mijozlar do'koni — sayt va Telegram Mini App | React + Vite + TypeScript |
 | [`admin-ui/`](admin-ui/) | Biznes egalari va xodimlari uchun admin panel (+ admin Mini App) | React + Vite + TypeScript |
 | [`deliveryhub-ui/`](deliveryhub-ui/) | Bizning platforma panelimiz (bizneslar, «Mobil ilova», «Arizalar») | React + Vite + TypeScript |
-| [`landing/`](landing/) | Bizneslar uchun sahifamiz: muammo → yechim, jonli demo, **ariza formasi** (o'zbekcha `/`, ruscha `/ru`) | HTML + CSS + JS, Node bilan yig'iladi |
+| [`landing/`](landing/) | Bizneslar uchun sahifamiz `sizlarbilan.uz` da: muammo → yechim, jonli demo, **ariza formasi** (o'zbekcha `/`, ruscha `/ru`) | HTML + CSS + JS, Node bilan yig'iladi |
 | [`mobile/`](mobile/) | Android / iOS ilova: paneldagi «Mobil ilova» bo'limida tanlangan biznesning do'koni | Flutter (WebView) |
 | [`docs/`](docs/) | [Arxitektura](docs/architecture.md), [API shartnomasi](docs/api.md), [OpenAPI](docs/openapi/) | |
 | `docker-compose.yml`, `Caddyfile` | Qismlarni birga ishga tushirish: hostga qarab UI, `/api` → backend, `/media` → fayllar | Docker, Caddy |
@@ -49,7 +49,8 @@ docker compose up -d --build  # yoki: make up
 Lokal manzillar (`*.localhost` macOS'da o'zi 127.0.0.1 ga boradi):
 
 * platforma paneli — http://hub.localhost:8100 (login: `.env` dagi `PLATFORM_ADMIN_PHONE` / `PLATFORM_ADMIN_PASSWORD`);
-  kirmagan mehmon u yerda bizneslar uchun sahifamizni ko'radi (`/`, ruscha `/ru`), arizalar panelda — «Arizalar»
+  arizalar — «Arizalar» bo'limida
+* bizneslar uchun sahifamiz (productionda `sizlarbilan.uz`) — http://localhost:8100, ruscha http://localhost:8100/ru
 * biznes do'koni — `http://<slug>.localhost:8100`, admin paneli — `http://<slug>-admin.localhost:8100`
 
 Backend har ishga tushganda barcha biznes sxemalariga migratsiyalarni qo'llaydi va platforma akkauntini yangilaydi.

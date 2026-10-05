@@ -90,6 +90,7 @@ services:
     container_name: ${STACK_NAME:-deliveryhub}_web
     restart: always
     environment:
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-sizlarbilan.uz}
       PLATFORM_HUB_SUBDOMAIN: ${PLATFORM_HUB_SUBDOMAIN:-deliveryhub}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

@@ -91,8 +91,10 @@ Mini App · 19:42
         <p class="lead" data-t="p.lead">Mijozlar Telegram’da yozadi, qo‘ng‘iroq qiladi, Instagram’da so‘raydi. Har bir buyurtma uchun menyu yuborasiz, narx aytasiz, manzilni so‘raysiz va hammasini qo‘lda hisoblaysiz. Kechki payt bunday chatlar o‘nlab bo‘ladi.</p>
       </div>
 
-      <div class="pgrid" id="problem">
+      <div class="scrolly" id="problemScroll">
+      <div class="pgrid scrolly-pin" id="problem">
         <div class="pstage">
+          <div class="pcap" aria-hidden="true"><span class="num">1</span><span><b></b><small></small></span></div>
           <div class="phone short" aria-hidden="true">
             <div class="screen tg">
               <div class="sbar"><span>19:58</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
@@ -126,6 +128,7 @@ Mini App · 19:42
           </ol>
           <p class="psum" data-t="p.sum">Bitta buyurtma: <b>9 ta xabar</b>, <b>1 ta qo‘ng‘iroq</b> va taxminan <b>6 daqiqa</b> sizning vaqtingiz.</p>
         </div>
+      </div>
       </div>
 
       <div class="pains">
@@ -211,10 +214,11 @@ Mini App · 19:42
       <div class="rv">
         <p class="eyebrow" data-t="demo.eyebrow">Qanday ishlaydi</p>
         <h2 class="h2" data-t="demo.h2">Bitta buyurtma, boshidan oxirigacha.</h2>
-        <p class="lead" data-t="demo.lead">Chapda mijozning telefoni, o‘ngda xodimlar boti. Mijoz sifatida buyurtma bering, keyin xodim sifatida uni qabul qiling. Ekrandagi matnlar haqiqiy tizimdagidek, faqat jarayon soddalashtirilgan.</p>
+        <p class="lead"><span class="only-manual" data-t="demo.lead">Chapda mijozning telefoni, o‘ngda xodimlar boti. Mijoz sifatida buyurtma bering, keyin xodim sifatida uni qabul qiling. Ekrandagi matnlar haqiqiy tizimdagidek, faqat jarayon soddalashtirilgan.</span><span class="only-scroll" data-t="demo.leadScroll">Mijozning telefoni va xodimlar boti yonma-yon. Pastga varaqlang: buyurtma qadam-baqadam o‘zi bajariladi. Ekrandagi matnlar haqiqiy tizimdagidek.</span></p>
       </div>
 
-      <div class="demo" id="demo">
+      <div class="scrolly" id="demoScroll">
+      <div class="demo scrolly-pin" id="demo">
         <ol class="dsteps" id="dsteps" aria-label="Buyurtma bosqichlari" data-t-attr="aria-label:demo.steps">
           <li><span class="n">1</span><span class="l" data-t="demo.s1">Taom tanlang</span></li>
           <li><span class="n">2</span><span class="l" data-t="demo.s2">Buyurtma bering</span></li>
@@ -267,13 +271,14 @@ Mini App · 19:42
             <p class="mirror" id="mirror" aria-live="polite"></p>
           </div>
         </div>
-        <div class="ddone" id="ddone" hidden>
-          <div><b id="ddTaps">3</b><span data-t="demo.doneTaps">xodim bosgan tugma</span></div>
-          <div><b>0</b><span data-t="demo.doneCalls">qo‘ng‘iroq</span></div>
-          <div><b>0</b><span data-t="demo.doneChats">yozishma</span></div>
-          <p data-t="demo.doneText">Chatda shu buyurtma uchun 9 ta xabar va taxminan 6 daqiqa ketgan bo‘lardi.</p>
-          <div class="dd-cta"><b data-t="demo.ddCta">Biznesingizda ham shunday ishlasinmi?</b><a class="btn btn-sm btn-dark" href="#ariza" data-t="demo.ddApply">Ariza qoldirish</a></div>
-        </div>
+      </div>
+      </div>
+      <div class="ddone" id="ddone" hidden>
+        <div><b id="ddTaps">3</b><span data-t="demo.doneTaps">xodim bosgan tugma</span></div>
+        <div><b>0</b><span data-t="demo.doneCalls">qo‘ng‘iroq</span></div>
+        <div><b>0</b><span data-t="demo.doneChats">yozishma</span></div>
+        <p data-t="demo.doneText">Chatda shu buyurtma uchun 9 ta xabar va taxminan 6 daqiqa ketgan bo‘lardi.</p>
+        <div class="dd-cta"><b data-t="demo.ddCta">Biznesingizda ham shunday ishlasinmi?</b><a class="btn btn-sm btn-dark" href="#ariza" data-t="demo.ddApply">Ariza qoldirish</a></div>
       </div>
     </div>
   </section>
@@ -569,7 +574,7 @@ Mini App · 19:42
       <footer class="foot">
         <a class="brand" href="#top"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg>DeliveryHub</a>
         <span data-t="foot.tagline">Yetkazib berish bizneslari uchun platforma · sizlarbilan.uz</span>
-        <span>© 2026 DeliveryHub · <a href="{{login}}" data-t="foot.login">Panelga kirish</a></span>
+        <span>© 2026 DeliveryHub</span>
       </footer>
     </div>
   </section>

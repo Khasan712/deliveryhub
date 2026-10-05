@@ -1,5 +1,7 @@
 (() => {
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduce = reduceMotion.matches;
+  const stages = [];  // the scroll-driven stages (see the end): the sticky "Ariza qoldirish" bar keeps out of them
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const wait = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -47,7 +49,11 @@
   const pmsgs = $('#pmsgs');
   const preplay = $('#preplay');
   const pchat = $('#pchat');
-  const clock = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.round(s % 60)).padStart(2, '0');
+  const pcap = $('.pcap');
+  const clock = (seconds) => {
+    const whole = Math.round(seconds);  // round first: 359.6 s is 06:00, not 05:60
+    return String(Math.floor(whole / 60)).padStart(2, '0') + ':' + String(whole % 60).padStart(2, '0');
+  };
   function countTo(t, m, instant) {
     const from = { ...P.shown };
     const start = performance.now();
@@ -73,6 +79,12 @@
     });
     countTo(SECONDS[n], COUNTS[n], instant);
     requestAnimationFrame(() => pchat.scrollTo({ top: pchat.scrollHeight, behavior: instant || reduce ? 'auto' : 'smooth' }));
+    // The step it is on, over the phone, when one column has no room for the list beside it.
+    const active = pSteps[n - 1];
+    pcap.querySelector('.num').textContent = n;
+    pcap.querySelector('b').innerHTML = active.querySelector('b').innerHTML;
+    pcap.querySelector('small').innerHTML = active.querySelector('small').innerHTML;
+    if (!instant) { pcap.classList.remove('swap'); void pcap.offsetWidth; pcap.classList.add('swap'); }
   }
   let playing = false;
   async function playProblem() {
@@ -83,7 +95,10 @@
     }
     playing = false; preplay.hidden = false;
   }
-  pSteps.forEach((b) => b.addEventListener('click', () => { playing = false; showStep(+b.dataset.step); preplay.hidden = false; }));
+  pSteps.forEach((b) => b.addEventListener('click', () => {
+    if (P.scroll) { problemStage.scrollTo(+b.dataset.step - 1); return; }  // the page's scroll is the player there
+    playing = false; showStep(+b.dataset.step); preplay.hidden = false;
+  }));
   preplay.addEventListener('click', () => { P.shown = { t: 0, m: 0 }; showStep(1, true); playProblem(); });
   if (reduce || !('IntersectionObserver' in window)) {
     showStep(5, true);
@@ -92,7 +107,7 @@
     P.shown = { t: 0, m: 0 };
     showStep(1, true);
     const pio = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && !P.played) { pio.disconnect(); playProblem(); }
+      if (entries.some((e) => e.isIntersecting) && !P.played && !P.scroll) { pio.disconnect(); playProblem(); }
     }, { threshold: 0.45 });
     pio.observe($('#problem'));
   }
@@ -362,7 +377,7 @@
     el.classList.add('go');
   }
 
-  function act(a, id) {
+  function act(a, id, quiet = false) {
     const before = count();
     switch (a) {
       case 'inc':
@@ -387,10 +402,11 @@
         D.status = 'new';
         renderShop(false);
         renderStaff(true);
+        if (quiet) break;
         notifyClient('new');
         packet('r', T.demo.packet.order);
         flag('staff');
-        if (narrow.matches && !D.auto) setTimeout(() => { if (D.status === 'new' && D.tab === 'client') setTab('staff'); }, 1500);
+        if (narrow.matches && !D.auto && !D.scroll) setTimeout(() => { if (D.status === 'new' && D.tab === 'client') setTab('staff'); }, 1500);
         break;
       case 'ask':
         D.taps++; D.confirm = true; renderStaff(false);
@@ -405,10 +421,11 @@
         D.status = next;
         renderStaff(false);
         renderShop(false);
+        if (quiet) break;
         toast(T.demo.saved);
         notifyClient(next);
         packet('l', T.demo.packet[next]);
-        if (next === 'completed' && narrow.matches) setTimeout(() => { if (D.status === 'completed') setTab('client'); }, 1400);
+        if (next === 'completed' && narrow.matches && !D.scroll) setTimeout(() => { if (D.status === 'completed') setTab('client'); }, 1400);
         break;
       }
     }
@@ -416,7 +433,7 @@
   }
 
   function reset() {
-    D = { cart: {}, phase: 'shop', status: null, confirm: false, taps: 0, tab: 'client', auto: false };
+    D = { cart: {}, phase: 'shop', status: null, confirm: false, taps: 0, tab: 'client', auto: false, scroll: D?.scroll ?? false };
     clearTimeout(bannerTimer);
     bannerSlot.innerHTML = '';
     toastSlot.innerHTML = '';
@@ -468,7 +485,20 @@
   playBtn.addEventListener('click', () => { if (D.auto) stopAuto(); else autoplay(); });
   narrow.addEventListener?.('change', () => setTab(D.tab));
   reset();
-  onLanguage.push(reset);
+
+  /* The demo, driven by the page's scroll: each stretch is one state of the order; going back replays it quietly. */
+  const STORY = [[], [['inc', 'osh']], [['inc', 'osh'], ['inc', 'choy']], [['checkout']], [['place']], [['accept']], [['go']], [['done']]];
+  let storyAt = -1;
+  function story(k) {
+    if (storyAt < 0 || k < storyAt) { reset(); storyAt = 0; }
+    while (storyAt < k) {
+      storyAt += 1;
+      const moves = STORY[storyAt];
+      moves.forEach(([a, id], i) => act(a, id, storyAt < k || i < moves.length - 1));
+    }
+    hint.textContent = T.demo.story[k];
+    if (narrow.matches) setTab(k >= 4 && k <= 6 ? 'staff' : 'client');
+  }
 
   /* ------------------------------------------------------------------
      The application: POST /api/v1/leads on this host (docs/api.md, "Applications")
@@ -559,14 +589,14 @@
     }
   });
 
-  /* the "Ariza qoldirish" bar on phones: after the first screen, until the form itself is in view */
+  /* the "Ariza qoldirish" bar on phones: after the first screen, until the form is in view; never over a pinned stage */
   const sticky = $('#stickyCta');
+  const seen = { hero: true, form: false };
+  const updateSticky = () => sticky.classList.toggle('on', !seen.hero && !seen.form && !stages.some((stage) => stage.pinned()));
   if ('IntersectionObserver' in window) {
-    const seen = { hero: true, form: false };
-    const update = () => sticky.classList.toggle('on', !seen.hero && !seen.form);
     const sio = new IntersectionObserver((entries) => {
       entries.forEach((e) => { seen[e.target === $('.hero') ? 'hero' : 'form'] = e.isIntersecting; });
-      update();
+      updateSticky();
     });
     sio.observe($('.hero'));
     sio.observe($('#ariza'));
@@ -588,6 +618,126 @@
   });
   darkDevice.addEventListener?.('change', showTheme);
   showTheme();
+
+  /* ------------------------------------------------------------------
+     Scroll-driven stages: while the page scrolls through a .scrolly wrapper, its stage stays in place
+     (position: sticky — the page's own scroll, nothing is hijacked) and each stretch of scroll is one step; scrolling
+     back goes back. Only when the stage fits the screen and motion is welcome: with "reduce motion", on a screen too
+     short for the stage (a phone on its side) or without the script, the parts work as before.
+     ------------------------------------------------------------------ */
+  function scrollStage(wrapper, { steps, wide, onMode, onStep }) {
+    const pin = wrapper.querySelector('.scrolly-pin');
+    const wideQuery = window.matchMedia(wide);
+    const stage = { on: false, step: -1, progress: 0 };
+    const pinTop = () => parseFloat(wrapper.style.getPropertyValue('--pin-top')) || 80;
+    const distance = () => wrapper.offsetHeight - pin.offsetHeight;
+    stage.layout = () => {
+      let on = false;
+      if (!reduceMotion.matches) {
+        // Measure the stage as it would be pinned, then fit its phone into the screen: smaller on a wide screen,
+        // shorter on a narrow one (text keeps its size there). Too small to read → not pinned.
+        wrapper.classList.add('on');
+        wrapper.classList.remove('compact');
+        wrapper.style.removeProperty('--phone-zoom');
+        wrapper.style.removeProperty('--phone-h');
+        const phone = [...pin.querySelectorAll('.phone')].find((each) => each.offsetParent !== null);
+        const navH = nav.getBoundingClientRect().height;
+        const fits = window.innerHeight - navH - 24;
+        const natural = phone.offsetHeight;
+        const room = fits - (pin.offsetHeight - natural);
+        // Wide: the phone shrinks whole down to 80 %, then gets shorter; narrow: only shorter (its text keeps its size).
+        let zoom = 1;
+        let height = Math.min(natural, Math.floor(room));
+        if (wideQuery.matches) {
+          zoom = Math.max(0.8, Math.min(1, room / natural));
+          height = Math.min(natural, Math.floor(room / zoom));
+        }
+        if (height >= 340) {
+          if (zoom < 1) wrapper.style.setProperty('--phone-zoom', zoom.toFixed(3));
+          if (height < natural) wrapper.style.setProperty('--phone-h', `${height}px`);
+          on = pin.offsetHeight <= fits + 1;  // the whole stage, the list beside the phone too
+          if (!on) {
+            wrapper.classList.add('compact');  // only the step it is on keeps its text
+            on = pin.offsetHeight <= fits + 1;
+          }
+        }
+        if (on) {
+          const top = navH + Math.max(12, (window.innerHeight - navH - pin.offsetHeight) / 2);
+          wrapper.style.setProperty('--pin-top', `${Math.round(top)}px`);
+        } else {
+          wrapper.classList.remove('on', 'compact');
+          wrapper.style.removeProperty('--phone-zoom');
+          wrapper.style.removeProperty('--phone-h');
+        }
+      }
+      if (on !== stage.on) { stage.on = on; stage.step = -1; onMode(on); }
+      stage.update();
+    };
+    stage.update = () => {
+      if (!stage.on) { stage.progress = 0; return; }
+      const passed = pinTop() - wrapper.getBoundingClientRect().top;
+      stage.progress = Math.min(1, Math.max(0, passed / distance()));
+      const step = Math.min(steps - 1, Math.floor(stage.progress * steps));
+      if (step !== stage.step) { stage.step = step; onStep(step); }
+    };
+    stage.pinned = () => stage.on && stage.progress > 0 && stage.progress < 1;
+    stage.scrollTo = (step) => {
+      const y = window.scrollY + wrapper.getBoundingClientRect().top - pinTop() + ((step + 0.5) / steps) * distance();
+      window.scrollTo({ top: y, behavior: reduce ? 'auto' : 'smooth' });
+    };
+    stages.push(stage);
+    return stage;
+  }
+
+  const problemStage = scrollStage($('#problemScroll'), {
+    steps: 5,
+    wide: '(min-width: 961px)',
+    onMode(on) {
+      P.scroll = on;
+      if (on) { playing = false; preplay.hidden = true; }
+      else { showStep(5, true); preplay.hidden = false; }
+    },
+    onStep: (step) => showStep(step + 1),
+  });
+  const demoStage = scrollStage($('#demoScroll'), {
+    steps: STORY.length,
+    wide: '(min-width: 900px)',
+    onMode(on) {
+      stopAuto();
+      D.scroll = on;
+      $('#sinab').classList.toggle('mode-scroll', on);
+      $('.stage', demo).inert = on;  // the scroll plays it: nothing to press in the phones
+      storyAt = -1;
+      reset();
+    },
+    onStep: story,
+  });
+  onLanguage.push(() => {
+    if (demoStage.on) { storyAt = -1; story(Math.max(0, demoStage.step)); } else reset();
+  });
+
+  let frame = 0;
+  window.addEventListener('scroll', () => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => { frame = 0; stages.forEach((stage) => stage.update()); updateSticky(); });
+  }, { passive: true });
+  // A phone's address bar coming and going changes the height a little on every scroll: only a real change re-fits.
+  let size = [window.innerWidth, window.innerHeight];
+  let resizeTimer;
+  const refit = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const [w, h] = [window.innerWidth, window.innerHeight];
+      if (w === size[0] && Math.abs(h - size[1]) < 120) return;
+      size = [w, h];
+      stages.forEach((stage) => stage.layout());
+    }, 150);
+  };
+  window.addEventListener('resize', refit);
+  window.screen?.orientation?.addEventListener?.('change', refit);  // a phone turned on its side
+  reduceMotion.addEventListener?.('change', () => stages.forEach((stage) => stage.layout()));
+  stages.forEach((stage) => stage.layout());
+  document.fonts?.ready.then(() => stages.forEach((stage) => stage.layout()));
 
   /* language: links between / and /ru on the site; the preview artifact switches in place */
   function markLanguage() {

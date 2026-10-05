@@ -19,6 +19,8 @@ const port = process.env.E2E_PORT ?? stack.WEB_PORT ?? '8200'
 /** Addresses of the parts, as the web container serves them locally (`*.localhost` → 127.0.0.1). */
 export const urls = {
   platform: `http://hub.localhost:${port}`,
+  /** Our page for businesses: the bare domain in production, localhost here. */
+  landing: `http://localhost:${port}`,
   admin: (slug: string) => `http://${slug}-admin.localhost:${port}`,
   shop: (slug: string) => `http://${slug}.localhost:${port}`,
 }

@@ -2,8 +2,8 @@
 #   /api/*, /healthz          → backend (it picks the business and the API by the host)
 #   /media/*                  → uploaded files (product images, logos)
 #   /django-admin/*, /static/* → backend (Django admin for our staff, on the platform host)
-#   /, /uz, /ru, /landing/*   → our page for businesses (landing/) on the platform host — "/" only for a visitor
-#                               without a session: our staff, signed in, get the panel there
+#   the bare domain           → our page for businesses (landing/; localhost on a developer's machine); its
+#                               form's POST /api/v1/leads reaches the backend as our panel's host
 #   everything else           → the UI of the host: our panel, a business's admin panel or its shop
 # TLS ends in front of this container (the tunnel or a load balancer), so it serves plain HTTP.
 {
@@ -16,6 +16,21 @@
 
 :80 {
 	encode zstd gzip
+
+	# The form of our page for businesses: the backend answers the platform API only on our panel's host, and
+	# nothing else of that API is open on the bare domain.
+	@landingLeads {
+		host {$PLATFORM_DOMAIN}
+		path /api/v1/leads
+	}
+	handle @landingLeads {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy backend:8000 {
+			header_up Host {$PLATFORM_HUB_SUBDOMAIN:deliveryhub}.{$PLATFORM_DOMAIN}
+		}
+	}
 
 	@backend path /api/* /healthz /django-admin /django-admin/* /static/*
 	handle @backend {
@@ -32,24 +47,13 @@
 		file_server
 	}
 
-	@landingFront {
-		expression `{host}.startsWith("{$PLATFORM_HUB_SUBDOMAIN:deliveryhub}.") || {host}.startsWith("hub.") || {host} == "localhost"`
-		path /
-		not header Cookie *sessionid=*
-	}
-	handle @landingFront {
-		reverse_proxy landing:80
-	}
-
-	@landing {
-		expression `{host}.startsWith("{$PLATFORM_HUB_SUBDOMAIN:deliveryhub}.") || {host}.startsWith("hub.") || {host} == "localhost"`
-		path /uz /uz/ /ru /ru/ /landing/*
-	}
+	# Our page for businesses: the bare domain (www. is sent there by the edge) and localhost.
+	@landing host {$PLATFORM_DOMAIN} localhost
 	handle @landing {
 		reverse_proxy landing:80
 	}
 
-	@platform expression `{host}.startsWith("{$PLATFORM_HUB_SUBDOMAIN:deliveryhub}.") || {host}.startsWith("hub.") || {host} == "localhost"`
+	@platform expression `{host}.startsWith("{$PLATFORM_HUB_SUBDOMAIN:deliveryhub}.") || {host}.startsWith("hub.")`
 	handle @platform {
 		reverse_proxy deliveryhub-ui:80
 	}

@@ -2,19 +2,18 @@ import { expect, test } from '@playwright/test'
 import { platformAccount, urls } from './env'
 
 /**
- * Our page for businesses: a visitor of the platform host leaves an application (the page in Uzbek at "/" and in
- * Russian at "/ru") → our panel shows it under "Arizalar" → our staff mark that they called back.
+ * Our page for businesses (the bare domain; localhost here): a visitor leaves an application (the page in Uzbek at "/"
+ * and in Russian at "/ru") → our panel shows it under "Arizalar" → our staff mark that they called back.
  */
 test('a business leaves an application and our panel sees it', async ({ page }) => {
   const stamp = Date.now().toString(36)
   const name = `E2E Ariza ${stamp}`
   const phone = `90${String(Date.now()).slice(-7)}`
 
-  // Without a session the platform host's front page is our page, not the panel.
-  await page.goto(`${urls.platform}/ru`)
+  await page.goto(`${urls.landing}/ru`)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Пусть клиент заказывает сам.')
   await page.getByRole('link', { name: 'UZ', exact: true }).click()
-  await expect(page).toHaveURL(`${urls.platform}/`)
+  await expect(page).toHaveURL(`${urls.landing}/`)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Mijoz o‘zi buyurtma bersin.')
 
   await page.getByRole('link', { name: 'Ariza qoldirish' }).first().click()
@@ -48,7 +47,7 @@ test('a business leaves an application and our panel sees it', async ({ page }) 
   await card.getByRole('button', { name: /Bog'lanildi/ }).first().click()
   await expect(page.getByRole('article').filter({ hasText: name })).toHaveCount(0)
 
-  // Signed in, the same address is the panel again.
+  // The page is not on our panel's host: there the front page is the panel.
   await page.goto(`${urls.platform}/`)
   await expect(page.getByRole('heading', { name: 'Bizneslar' })).toBeVisible()
 })

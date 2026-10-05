@@ -11,10 +11,10 @@ Internet ─► server :443 ─► EDGE (TLS: *.sizlarbilan.uz) ─┬─► nor
 
 | Manzil | Nima |
 |---|---|
-| `deliveryhub.sizlarbilan.uz` | bizning sahifamiz bizneslar uchun (`landing/`: `/` — sessiyasiz mehmonga, `/ru`) va platforma panelimiz (kirgandan keyin) |
+| `deliveryhub.sizlarbilan.uz` | bizning platforma panelimiz |
 | `<slug>.sizlarbilan.uz` | biznes do'koni + mijozlar Mini App'i |
 | `<slug>-admin.sizlarbilan.uz` | biznes admin paneli + xodimlar Mini App'i |
-| `sizlarbilan.uz`, `www.` | edge'da hal qilinadi (hozircha → panelga yo'naltirish) |
+| `sizlarbilan.uz` | bizneslar uchun sahifamiz (`landing/`; ruscha `/ru`) — `www.` edge'da shu yerga yo'naltiriladi |
 
 DeliveryHub o'zi sertifikat bilan shug'ullanmaydi: web konteyner faqat `127.0.0.1:8100` da oddiy HTTP beradi
 (`WEB_BIND`), TLS'ni serverdagi bitta umumiy edge yopadi va `Host` ni o'zgartirmay uzatadi.
@@ -46,9 +46,10 @@ sizlarbilan.uz, *.sizlarbilan.uz {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
-	@root host sizlarbilan.uz www.sizlarbilan.uz
-	handle @root {
-		redir https://deliveryhub.sizlarbilan.uz{uri}
+	# sizlarbilan.uz o'zi — DeliveryHub'ning sahifasi (pastdagi umumiy blok uzatadi); www. — unga
+	@www host www.sizlarbilan.uz
+	handle @www {
+		redir https://sizlarbilan.uz{uri} permanent
 	}
 
 	# boshqa loyihalar — aniq subdomenlar (PLATFORM_RESERVED_SUBDOMAINS ga ham yoziladi)

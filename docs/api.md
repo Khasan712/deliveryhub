@@ -328,8 +328,9 @@ phone, the way its customers would use it.
   changes of the app itself: the shop inside it is always the one on the server.
 
 ### Applications
-A business that wants its own shop leaves an application on our landing page (`landing/`, served on this host to
-visitors without a session: `/`, `/ru`); our staff see it in the panel ("Arizalar") and call back.
+A business that wants its own shop leaves an application on our page for businesses (`landing/`, at the bare domain
+`<domain>`; the web container passes its form's `POST /api/v1/leads` to this host — nothing else of this API is open
+there); our staff see it in the panel ("Arizalar") and call back.
 * `POST /api/v1/leads` — **no sign-in** (the landing's form):
   ```json
   {"name": "Aziz", "phone": "+998 90 123 45 67", "business": "Navro'z Choyxona", "kind": "cafe", "comment": "", "lang": "uz"}

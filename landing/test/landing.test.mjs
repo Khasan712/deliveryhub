@@ -55,7 +55,7 @@ describe('the site', () => {
       assert.doesNotMatch(doc.toString(), /\{\{/)
       assert.equal(doc.querySelectorAll('link[rel="alternate"]').length, 3)
     }
-    assert.equal(ruPage.querySelector('link[rel="canonical"]').getAttribute('href'), 'https://deliveryhub.sizlarbilan.uz/ru')
+    assert.equal(ruPage.querySelector('link[rel="canonical"]').getAttribute('href'), 'https://sizlarbilan.uz/ru')
   })
 
   it('opens light, with a light/dark switch whose choice is applied before the first paint', () => {
@@ -68,10 +68,20 @@ describe('the site', () => {
     assert.equal(uz.querySelectorAll('meta[name="theme-color"]').map((m) => m.getAttribute('content')).join(), '#F6F5F2')
   })
 
-  it('links the two languages and our panel', () => {
+  it('has the two scroll-driven stages, with the order summary after the pinned demo', () => {
+    for (const [wrapper, pin] of [['#problemScroll', '#problem'], ['#demoScroll', '#demo']]) {
+      assert.ok(uz.querySelector(`${wrapper} > .scrolly-pin${pin}`), wrapper)
+    }
+    assert.equal(uz.querySelector('#demoScroll #ddone'), null)
+    assert.ok(uz.querySelector('#demoScroll + #ddone'))
+    assert.equal(ruPage.querySelector('[data-t="demo.leadScroll"]').text, ru.markup['demo.leadScroll'])
+    assert.equal(strings.uz.demo.story.length, 8)
+  })
+
+  it('links the two languages, and nothing of our panel', () => {
     const hrefs = uz.querySelectorAll('.langs a').map((a) => a.getAttribute('href'))
     assert.deepEqual(hrefs, ['/', '/ru'])
-    assert.equal(uz.querySelector('a[data-t="foot.login"]').getAttribute('href'), '/login')
+    assert.doesNotMatch(file('dist/index.html'), /\/login|deliveryhub\.sizlarbilan/)
   })
 
   it('sends the application to the platform API of its own host', () => {

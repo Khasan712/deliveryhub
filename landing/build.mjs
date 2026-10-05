@@ -13,8 +13,7 @@ const root = dirname(fileURLToPath(import.meta.url))
 const dist = join(root, 'dist')
 const artifact = process.argv.includes('--artifact')
 // Where the page lives: canonical and social links need the full address.
-const SITE_URL = (process.env.SITE_URL || 'https://deliveryhub.sizlarbilan.uz').replace(/\/$/, '')
-const PANEL_LOGIN = '/login'
+const SITE_URL = (process.env.SITE_URL || 'https://sizlarbilan.uz').replace(/\/$/, '')
 // Before the first paint: light, unless the visitor switched to dark last time (whatever the device's theme), and
 // the class the styles of the script-driven parts wait for.
 const PREPAINT = `<script>var t='light';try{if(localStorage.getItem('dh-theme')==='dark')t='dark'}catch(e){}document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('js')</script>`
@@ -28,10 +27,10 @@ const FONTS = [
 ]
 const SUBSETS = ['latin', 'cyrillic']
 
-/** Fills {{img:name}}, {{href:uz|ru}} and {{login}}; an unknown placeholder fails the build. */
+/** Fills {{img:name}} and {{href:uz|ru}}; an unknown placeholder fails the build. */
 function fillPlaceholders(text, values) {
   return text.replace(/\{\{([a-z]+):?([a-z]*)\}\}/g, (match, kind, name) => {
-    const value = kind === 'img' ? values.img[name] : kind === 'href' ? values.href[name] : kind === 'login' ? values.login : undefined
+    const value = kind === 'img' ? values.img[name] : kind === 'href' ? values.href[name] : undefined
     if (value === undefined) throw new Error(`Unknown placeholder ${match}`)
     return value
   })
@@ -136,7 +135,7 @@ async function buildSite() {
   const fonts = await fontFaces()
   const icon = `/landing/icon.${hash(ICON)}.svg`
   await writeFile(join(dist, icon), ICON)
-  const values = { img, href: { uz: '/', ru: '/ru' }, login: PANEL_LOGIN }
+  const values = { img, href: { uz: '/', ru: '/ru' } }
   const script = fillPlaceholders(js, values)
 
   for (const lang of LANGS) {
@@ -166,7 +165,7 @@ async function buildArtifact() {
   const [body, css, js] = await Promise.all([read('src/body.html'), read('src/page.css'), read('src/page.js')])
   await mkdir(dist, { recursive: true })
   const img = await images(true)
-  const values = { img, href: { uz: '#uz', ru: '#ru' }, login: `${SITE_URL}${PANEL_LOGIN}` }
+  const values = { img, href: { uz: '#uz', ru: '#ru' } }
   const page = `<title>DeliveryHub sayti</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
