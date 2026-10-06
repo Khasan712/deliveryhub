@@ -30,7 +30,7 @@ import { formatPhone } from '../lib/phone'
 type Tab = LeadStatus | 'all'
 
 const STATUSES: Record<LeadStatus, { label: string; dot: string }> = {
-  new: { label: 'Yangi', dot: 'bg-indigo-500' },
+  new: { label: 'Yangi', dot: 'bg-brand-500' },
   contacted: { label: "Bog'lanildi", dot: 'bg-sky-500' },
   won: { label: "Mijoz bo'ldi", dot: 'bg-emerald-500' },
   lost: { label: 'Rad etildi', dot: 'bg-slate-400' },
@@ -216,7 +216,7 @@ function SiteCard() {
     >
       <div className="min-w-0 max-w-xl">
         <h2 id={titleId} className="flex items-center gap-2 font-extrabold tracking-tight">
-          <GlobeIcon size={18} className="text-indigo-600" />
+          <GlobeIcon size={18} className="text-brand-700" />
           Sayt
           {data && <span className="font-semibold text-slate-400">{data.url.replace(/^https?:\/\/|\/$/g, '')}</span>}
         </h2>
@@ -306,7 +306,7 @@ function StatusTabs({ tab, counts, onChoose, activeRef }: StatusTabsProps) {
                 <span
                   className={cx(
                     'ml-0.5 tabular-nums',
-                    value === 'new' && count > 0 ? 'text-indigo-600' : 'text-slate-400',
+                    value === 'new' && count > 0 ? 'text-brand-700' : 'text-slate-400',
                   )}
                 >
                   {count}
@@ -443,7 +443,7 @@ function LeadCard({ lead, onStatusChange }: LeadCardProps) {
           <a
             href={`tel:${lead.phone}`}
             title="Qo'ng'iroq qilish"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2 font-mono text-[15px] font-bold whitespace-nowrap text-indigo-700 transition hover:bg-indigo-100"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 font-mono text-[15px] font-bold whitespace-nowrap text-brand-700 transition hover:bg-brand-100"
           >
             <PhoneIcon size={16} className="shrink-0" />
             {formatPhone(lead.phone)}

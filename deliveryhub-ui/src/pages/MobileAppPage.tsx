@@ -169,7 +169,7 @@ function ShopOption({ business, chosen, busy, disabled, onPick }: ShopOptionProp
       className={cx(
         'group flex w-full items-center gap-3.5 rounded-2xl p-3 text-left ring-1 ring-inset transition',
         chosen
-          ? 'bg-indigo-50/70 ring-2 ring-indigo-500'
+          ? 'bg-brand-50/70 ring-2 ring-brand-500'
           : 'ring-slate-200 hover:bg-slate-50 hover:ring-slate-300 disabled:hover:bg-transparent',
         suspended && 'cursor-not-allowed opacity-60',
       )}
@@ -182,14 +182,14 @@ function ShopOption({ business, chosen, busy, disabled, onPick }: ShopOptionProp
       {suspended ? (
         <StatusBadge status={business.status} size="sm" />
       ) : busy ? (
-        <Spinner size={18} className="text-indigo-600" />
+        <Spinner size={18} className="text-brand-700" />
       ) : chosen ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600 px-2.5 py-1 text-xs font-bold text-white">
+        <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-bold text-white">
           <CheckIcon size={13} strokeWidth={3} />
           Ilovada
         </span>
       ) : (
-        <span className="text-[13px] font-bold text-indigo-600 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span className="text-[13px] font-bold text-brand-700 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
           Tanlash
         </span>
       )}
@@ -241,7 +241,7 @@ function PhonePreview({ shop }: { shop: AppShop | null }) {
               href={shop.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-bold text-indigo-600 hover:underline"
+              className="inline-flex items-center gap-1 font-bold text-brand-700 hover:underline"
             >
               {hostOf(shop.url)}
               <ExternalIcon size={13} />
@@ -259,7 +259,7 @@ function UpdatesNote({ config }: { config: AppConfig }) {
   return (
     <section className={cx(cardClass, 'p-5')} aria-labelledby="mobile-updates">
       <h2 id="mobile-updates" className="flex items-center gap-2 font-extrabold tracking-tight">
-        <SparklesIcon size={18} className="text-indigo-500" />
+        <SparklesIcon size={18} className="text-brand-600" />
         Yangilanishlar o'zi yetib boradi
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">

@@ -23,7 +23,7 @@ export function EmptyState({ icon, title, description, action, className, headin
         className,
       )}
     >
-      <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-linear-to-br from-indigo-50 to-violet-100 text-indigo-600 ring-1 ring-indigo-100">
+      <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-linear-to-br from-brand-50 to-brand-100 text-brand-700 ring-1 ring-brand-100">
         {icon}
       </span>
       <Heading className="mt-5 text-xl font-extrabold tracking-tight">{title}</Heading>

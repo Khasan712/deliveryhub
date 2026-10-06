@@ -87,7 +87,7 @@ type Tone = 'danger' | 'success' | 'primary'
 const TONES: Record<Tone, { button: ButtonVariant; badge: string; icon: ReactNode }> = {
   danger: { button: 'danger-solid', badge: 'bg-red-50 text-red-600 ring-red-100', icon: <AlertIcon size={22} /> },
   success: { button: 'success', badge: 'bg-emerald-50 text-emerald-600 ring-emerald-100', icon: <PowerIcon size={22} /> },
-  primary: { button: 'primary', badge: 'bg-indigo-50 text-indigo-600 ring-indigo-100', icon: <InfoIcon size={22} /> },
+  primary: { button: 'primary', badge: 'bg-brand-50 text-brand-700 ring-brand-100', icon: <InfoIcon size={22} /> },
 }
 
 interface ConfirmDialogProps {

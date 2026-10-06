@@ -4,8 +4,21 @@
   --font-sans: 'Manrope Variable', 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
 
+  /* DeliveryHub's carrot orange (as on our page for businesses): 600 is the brand, 700 its text on white. */
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ec5b0b;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+  --color-brand-950: #431407;
+
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.05);
-  --shadow-lift: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -12px rgb(79 70 229 / 0.28);
+  --shadow-lift: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -12px rgb(234 88 12 / 0.24);
   --shadow-pop: 0 24px 64px -16px rgb(15 23 42 / 0.32), 0 2px 6px rgb(15 23 42 / 0.06);
 
   --animate-enter: enter 0.32s cubic-bezier(0.21, 1.02, 0.73, 1) both;
@@ -103,12 +116,12 @@
   }
 
   ::selection {
-    background-color: var(--color-indigo-200);
-    color: var(--color-indigo-950);
+    background-color: var(--color-brand-200);
+    color: var(--color-brand-950);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-indigo-500);
+    outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
   }
 

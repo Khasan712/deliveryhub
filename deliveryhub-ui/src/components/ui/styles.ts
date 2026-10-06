@@ -7,11 +7,11 @@ export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'text-white bg-linear-to-br from-indigo-500 to-violet-600 shadow-[0_1px_2px_rgb(15_23_42/0.12),0_6px_16px_-6px_rgb(99_102_241/0.55),inset_0_1px_0_rgb(255_255_255/0.2)] hover:brightness-110 active:brightness-95',
+    'text-white bg-linear-to-br from-brand-600 to-brand-700 shadow-[0_1px_2px_rgb(15_23_42/0.12),0_6px_16px_-6px_rgb(234_88_12/0.5),inset_0_1px_0_rgb(255_255_255/0.2)] hover:brightness-110 active:brightness-95',
   secondary:
     'bg-white text-slate-700 ring-1 ring-inset ring-slate-300/80 shadow-[0_1px_2px_rgb(15_23_42/0.05)] hover:bg-slate-50 hover:text-slate-900',
   ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-  soft: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100',
+  soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100',
   dark: 'bg-slate-900 text-white shadow-[0_1px_2px_rgb(15_23_42/0.2)] hover:bg-slate-800',
   danger: 'bg-white text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50 hover:ring-red-300',
   'danger-solid': 'bg-red-600 text-white shadow-[0_1px_2px_rgb(15_23_42/0.15)] hover:bg-red-700',
@@ -49,7 +49,7 @@ export function inputClass(invalid = false, extra = 'h-11 text-[15px]') {
     'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
     invalid
       ? 'bg-red-50/40 ring-red-300 focus:ring-red-500'
-      : 'bg-white ring-slate-300/90 hover:ring-slate-400/80 focus:ring-indigo-500',
+      : 'bg-white ring-slate-300/90 hover:ring-slate-400/80 focus:ring-brand-500',
     extra,
   )
 }

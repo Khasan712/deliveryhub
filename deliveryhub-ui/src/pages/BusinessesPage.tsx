@@ -90,7 +90,7 @@ export function BusinessesPage() {
             />
             <StatTile
               label="Bugungi buyurtmalar"
-              tone="violet"
+              tone="sky"
               icon={<BagIcon size={18} />}
               loading={!totals}
               value={totals && formatNumber(totals.orders_today)}
@@ -217,8 +217,8 @@ function BusinessTile({ business }: { business: BusinessCard }) {
     <article
       className={cx(
         cardClass,
-        'group relative h-full p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lift hover:ring-indigo-200',
-        'has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-indigo-500',
+        'group relative h-full p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lift hover:ring-brand-200',
+        'has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-brand-500',
       )}
     >
       <div className="flex items-start gap-3.5">
@@ -233,7 +233,7 @@ function BusinessTile({ business }: { business: BusinessCard }) {
                 to={businessPath(business.slug)}
                 onMouseEnter={warm}
                 onFocus={warm}
-                className="outline-hidden after:absolute after:inset-0 after:rounded-2xl group-hover:text-indigo-700"
+                className="outline-hidden after:absolute after:inset-0 after:rounded-2xl group-hover:text-brand-700"
               >
                 {business.name}
               </Link>
@@ -244,7 +244,7 @@ function BusinessTile({ business }: { business: BusinessCard }) {
         </div>
         <ArrowRightIcon
           size={18}
-          className="mt-1 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500"
+          className="mt-1 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600"
         />
       </div>
 

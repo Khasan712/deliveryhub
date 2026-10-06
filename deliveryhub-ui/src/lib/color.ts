@@ -1,5 +1,5 @@
-/** The brand color of a business without one (as in the old panel). */
-export const DEFAULT_BRAND_COLOR = '#6366f1'
+/** The brand color of a business without one: what its shop shows then (client-ui `DEFAULT_BRAND`). */
+export const DEFAULT_BRAND_COLOR = '#ff5a1f'
 
 export const BRAND_PRESETS: { value: string; name: string }[] = [
   { value: '#6366f1', name: 'Indigo' },

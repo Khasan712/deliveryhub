@@ -126,7 +126,7 @@ function head(lang, fonts, icon) {
 ${preload}`
 }
 
-const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A1F"/><stop offset="1" stop-color="#E4500A"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><path d="M12.3 12.6v-1.5a3.7 3.7 0 0 1 7.4 0v1.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M9.4 12.6h13.2l-.95 10.7a2.1 2.1 0 0 1-2.1 1.9h-7.1a2.1 2.1 0 0 1-2.1-1.9z" fill="#fff"/></svg>`
+const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A1F"/><stop offset="1" stop-color="#E4500A"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><g transform="rotate(8 17.5 18) translate(2.2 0)"><path d="M12.3 12.6v-1.5a3.7 3.7 0 0 1 7.4 0v1.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M9.4 12.6h13.2l-.95 10.7a2.1 2.1 0 0 1-2.1 1.9h-7.1a2.1 2.1 0 0 1-2.1-1.9z" fill="#FFFFFF"/></g><path d="M6.2 15.4h3.4M4.4 18.6h5.2M6.6 21.8h3" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round"/></svg>`
 
 async function buildSite() {
   const [body, css, js] = await Promise.all([read('src/body.html'), read('src/page.css'), read('src/page.js')])

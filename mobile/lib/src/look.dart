@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// The app's own colours (the shop brings its own): the indigo of DeliveryHub on the shop's warm background.
+/// The app's own colours (the shop brings its own): DeliveryHub's carrot orange on the shop's warm background.
 abstract final class Look {
-  static const brand = Color(0xFF5B5BD6);
-  static const brandDeep = Color(0xFF7C3AED);
+  static const brand = Color(0xFFEC5B0B);
+  static const brandDeep = Color(0xFFC2410C);
   static const paper = Color(0xFFF6F5F2);
   static const paperDark = Color(0xFF0E0F11);
   static const ink = Color(0xFF16181D);

@@ -12,12 +12,12 @@ import { buttonClass } from './ui/styles'
 import { Spinner } from './ui/Spinner'
 import { useToast } from './ui/toast'
 
-/** Soft indigo/violet light behind the top of every page. */
+/** Soft orange and peach light behind the top of every page (DeliveryHub's carrot orange). */
 export function Glow() {
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
-      <div className="absolute -top-64 left-1/2 h-[560px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(99_102_241/0.13),transparent)]" />
-      <div className="absolute -top-40 -right-40 h-[420px] w-[640px] rounded-full bg-[radial-gradient(closest-side,rgb(139_92_246/0.11),transparent)]" />
+      <div className="absolute -top-64 left-1/2 h-[560px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(249_115_22/0.11),transparent)]" />
+      <div className="absolute -top-40 -right-40 h-[420px] w-[640px] rounded-full bg-[radial-gradient(closest-side,rgb(251_146_60/0.1),transparent)]" />
     </div>
   )
 }
@@ -70,7 +70,7 @@ function NavBadge({ count }: { count: number }) {
     <>
       <span
         aria-hidden="true"
-        className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-indigo-600 px-1 text-[11px] leading-none font-extrabold text-white tabular-nums max-md:absolute max-md:top-0 max-md:right-0 max-md:ring-2 max-md:ring-white"
+        className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-600 px-1 text-[11px] leading-none font-extrabold text-white tabular-nums max-md:absolute max-md:top-0 max-md:right-0 max-md:ring-2 max-md:ring-white"
       >
         {count > 99 ? '99+' : count}
       </span>
@@ -109,8 +109,8 @@ export function AppLayout() {
       <Glow />
       {navigating && (
         // A page's code is still loading (rare: pages are preloaded) — a thin bar, decorative only.
-        <div aria-hidden="true" className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-indigo-100">
-          <div className="h-full w-1/3 animate-progress rounded-full bg-linear-to-r from-indigo-500 to-violet-500" />
+        <div aria-hidden="true" className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-brand-100">
+          <div className="h-full w-1/3 animate-progress rounded-full bg-linear-to-r from-brand-500 to-brand-600" />
         </div>
       )}
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/70 backdrop-blur-xl backdrop-saturate-150">

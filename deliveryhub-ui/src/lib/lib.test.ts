@@ -41,10 +41,11 @@ describe('phone', () => {
 })
 
 describe('color', () => {
-  it('falls back to indigo and picks readable text', () => {
-    expect(brandColor('')).toBe('#6366f1')
+  it("falls back to the shop's own default and picks readable text", () => {
+    expect(brandColor('')).toBe('#ff5a1f')
     expect(brandColor('#FF6B00')).toBe('#ff6b00')
     expect(prefersLightText('#6366f1')).toBe(true)
+    expect(prefersLightText('#ff5a1f')).toBe(true)
     expect(prefersLightText('#ff6b00')).toBe(true)
     expect(prefersLightText('#fde047')).toBe(false)
   })

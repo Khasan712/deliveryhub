@@ -129,10 +129,10 @@ function BusinessView({ slug }: { slug: string }) {
       )}
 
       <StatGrid label="Ko'rsatkichlar" className="mt-6">
-        <StatTile label="Bugungi buyurtmalar" tone="violet" icon={<BagIcon size={18} />} value={formatNumber(business.stats.orders_today)} />
+        <StatTile label="Bugungi buyurtmalar" tone="sky" icon={<BagIcon size={18} />} value={formatNumber(business.stats.orders_today)} />
         <StatTile label="Bugungi tushum" tone="amber" icon={<WalletIcon size={18} />} value={<Money value={business.stats.revenue_today} />} />
         <StatTile label="Jami buyurtmalar" icon={<DashboardIcon size={18} />} value={formatNumber(business.stats.orders_total)} />
-        <StatTile label="Mijozlar" tone="sky" icon={<UsersIcon size={18} />} value={formatNumber(business.stats.customers)} />
+        <StatTile label="Mijozlar" tone="emerald" icon={<UsersIcon size={18} />} value={formatNumber(business.stats.customers)} />
       </StatGrid>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-5">

@@ -23,7 +23,7 @@ export function AddressesCard({ business }: { business: BusinessDetail }) {
                 href={row.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-w-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 font-mono text-[13px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                className="inline-flex min-w-0 items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1.5 font-mono text-[13px] font-semibold text-brand-700 transition hover:bg-brand-100"
               >
                 <span className="truncate">{hostOf(row.url)}</span>
                 <ExternalIcon size={13} className="shrink-0" />

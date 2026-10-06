@@ -67,8 +67,8 @@ export function LoginPage() {
     <div className="relative isolate min-h-dvh lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       <title>Kirish · DeliveryHub platforma</title>
       <aside className="relative hidden overflow-hidden bg-slate-950 p-12 text-white lg:flex lg:flex-col lg:justify-between xl:p-16">
-        <div aria-hidden="true" className="absolute -top-40 -left-40 size-[34rem] rounded-full bg-indigo-600/35 blur-3xl" />
-        <div aria-hidden="true" className="absolute -right-40 -bottom-48 size-[34rem] rounded-full bg-violet-600/30 blur-3xl" />
+        <div aria-hidden="true" className="absolute -top-40 -left-40 size-[34rem] rounded-full bg-brand-600/35 blur-3xl" />
+        <div aria-hidden="true" className="absolute -right-40 -bottom-48 size-[34rem] rounded-full bg-amber-500/25 blur-3xl" />
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[linear-gradient(rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255/0.04)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]"
@@ -89,7 +89,7 @@ export function LoginPage() {
           <ul className="mt-10 space-y-5">
             {FEATURES.map((feature) => (
               <li key={feature.title} className="flex items-start gap-4">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10 text-indigo-200 ring-1 ring-white/15">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10 text-brand-200 ring-1 ring-white/15">
                   {feature.icon}
                 </span>
                 <span>

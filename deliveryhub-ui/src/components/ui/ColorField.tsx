@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { BRAND_PRESETS, isHexColor, prefersLightText } from '../../lib/color'
+import { BRAND_PRESETS, DEFAULT_BRAND_COLOR, isHexColor, prefersLightText } from '../../lib/color'
 import { cx } from '../../lib/cx'
 import { CheckIcon } from '../icons'
 import { FieldError } from './Field'
@@ -65,7 +65,7 @@ export function ColorField({ value, onChange, label = 'Rang', error, id }: Color
         <label className="relative" title="Boshqa rang">
           <input
             type="color"
-            value={isHexColor(value) ? value : '#6366f1'}
+            value={isHexColor(value) ? value : DEFAULT_BRAND_COLOR}
             onChange={(event) => onChange(event.target.value)}
             className="peer absolute inset-0 size-8 cursor-pointer opacity-0"
           />

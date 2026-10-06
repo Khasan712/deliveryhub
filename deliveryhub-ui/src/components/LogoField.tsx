@@ -96,8 +96,8 @@ export function LogoField({
         onDrop={onDrop}
         className={cx(
           'mt-1.5 flex items-center gap-4 rounded-2xl border-2 border-dashed p-3 transition',
-          'has-[input:focus-visible]:border-indigo-400 has-[input:focus-visible]:bg-indigo-50/40',
-          dragging ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-200 bg-slate-50/50',
+          'has-[input:focus-visible]:border-brand-400 has-[input:focus-visible]:bg-brand-50/40',
+          dragging ? 'border-brand-400 bg-brand-50/60' : 'border-slate-200 bg-slate-50/50',
           shownError && 'border-red-300',
         )}
       >
@@ -131,7 +131,7 @@ export function LogoField({
               className={cx(
                 smallButton,
                 'bg-white px-3 text-slate-700 ring-1 ring-inset ring-slate-300/80 hover:bg-slate-50',
-                'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500',
+                'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500',
               )}
             >
               <UploadIcon size={14} />

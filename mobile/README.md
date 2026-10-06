@@ -95,7 +95,8 @@ After publishing, put the store addresses in the server's `.env` (`MOBILE_ANDROI
 
 ## Icons
 
-The app's mark (a white bag on the DeliveryHub indigo → violet) is drawn by `tool/make_icons.py` (Pillow:
-`backend/.venv/bin/python mobile/tool/make_icons.py mobile`) into every size of
+The app's mark — DeliveryHub's bag on its way (leaning forward, speed lines behind it), white on the carrot-orange
+gradient, the same drawing as on the web (`tool/mark.svg`) — is drawn by `tool/make_icons.py` (Pillow and
+`rsvg-convert` from librsvg: `backend/.venv/bin/python mobile/tool/make_icons.py mobile`) into every size of
 `ios/Runner/Assets.xcassets/AppIcon.appiconset`, `android/app/src/main/res/mipmap-*` (an adaptive icon on Android 8+:
 `mipmap-anydpi-v26/ic_launcher.xml`) and the launch screens (`LaunchImage`, `drawable-*/launch_mark.png`).

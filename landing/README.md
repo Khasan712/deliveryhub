@@ -62,7 +62,7 @@ canonical and social links.
 ```
 src/body.html   the page; Uzbek in place, data-t="key" (inner HTML) / data-t-attr="attr:key" mark what is translated
 src/i18n.mjs    Russian for those keys, the words of the script in both languages, titles and descriptions
-src/page.css    the styles (DeliveryHub's paper, ink and indigo; light and dark)
+src/page.css    the styles (DeliveryHub's paper, ink and carrot orange; light and dark)
 src/page.js     the problem chat, the calculator, the order demo, the form, the language switch of the preview
 build.mjs       template → one page per language (node-html-parser puts the Russian in), fonts and photos hashed
 public/img/     the dish photos of the demo (WebP, 160 px)

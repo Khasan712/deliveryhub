@@ -17,7 +17,7 @@ const LOCALE = {
   'CooperativeGesturesHandler.MacHelpText': 'Kattalashtirish: ⌘ + sichqoncha g‘ildiragi',
   'CooperativeGesturesHandler.MobileHelpText': 'Xaritani ikki barmoq bilan suring',
 }
-const PIN_COLOR = '#4f46e5'
+const PIN_COLOR = '#ec5b0b'
 
 function webglSupported() {
   try {

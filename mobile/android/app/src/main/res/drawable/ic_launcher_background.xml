@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The DeliveryHub indigo → violet, corner to corner. -->
+<!-- DeliveryHub's carrot orange, corner to corner. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:angle="315" android:startColor="#5B5BD6" android:endColor="#7C3AED"/>
+    <gradient android:angle="315" android:startColor="#FF8A1F" android:endColor="#E4500A"/>
 </shape>

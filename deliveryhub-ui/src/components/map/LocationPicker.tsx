@@ -195,7 +195,7 @@ export function LocationPicker({
                 href={yandexMapUrl(point)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-800"
+                className="inline-flex items-center gap-1 font-semibold text-brand-700 hover:text-brand-800"
               >
                 Yandex Kartada tekshirish
                 <ExternalIcon size={13} />

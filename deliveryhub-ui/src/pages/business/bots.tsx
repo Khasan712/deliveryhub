@@ -119,7 +119,7 @@ function BotCard({ business, role }: { business: BusinessDetail; role: BotRole }
           <span
             className={cx(
               'grid size-10 shrink-0 place-items-center rounded-xl',
-              bot ? 'bg-indigo-50 text-indigo-600' : 'bg-white text-slate-400 ring-1 ring-slate-200',
+              bot ? 'bg-brand-50 text-brand-700' : 'bg-white text-slate-400 ring-1 ring-slate-200',
             )}
           >
             {meta.icon}
@@ -138,7 +138,7 @@ function BotCard({ business, role }: { business: BusinessDetail; role: BotRole }
             href={`https://t.me/${bot.username}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex max-w-full items-center gap-1 self-start truncate font-semibold text-indigo-700 hover:underline"
+            className="mt-3 inline-flex max-w-full items-center gap-1 self-start truncate font-semibold text-brand-700 hover:underline"
           >
             @{bot.username}
             <span className="sr-only">(Telegram'da ochish)</span>
@@ -193,9 +193,9 @@ function BotSetup({ business, link, onLink }: BotSetupProps) {
   const create = () => setup.mutate(undefined, { onSuccess: onLink })
 
   return (
-    <div className="mt-5 rounded-2xl bg-linear-to-br from-indigo-50 via-white to-violet-50 p-5 ring-1 ring-indigo-100">
+    <div className="mt-5 rounded-2xl bg-linear-to-br from-brand-50 via-white to-amber-50 p-5 ring-1 ring-brand-100">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-brand-500 to-brand-700 text-white shadow-md shadow-brand-500/25">
           <SparklesIcon size={19} />
         </span>
         <div className="min-w-0">
@@ -251,10 +251,10 @@ function BotSetup({ business, link, onLink }: BotSetupProps) {
                     <ExternalIcon size={14} className="opacity-70" />
                   </a>
                 </div>
-                <output className="mt-4 flex items-center gap-2.5 text-sm font-semibold text-indigo-700">
+                <output className="mt-4 flex items-center gap-2.5 text-sm font-semibold text-brand-700">
                   <span aria-hidden="true" className="relative flex size-2.5">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-indigo-400 opacity-70" />
-                    <span className="relative inline-flex size-2.5 rounded-full bg-indigo-500" />
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-400 opacity-70" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-brand-500" />
                   </span>
                   Botlar yaratilishini kutyapmiz — ular shu yerda o'zi paydo bo'ladi.
                 </output>

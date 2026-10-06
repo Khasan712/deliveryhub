@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 const TONES: Record<ToastTone, { icon: ReactNode; className: string }> = {
   success: { icon: <CheckCircleIcon size={20} />, className: 'text-emerald-600' },
   error: { icon: <ErrorCircleIcon size={20} />, className: 'text-red-600' },
-  info: { icon: <InfoIcon size={20} />, className: 'text-indigo-600' },
+  info: { icon: <InfoIcon size={20} />, className: 'text-brand-700' },
 }
 
 function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number) => void }) {

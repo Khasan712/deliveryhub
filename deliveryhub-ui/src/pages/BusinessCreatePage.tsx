@@ -540,7 +540,7 @@ function SlugField({ value, domain, state, error, onChange, onBlur, canReset, on
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex items-center gap-1 rounded-md text-xs font-bold text-indigo-600 hover:text-indigo-800"
+            className="inline-flex items-center gap-1 rounded-md text-xs font-bold text-brand-700 hover:text-brand-800"
           >
             <RefreshIcon size={13} />
             Nomdan olish
@@ -550,7 +550,7 @@ function SlugField({ value, domain, state, error, onChange, onBlur, canReset, on
       <div
         className={cx(
           'mt-1.5 flex h-11 overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgb(15_23_42/0.04)] ring-1 ring-inset transition focus-within:ring-2',
-          invalid ? 'ring-red-300 focus-within:ring-red-500' : 'ring-slate-300/90 focus-within:ring-indigo-500',
+          invalid ? 'ring-red-300 focus-within:ring-red-500' : 'ring-slate-300/90 focus-within:ring-brand-500',
         )}
       >
         <input
@@ -686,12 +686,12 @@ function NextSteps() {
     { icon: <CheckCircleIcon size={16} />, text: 'Botlar keyingi sahifada ikki bosishda yaratiladi' },
   ]
   return (
-    <div className="rounded-2xl bg-linear-to-br from-indigo-50 to-violet-50 p-5 ring-1 ring-indigo-100">
-      <p className="text-sm font-extrabold text-indigo-950">Keyin nima bo'ladi</p>
+    <div className="rounded-2xl bg-linear-to-br from-brand-50 to-amber-50 p-5 ring-1 ring-brand-100">
+      <p className="text-sm font-extrabold text-brand-950">Keyin nima bo'ladi</p>
       <ol className="mt-3 space-y-3">
         {steps.map((step, index) => (
           <li key={step.text} className="flex items-start gap-3 text-sm text-slate-700">
-            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-indigo-600 ring-1 ring-indigo-100">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-brand-700 ring-1 ring-brand-100">
               {step.icon}
             </span>
             <span className="pt-1">

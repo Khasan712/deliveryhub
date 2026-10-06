@@ -11,7 +11,7 @@ export function Splash() {
     <div className="grid min-h-dvh place-items-center">
       <div className="flex flex-col items-center gap-5">
         <BrandMark size="lg" />
-        <Spinner size={22} className="text-indigo-500" />
+        <Spinner size={22} className="text-brand-600" />
         <output className="sr-only">Yuklanmoqda…</output>
       </div>
     </div>

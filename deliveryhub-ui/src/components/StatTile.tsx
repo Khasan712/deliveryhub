@@ -3,9 +3,8 @@ import { cx } from '../lib/cx'
 import { Skeleton } from './ui/Skeleton'
 
 const TONES = {
-  indigo: 'bg-indigo-50 text-indigo-600',
+  brand: 'bg-brand-50 text-brand-700',
   emerald: 'bg-emerald-50 text-emerald-600',
-  violet: 'bg-violet-50 text-violet-600',
   amber: 'bg-amber-50 text-amber-600',
   sky: 'bg-sky-50 text-sky-600',
 }
@@ -20,7 +19,7 @@ interface StatTileProps {
 }
 
 /** One figure of a <StatGrid> (a description list: label → value). */
-export function StatTile({ label, value, icon, tone = 'indigo', valueClassName, loading }: StatTileProps) {
+export function StatTile({ label, value, icon, tone = 'brand', valueClassName, loading }: StatTileProps) {
   return (
     <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200/80 shadow-card sm:p-5">
       <dt className="flex items-start justify-between gap-2 text-sm font-medium text-slate-500">

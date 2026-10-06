@@ -48,10 +48,10 @@ describe('businesses list', () => {
     expect(pizza.getByText('@pizza_staff_bot')).toBeInTheDocument()
     expect(pizza.getByText('(bot jarayoni ishlamayapti)')).toBeInTheDocument()
 
-    // Sushi Bar: suspended, no brand color → the default indigo.
+    // Sushi Bar: suspended, no brand color → the shop's own default (orange).
     const sushi = cardOf('Sushi Bar')
     expect(sushi.getByText("To'xtatilgan")).toBeInTheDocument()
-    expect(sushi.getByText('S')).toHaveStyle({ backgroundColor: '#6366f1' })
+    expect(sushi.getByText('S')).toHaveStyle({ backgroundColor: '#ff5a1f' })
     expect(sushi.getAllByText('ulanmagan')).toHaveLength(2)
 
     expect(screen.getByRole('link', { name: 'Pizza Palace' })).toHaveAttribute('href', '/b/pizza-palace')

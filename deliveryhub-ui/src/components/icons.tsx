@@ -24,14 +24,6 @@ function Svg({ size = 20, strokeWidth = 2, children, ...props }: IconProps) {
   )
 }
 
-export function LayersIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M4 7l8-4 8 4-8 4-8-4zm0 5l8 4 8-4M4 17l8 4 8-4" />
-    </Svg>
-  )
-}
-
 export function PlusIcon(props: IconProps) {
   return (
     <Svg {...props}>
