@@ -291,7 +291,9 @@ h1 .q { color: var(--muted); }
 }
 .phone { width: min(320px, 100%); aspect-ratio: 1 / 2; min-height: 0; padding: 9px; border-radius: 46px; background: var(--frame); box-shadow: var(--shadow-2); position: relative; }
 .phone::before { content: ""; position: absolute; z-index: 6; top: 18px; left: 50%; translate: -50% 0; width: 86px; height: 24px; border-radius: 14px; background: var(--frame); }
-.screen { position: relative; height: 100%; border-radius: 37px; overflow: hidden; display: flex; flex-direction: column; isolation: isolate; }
+/* The screen fills the phone inside its 9px bezel. Placed, not sized by height: 100% — Safari resolves a percentage
+   height inside an aspect-ratio box against the whole box, and the screen came out below the frame. */
+.screen { position: absolute; inset: 9px; border-radius: 37px; overflow: hidden; display: flex; flex-direction: column; isolation: isolate; }
 .sbar { flex: none; height: 46px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 26px 6px 30px; font: 700 13px/1 var(--font-body); }
 .sbar i { display: inline-flex; gap: 3px; align-items: flex-end; }
 .sbar i b { width: 3px; border-radius: 1px; background: currentColor; }
