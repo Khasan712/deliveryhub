@@ -1,6 +1,7 @@
 /* DeliveryHub's page for businesses. A story in rooms: the noisy chat (problem) → the dark turn → the order loop
    you can try → the toolbox → how to start → trust → questions → the application. DeliveryHub's own paper, ink and
-   indigo (the colours of the app icon and the panel); red only for what is lost. */
+   carrot orange: food, appetite and speed (in Uzbekistan purple is Uzum's and yellow Yandex Eats'); red only for
+   what is lost. */
 :root {
   --paper: #F6F5F2;
   --paper-2: #ECEBE6;
@@ -9,19 +10,22 @@
   --ink-2: #4A4E5C;
   --muted: #7B7F8D;
   --line: rgba(22, 24, 29, .1);
-  --brand: #5B5BD6;
-  --brand-2: #7C3AED;
-  --brand-ink: #4545C8;
-  --brand-soft: rgba(91, 91, 214, .11);
+  --brand: #EC5B0B;
+  --brand-2: #FF8A1F;
+  --brand-ink: #C2410C;
+  --brand-soft: rgba(236, 91, 11, .12);
   --on-brand: #FFFFFF;
+  --cta-a: #EA5A0C;
+  --cta-b: #D2450D;
+  --on-cta: #FFFFFF;
   --loss: #E5484D;
   --loss-soft: rgba(229, 72, 77, .11);
   --on-loss: #FFFFFF;
   --ok: #2B9A66;
   --ok-soft: rgba(43, 154, 102, .13);
   --on-ok: #FFFFFF;
-  --stage-a: #E9E8FA;
-  --stage-b: #F6E8EC;
+  --stage-a: #FFE9D8;
+  --stage-b: #FCE6E0;
 
   --night: #0E0F11;
   --night-2: #17181D;
@@ -29,9 +33,10 @@
   --night-muted: #9CA1AD;
   --night-line: rgba(255, 255, 255, .1);
   --night-chip: rgba(255, 255, 255, .07);
-  --accent-a: #A9AAFF;
-  --accent-b: #C8A6FF;
-  --glow: rgba(124, 58, 237, .42);
+  --accent-a: #FFB25C;
+  --accent-b: #FF7A3D;
+  --glow: rgba(236, 91, 11, .4);
+  --turn-glow: rgba(255, 122, 26, .28);
 
   --frame: #1B1D22;
   --scrim: rgba(10, 12, 16, .42);
@@ -75,11 +80,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #0E0F11; --paper-2: #15161A; --card: #1A1C21; --ink: #F2F3F5; --ink-2: #C2C6D0; --muted: #8C919D;
-    --line: rgba(255, 255, 255, .1); --brand: #8E8EF5; --brand-2: #A78BFA; --brand-ink: #A9AAFF;
-    --brand-soft: rgba(142, 142, 245, .15); --on-brand: #0E0F11; --loss: #FF6A6F; --loss-soft: rgba(255, 106, 111, .14);
+    --line: rgba(255, 255, 255, .1); --brand: #FF8A3D; --brand-2: #FFB15C; --brand-ink: #FFA366;
+    --brand-soft: rgba(255, 138, 61, .15); --on-brand: #0E0F11; --loss: #FF6A6F; --loss-soft: rgba(255, 106, 111, .14);
     --on-loss: #0E0F11; --ok: #3DD68C; --ok-soft: rgba(61, 214, 140, .14); --on-ok: #0E0F11;
-    --stage-a: #191A2E; --stage-b: #24171C;
-    --night: #050507; --night-2: #111216; --glow: rgba(124, 58, 237, .5);
+    --stage-a: #2A1A10; --stage-b: #24171C;
+    --night: #050507; --night-2: #111216; --glow: rgba(255, 122, 26, .45); --turn-glow: rgba(255, 122, 26, .22);
+    --cta-a: #FF9447; --cta-b: #FF7A1A; --on-cta: #160B04;
     --frame: #2C2E35; --scrim: rgba(0, 0, 0, .55); --banner-bg: rgba(44, 46, 53, .92);
     --tg-wall-a: #0F1B24; --tg-wall-b: #12202A; --tg-wall-c: #0E1621; --tg-head: #17212B; --tg-in: #182533;
     --tg-out: #2B5278; --tg-ink: #F1F5F9; --tg-meta: #7F8D9B; --tg-link: #6AB3F3; --tg-btn: rgba(255, 255, 255, .1);
@@ -94,11 +100,12 @@
 }
 :root[data-theme="dark"] {
   --paper: #0E0F11; --paper-2: #15161A; --card: #1A1C21; --ink: #F2F3F5; --ink-2: #C2C6D0; --muted: #8C919D;
-  --line: rgba(255, 255, 255, .1); --brand: #8E8EF5; --brand-2: #A78BFA; --brand-ink: #A9AAFF;
-  --brand-soft: rgba(142, 142, 245, .15); --on-brand: #0E0F11; --loss: #FF6A6F; --loss-soft: rgba(255, 106, 111, .14);
+  --line: rgba(255, 255, 255, .1); --brand: #FF8A3D; --brand-2: #FFB15C; --brand-ink: #FFA366;
+  --brand-soft: rgba(255, 138, 61, .15); --on-brand: #0E0F11; --loss: #FF6A6F; --loss-soft: rgba(255, 106, 111, .14);
   --on-loss: #0E0F11; --ok: #3DD68C; --ok-soft: rgba(61, 214, 140, .14); --on-ok: #0E0F11;
-  --stage-a: #191A2E; --stage-b: #24171C;
-  --night: #050507; --night-2: #111216; --glow: rgba(124, 58, 237, .5);
+  --stage-a: #2A1A10; --stage-b: #24171C;
+  --night: #050507; --night-2: #111216; --glow: rgba(255, 122, 26, .45); --turn-glow: rgba(255, 122, 26, .22);
+    --cta-a: #FF9447; --cta-b: #FF7A1A; --on-cta: #160B04;
   --frame: #2C2E35; --scrim: rgba(0, 0, 0, .55); --banner-bg: rgba(44, 46, 53, .92);
   --tg-wall-a: #0F1B24; --tg-wall-b: #12202A; --tg-wall-c: #0E1621; --tg-head: #17212B; --tg-in: #182533;
   --tg-out: #2B5278; --tg-ink: #F1F5F9; --tg-meta: #7F8D9B; --tg-link: #6AB3F3; --tg-btn: rgba(255, 255, 255, .1);
@@ -142,8 +149,8 @@ button { font: inherit; color: inherit; }
   cursor: pointer; transition: transform .15s ease, box-shadow .25s ease, background-color .2s ease;
 }
 .btn:active { transform: scale(.98); }
-.btn-dark { background: var(--ink); color: var(--paper); }
-.btn-dark:hover { box-shadow: 0 14px 34px -14px var(--glow); }
+.btn-main { background: linear-gradient(180deg, var(--cta-a), var(--cta-b)); color: var(--on-cta); }
+.btn-main:hover { box-shadow: 0 14px 34px -14px var(--glow); }
 .btn-light { background: var(--card); color: var(--ink); border-color: var(--line); }
 .btn-light:hover { border-color: var(--muted); }
 .btn-sm { min-height: 42px; padding: 0 18px; font-size: 14px; }
@@ -157,8 +164,9 @@ button { font: inherit; color: inherit; }
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
   background: var(--paper); background: color-mix(in srgb, var(--paper) 80%, transparent);
   -webkit-backdrop-filter: saturate(1.5) blur(16px); backdrop-filter: saturate(1.5) blur(16px);
-  border-bottom: 1px solid transparent; transition: border-color .25s ease;
+  border-bottom: 1px solid transparent; transition: border-color .25s ease, transform .3s ease;
 }
+.nav.away { transform: translateY(-110%); }
 .nav.scrolled { border-bottom-color: var(--line); }
 .nav-in { display: flex; align-items: center; gap: 24px; height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 18px; letter-spacing: -.025em; }
@@ -281,10 +289,9 @@ h1 .q { color: var(--muted); }
   min-width: 0; border-radius: 28px; padding: 36px 20px 24px; display: flex; flex-direction: column; align-items: center; gap: 18px;
   background: linear-gradient(155deg, var(--stage-a), var(--stage-b));
 }
-.phone { width: min(320px, 100%); height: 640px; padding: 9px; border-radius: 46px; background: var(--frame); box-shadow: var(--shadow-2); position: relative; }
+.phone { width: min(320px, 100%); aspect-ratio: 1 / 2; min-height: 0; padding: 9px; border-radius: 46px; background: var(--frame); box-shadow: var(--shadow-2); position: relative; }
 .phone::before { content: ""; position: absolute; z-index: 6; top: 18px; left: 50%; translate: -50% 0; width: 86px; height: 24px; border-radius: 14px; background: var(--frame); }
 .screen { position: relative; height: 100%; border-radius: 37px; overflow: hidden; display: flex; flex-direction: column; isolation: isolate; }
-.phone.short { height: 560px; }
 .sbar { flex: none; height: 46px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 26px 6px 30px; font: 700 13px/1 var(--font-body); }
 .sbar i { display: inline-flex; gap: 3px; align-items: flex-end; }
 .sbar i b { width: 3px; border-radius: 1px; background: currentColor; }
@@ -406,7 +413,7 @@ h1 .q { color: var(--muted); }
   .pgrid { grid-template-columns: minmax(0, 1fr); }
   .pains { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 560px) { .pains { grid-template-columns: minmax(0, 1fr); } .phone.short { height: 520px; } }
+@media (max-width: 560px) { .pains { grid-template-columns: minmax(0, 1fr); } }
 
 /* night rooms */
 .night { position: relative; overflow: hidden; background: var(--night); color: var(--night-ink); }
@@ -420,7 +427,7 @@ h1 .q { color: var(--muted); }
 .turn { padding-block: clamp(120px, 16vw, 210px) clamp(84px, 10vw, 136px); }
 .turn::after {
   content: ""; position: absolute; width: 760px; height: 760px; left: -300px; top: -260px; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(91, 91, 214, .28), transparent);
+  background: radial-gradient(closest-side, var(--turn-glow), transparent);
 }
 .turn-q { margin: 0 auto; max-width: 14ch; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: clamp(42px, 7vw, 96px); line-height: 1.02; letter-spacing: -.052em; text-wrap: balance; }
 .turn-q .w { opacity: var(--o, 1); transition: opacity .3s ease; }
@@ -454,7 +461,32 @@ h1 .q { color: var(--muted); }
 }
 
 /* try it: one order, both sides */
-.demo { margin-top: 48px; padding: clamp(14px, 2.4vw, 26px); border-radius: 32px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-2); }
+.demo { position: relative; margin-top: 48px; padding: clamp(14px, 2.4vw, 26px); border-radius: 32px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-2); }
+/* Whose finger: the customer's is green, the staff's blue — the touch, its label, the caption and the phone's title
+   (deep enough for white text on them). */
+.demo { --who-client: #3E7D1E; --who-staff: #1A6FB5; }
+.touch.client, .hint .who.client, #paneClient { --who: var(--who-client); --who-ink: #FFFFFF; }
+.touch.staff, .hint .who.staff, #paneStaff { --who: var(--who-staff); --who-ink: #FFFFFF; }
+/* The touch that shows who presses what: it comes to the button, presses it (a ripple), and says whose finger it is.
+   Its middle is see-through, so the button's text stays readable under it; the white rim keeps it seen on a button
+   of its own colour. */
+.touch { position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; opacity: 0; transform: translate(var(--x, 0), var(--y, 0)); transition: transform .42s cubic-bezier(.3, .7, .2, 1), opacity .2s ease; }
+.touch.jump { transition: opacity .2s ease; }
+.touch.on { opacity: 1; }
+.touch-dot { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--who) 14%, transparent); border: 2.5px solid var(--who); box-shadow: 0 0 0 2px rgba(255, 255, 255, .92), 0 8px 18px -6px rgba(0, 0, 0, .45); }
+.touch-dot::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2.5px solid var(--who); opacity: 0; }
+.touch.press .touch-dot { animation: press .32s ease-out; }
+.touch.press .touch-dot::after { animation: ripple .65s ease-out; }
+@keyframes press { 40% { transform: scale(.78); } }
+@keyframes ripple { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
+.touch-who { position: absolute; left: 24px; top: 12px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--who); color: var(--who-ink); font: 800 12.5px/1.2 var(--font-body); box-shadow: 0 0 0 2px rgba(255, 255, 255, .92), 0 6px 16px -6px rgba(0, 0, 0, .45); }
+/* What the touch does, under the steps: whose finger and which button at once, what it did once pressed. */
+.hint .who { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; background: var(--who); color: var(--who-ink); font-size: 14px; font-weight: 800; vertical-align: 1px; }
+.hint .who::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .85; }
+.hint .press { display: inline-flex; align-items: center; margin-inline: 2px; padding: 3px 10px; border-radius: 9px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-1); font-size: 14px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
+.hint .result { margin-left: 4px; font-weight: 600; color: var(--ink-2); transition: opacity .3s ease; }
+.hint .result.wait { opacity: 0; }
+.hint.played { animation: fade .35s ease both; }
 .dsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .dsteps li { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--paper); font-size: 14px; font-weight: 700; color: var(--muted); transition: background-color .3s, color .3s; }
 .dsteps .n { width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--paper-2); font: 700 12px/1 var(--font-mono); transition: background-color .3s, color .3s; }
@@ -468,9 +500,13 @@ h1 .q { color: var(--muted); }
 .dtabs { display: none; }
 .stage { margin-top: 22px; display: grid; grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr); align-items: center; }
 .pane { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.pane-cap { margin: 0; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+.pane-cap { margin: 0; display: inline-flex; align-items: center; gap: 8px; padding: 4px 11px; border-radius: 999px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); transition: background-color .25s ease, color .25s ease; }
 .pane-cap i { width: 8px; height: 8px; border-radius: 50%; background: var(--shop); }
 .pane-cap i.tgdot { background: var(--tg-blue); }
+.pane-cap .cap-short { display: none; }
+/* the phone whose button is being pressed */
+.pane.acting .pane-cap { background: var(--who); color: var(--who-ink); }
+.pane.acting .pane-cap i { background: currentColor; }
 .lane { display: grid; gap: 70px; padding-inline: 14px; }
 .track { position: relative; height: 2px; background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 12px); }
 .track small { position: absolute; top: 12px; left: 0; right: 0; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); }
@@ -490,7 +526,7 @@ h1 .q { color: var(--muted); }
 .ddone span { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
 .ddone p { margin: 0; padding: 14px 16px; border-radius: 16px; background: var(--paper); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--ink-2); display: flex; align-items: center; }
 .tap { animation: tap .5s ease-out; }
-@keyframes tap { 0% { box-shadow: 0 0 0 0 var(--glow); transform: scale(1); } 40% { transform: scale(.94); } 100% { box-shadow: 0 0 0 14px rgba(124, 58, 237, 0); transform: scale(1); } }
+@keyframes tap { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--who, var(--brand)) 45%, transparent); transform: scale(1); } 40% { transform: scale(.94); } 100% { box-shadow: 0 0 0 14px transparent; transform: scale(1); } }
 
 /* the shop inside the phone */
 .shop { background: var(--shop-bg); color: var(--ink); }
@@ -626,10 +662,14 @@ h1 .q { color: var(--muted); }
 /* The scroll room is a box after the stage, not padding: a sticky element only moves inside its parent's content. */
 .scrolly.on::after { content: ""; display: block; height: calc(var(--steps) * var(--step-len)); }
 .scrolly.on > .scrolly-pin { position: sticky; top: var(--pin-top, 80px); }
-.scrolly.on .phone { height: var(--phone-h, 640px); zoom: var(--phone-zoom, 1); }
-.scrolly.on .phone.short { height: var(--phone-h, 560px); }
+.scrolly.on .phone { zoom: var(--phone-zoom, 1); }
 .scrolly.on .replay, .scrolly.on .dctl, .scrolly.on .mirror { display: none !important; }
-.scrolly.on .hint { min-height: 2.9em; }
+.scrolly.on .hint { min-height: 1.9em; }  /* one line on a wide screen */
+.scrolly.on > .demo { padding: 18px; }
+.scrolly.on .dbar { margin-top: 10px; }
+.scrolly.on .dsteps li { padding-block: 8px; }
+.scrolly.on .stage { margin-top: 14px; }
+.scrolly.on .pane { gap: 8px; }
 .only-scroll { display: none; }
 .mode-scroll .only-scroll { display: inline; }
 .mode-scroll .only-manual { display: none; }
@@ -644,16 +684,26 @@ h1 .q { color: var(--muted); }
 .scrolly.on.compact .pstep { padding-block: 12px; }
 @media (max-width: 960px) {
   /* one column: the stage alone stays; the step it is on shows above the phone */
-  .scrolly.on .pstage { padding: 14px 14px 16px; gap: 12px; }
-  .scrolly.on .pcap { display: grid; min-height: 100px; padding: 10px 12px; }
+  .scrolly.on > .pgrid { gap: 0; }
+  .scrolly.on .pstage { position: relative; padding: 12px 12px 30px; gap: 10px; }
+  .scrolly.on .pcap { display: grid; min-height: 96px; padding: 10px 12px; }
+  .scrolly.on .pcount { position: absolute; z-index: 7; left: 50%; bottom: 10px; translate: -50% 0; white-space: nowrap; }
   .scrolly.on .pcap b { font-size: 15px; }
   .scrolly.on .pcap small { font-size: 13px; }
   .scrolly.on .psteps, .scrolly.on .psum { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
-@media (max-width: 560px) { .scrolly.on .phone.short { height: var(--phone-h, 520px); } }
 @media (max-width: 899px) {
-  .scrolly.on .pane-cap, .scrolly.on .tg-kbd { display: none; }
-  .scrolly.on .hint { min-height: 4.35em; }
+  .scrolly.on .tg-kbd, .scrolly.on .dtabs { display: none; }
+  .scrolly.on > .demo { padding: 14px; }
+  .scrolly.on .hint { min-height: 5.2em; font-size: 15px; }  /* the first line and two of what it did: the phone below stays put */
+  .scrolly.on .hint .who, .scrolly.on .hint .press { font-size: 13px; }
+  .scrolly.on .stage { margin-top: 24px; }
+  .scrolly.on .pane { position: relative; }
+  .scrolly.on .pane-cap { position: absolute; z-index: 8; top: -14px; left: 50%; translate: -50% 0; white-space: nowrap; background: var(--card); box-shadow: var(--shadow-1); }
+  .scrolly.on .pane.acting .pane-cap { background: var(--who); color: var(--who-ink); }
+  .scrolly.on .pane-cap .cap-long { display: none; }
+  .scrolly.on .pane-cap .cap-short { display: inline; }
+  .hint .result { display: block; margin: 6px 0 0; }
 }
 
 /* features */

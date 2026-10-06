@@ -1,8 +1,8 @@
 # DeliveryHub end-to-end tests
 
-Playwright tests of the whole platform: our panel opens a business, its owner fills the catalog, a customer orders
-in the shop, the owner completes the order and the customer sees it; our panel suspends, activates and finally
-deletes the business.
+Playwright tests of the whole platform: our panel opens a business (and our landing page links to it once the panel
+picks it as the sample shop), its owner fills the catalog, a customer orders in the shop, the owner completes the
+order and the customer sees it; our panel suspends, activates and finally deletes the business.
 
 ```bash
 make e2e    # from the repository root

@@ -14,6 +14,8 @@ const dist = join(root, 'dist')
 const artifact = process.argv.includes('--artifact')
 // Where the page lives: canonical and social links need the full address.
 const SITE_URL = (process.env.SITE_URL || 'https://sizlarbilan.uz').replace(/\/$/, '')
+// The site asks our panel which shop is its live sample; the preview has no server to ask.
+const PREVIEW_SAMPLE = { name: 'Navro‘z Choyxona', url: 'https://navroz-choyxona.sizlarbilan.uz/' }
 // Before the first paint: light, unless the visitor switched to dark last time (whatever the device's theme), and
 // the class the styles of the script-driven parts wait for.
 const PREPAINT = `<script>var t='light';try{if(localStorage.getItem('dh-theme')==='dark')t='dark'}catch(e){}document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('js')</script>`
@@ -124,7 +126,7 @@ function head(lang, fonts, icon) {
 ${preload}`
 }
 
-const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B5BD6"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><path d="M12.3 12.6v-1.5a3.7 3.7 0 0 1 7.4 0v1.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M9.4 12.6h13.2l-.95 10.7a2.1 2.1 0 0 1-2.1 1.9h-7.1a2.1 2.1 0 0 1-2.1-1.9z" fill="#fff"/></svg>`
+const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A1F"/><stop offset="1" stop-color="#E4500A"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><path d="M12.3 12.6v-1.5a3.7 3.7 0 0 1 7.4 0v1.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M9.4 12.6h13.2l-.95 10.7a2.1 2.1 0 0 1-2.1 1.9h-7.1a2.1 2.1 0 0 1-2.1-1.9z" fill="#fff"/></svg>`
 
 async function buildSite() {
   const [body, css, js] = await Promise.all([read('src/body.html'), read('src/page.css'), read('src/page.js')])
@@ -174,7 +176,7 @@ async function buildArtifact() {
 ${css}</style>
 ${PREPAINT}
 ${fillPlaceholders(body, values)}
-<script type="application/json" id="i18n">${json({ lang: 'uz', strings, markup: ru.markup, attrs: ru.attrs, preview: true })}</script>
+<script type="application/json" id="i18n">${json({ lang: 'uz', strings, markup: ru.markup, attrs: ru.attrs, preview: true, sample: PREVIEW_SAMPLE })}</script>
 <script>
 ${fillPlaceholders(js, values)}</script>
 `

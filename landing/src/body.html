@@ -1,6 +1,6 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
-    <linearGradient id="markGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B5BD6"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+    <linearGradient id="markGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A1F"/><stop offset="1" stop-color="#E4500A"/></linearGradient>
   </defs>
   <symbol id="mark" viewBox="0 0 32 32">
     <rect width="32" height="32" rx="9" fill="url(#markGrad)"/>
@@ -35,7 +35,7 @@
       <a href="{{href:ru}}" hreflang="ru" lang="ru" data-lang="ru">RU</a>
     </div>
     <button class="theme-btn" type="button" id="themeToggle" aria-pressed="false" aria-label="Tungi rejim" data-t-attr="aria-label:nav.theme"><svg class="moon" aria-hidden="true"><use href="#moon"/></svg><svg class="sun" aria-hidden="true"><use href="#sun"/></svg></button>
-    <a class="btn btn-dark btn-sm" href="#ariza" data-t="nav.apply">Ariza qoldirish</a>
+    <a class="btn btn-main btn-sm" href="#ariza" data-t="nav.apply">Ariza qoldirish</a>
   </div>
 </header>
 
@@ -51,10 +51,10 @@
         <span class="pill"><svg aria-hidden="true"><use href="#check"/></svg><span data-t="hero.pill3">O‘zbek va rus tilida</span></span>
       </div>
       <div class="ctas">
-        <a class="btn btn-dark" href="#ariza"><span data-t="hero.apply">Ariza qoldirish</span> <svg aria-hidden="true"><use href="#arrow-down"/></svg></a>
+        <a class="btn btn-main" href="#ariza"><span data-t="hero.apply">Ariza qoldirish</span> <svg aria-hidden="true"><use href="#arrow-down"/></svg></a>
         <a class="btn btn-light" href="#sinab"><span data-t="hero.how">Qanday ishlashini ko‘ring</span> <svg aria-hidden="true"><use href="#arrow-down"/></svg></a>
       </div>
-      <p class="hero-note"><span data-t="hero.note">Namuna do‘kon:</span> <a href="https://navroz-choyxona.sizlarbilan.uz/" target="_blank" rel="noopener">navroz-choyxona.sizlarbilan.uz</a></p>
+      <p class="hero-note" id="sampleNote" hidden><span data-t="hero.note">Namuna do‘kon:</span> <a id="sampleLink" href="#" target="_blank" rel="noopener"></a></p>
 
       <div class="hstage" role="group" aria-label="Chatdagi xabarlar o‘rniga bitta tayyor buyurtma" data-t-attr="aria-label:hero.stage">
         <div class="chaos" aria-hidden="true">
@@ -95,7 +95,7 @@ Mini App · 19:42
       <div class="pgrid scrolly-pin" id="problem">
         <div class="pstage">
           <div class="pcap" aria-hidden="true"><span class="num">1</span><span><b></b><small></small></span></div>
-          <div class="phone short" aria-hidden="true">
+          <div class="phone" aria-hidden="true">
             <div class="screen tg">
               <div class="sbar"><span>19:58</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
               <div class="tg-head"><span class="back">‹</span><span class="ava">D</span><div><b>Dilshod</b><small data-t="p.seen">yaqinda tarmoqda edi</small></div></div>
@@ -214,11 +214,12 @@ Mini App · 19:42
       <div class="rv">
         <p class="eyebrow" data-t="demo.eyebrow">Qanday ishlaydi</p>
         <h2 class="h2" data-t="demo.h2">Bitta buyurtma, boshidan oxirigacha.</h2>
-        <p class="lead"><span class="only-manual" data-t="demo.lead">Chapda mijozning telefoni, o‘ngda xodimlar boti. Mijoz sifatida buyurtma bering, keyin xodim sifatida uni qabul qiling. Ekrandagi matnlar haqiqiy tizimdagidek, faqat jarayon soddalashtirilgan.</span><span class="only-scroll" data-t="demo.leadScroll">Mijozning telefoni va xodimlar boti yonma-yon. Pastga varaqlang: buyurtma qadam-baqadam o‘zi bajariladi. Ekrandagi matnlar haqiqiy tizimdagidek.</span></p>
+        <p class="lead"><span class="only-manual" data-t="demo.lead">Chapda mijozning telefoni, o‘ngda xodimlar boti. Mijoz sifatida buyurtma bering, keyin xodim sifatida uni qabul qiling. Ekrandagi matnlar haqiqiy tizimdagidek, faqat jarayon soddalashtirilgan.</span><span class="only-scroll" data-t="demo.leadScroll">Mijozning telefoni va xodimlar boti yonma-yon. Ekrandagi matnlar haqiqiy tizimdagidek.</span></p>
       </div>
 
       <div class="scrolly" id="demoScroll">
       <div class="demo scrolly-pin" id="demo">
+        <div class="touch" id="touch" aria-hidden="true"><span class="touch-dot"></span><span class="touch-who"></span></div>
         <ol class="dsteps" id="dsteps" aria-label="Buyurtma bosqichlari" data-t-attr="aria-label:demo.steps">
           <li><span class="n">1</span><span class="l" data-t="demo.s1">Taom tanlang</span></li>
           <li><span class="n">2</span><span class="l" data-t="demo.s2">Buyurtma bering</span></li>
@@ -227,9 +228,9 @@ Mini App · 19:42
           <li><span class="n">5</span><span class="l" data-t="demo.s5">Yetkazing</span></li>
         </ol>
         <div class="dbar">
-          <p class="hint" id="dhint" aria-live="polite" data-t="demo.hint">Mijoz sifatida boshlang: «+» bilan bir-ikkita taom qo‘shing.</p>
+          <p class="hint" id="dhint" aria-live="polite">Mijoz sifatida boshlang: «+» bilan bir-ikkita taom qo‘shing.</p>
           <div class="dctl">
-            <button class="btn btn-sm btn-dark" type="button" id="dplay" data-t="demo.play">▶ O‘zi ko‘rsatsin</button>
+            <button class="btn btn-sm btn-main" type="button" id="dplay" data-t="demo.play">▶ O‘zi ko‘rsatsin</button>
             <button class="btn btn-sm btn-light" type="button" id="dreset" data-t="demo.reset">↺ Qaytadan</button>
           </div>
         </div>
@@ -240,7 +241,7 @@ Mini App · 19:42
 
         <div class="stage">
           <div class="pane" id="paneClient" role="tabpanel" aria-labelledby="tabClient">
-            <p class="pane-cap"><i></i><span data-t="demo.capClient">Mijoz · Navro‘z Choyxona do‘koni</span></p>
+            <p class="pane-cap"><i></i><span class="cap-long" data-t="demo.capClient">Mijoz · Navro‘z Choyxona do‘koni</span><span class="cap-short" data-t="demo.tabClient">Mijoz telefoni</span></p>
             <div class="phone">
               <div class="screen shop" id="shop">
                 <div class="sbar"><span>19:42</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
@@ -257,7 +258,7 @@ Mini App · 19:42
           </div>
 
           <div class="pane" id="paneStaff" role="tabpanel" aria-labelledby="tabStaff">
-            <p class="pane-cap"><i class="tgdot"></i><span data-t="demo.capStaff">Xodim · Telegram’dagi xodimlar boti</span></p>
+            <p class="pane-cap"><i class="tgdot"></i><span class="cap-long" data-t="demo.capStaff">Xodim · Telegram’dagi xodimlar boti</span><span class="cap-short" data-t="demo.tabStaff">Xodimlar boti</span></p>
             <div class="phone">
               <div class="screen tg" id="staff">
                 <div class="sbar"><span>19:42</span><i><b style="height:5px"></b><b style="height:7px"></b><b style="height:9px"></b><b style="height:11px"></b></i></div>
@@ -278,7 +279,7 @@ Mini App · 19:42
         <div><b>0</b><span data-t="demo.doneCalls">qo‘ng‘iroq</span></div>
         <div><b>0</b><span data-t="demo.doneChats">yozishma</span></div>
         <p data-t="demo.doneText">Chatda shu buyurtma uchun 9 ta xabar va taxminan 6 daqiqa ketgan bo‘lardi.</p>
-        <div class="dd-cta"><b data-t="demo.ddCta">Biznesingizda ham shunday ishlasinmi?</b><a class="btn btn-sm btn-dark" href="#ariza" data-t="demo.ddApply">Ariza qoldirish</a></div>
+        <div class="dd-cta"><b data-t="demo.ddCta">Biznesingizda ham shunday ishlasinmi?</b><a class="btn btn-sm btn-main" href="#ariza" data-t="demo.ddApply">Ariza qoldirish</a></div>
       </div>
     </div>
   </section>
@@ -558,14 +559,14 @@ Mini App · 19:42
             </div>
             <div class="hp" aria-hidden="true"><label for="leadWebsite">Website</label><input id="leadWebsite" name="website" tabindex="-1" autocomplete="off"></div>
             <p class="fstatus" id="leadStatus" role="alert" hidden></p>
-            <button class="btn btn-dark" type="submit" id="leadSend" data-t="form.send">Ariza yuborish</button>
+            <button class="btn btn-main" type="submit" id="leadSend" data-t="form.send">Ariza yuborish</button>
             <p class="fnote" data-t="form.note">Raqamingiz faqat siz bilan bog‘lanish uchun kerak.</p>
           </form>
           <div class="lead-done" id="leadDone" hidden tabindex="-1">
             <span class="ok"><svg aria-hidden="true"><use href="#tick"/></svg></span>
             <h3 data-t="form.doneTitle">Arizangiz qabul qilindi!</h3>
-            <p data-t="form.doneText">Tez orada siz bilan bog‘lanamiz. Bu orada jonli do‘konni ko‘rib chiqing.</p>
-            <a class="btn btn-light" href="https://navroz-choyxona.sizlarbilan.uz/" target="_blank" rel="noopener"><span data-t="form.doneLink">Jonli do‘konni ochish</span> <svg aria-hidden="true"><use href="#arrow-out"/></svg></a>
+            <p data-t="form.doneText">Tez orada siz bilan bog‘lanamiz.</p>
+            <a class="btn btn-light" id="sampleShop" href="#" target="_blank" rel="noopener" hidden><span data-t="form.doneLink">Jonli do‘konni ochish</span> <svg aria-hidden="true"><use href="#arrow-out"/></svg></a>
             <p class="preview" id="leadPreview" hidden data-t="form.preview">Bu sahifaning namunasi: haqiqiy saytda ariza paneldagi «Arizalar» bo‘limiga tushadi.</p>
           </div>
         </div>
@@ -580,4 +581,4 @@ Mini App · 19:42
   </section>
 </main>
 
-<div class="stickycta" id="stickyCta"><a class="btn btn-dark" href="#ariza" data-t="sticky.apply">Ariza qoldirish</a></div>
+<div class="stickycta" id="stickyCta"><a class="btn btn-main" href="#ariza" data-t="sticky.apply">Ariza qoldirish</a></div>

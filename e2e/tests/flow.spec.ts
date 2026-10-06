@@ -30,6 +30,32 @@ test.describe.serial('a new business from opening to the first order', () => {
     await expect(page.getByText(`${business.slug}.`).first()).toBeVisible()
   })
 
+  test('our page for businesses links to the shop our panel picks as its sample', async ({ page }) => {
+    await openBusinessPage(page)
+    const sample = page.locator('#sampleNote')
+    const openLanding = async () => {
+      const config = page.waitForResponse(`${urls.landing}/api/v1/landing/config`)
+      await page.goto(urls.landing)
+      expect((await config).status()).toBe(200)
+    }
+    // Our panel → "Arizalar" → the "Sayt" card.
+    const pick = async (option: string, said: string) => {
+      await page.goto(urls.platform)
+      await page.getByRole('link', { name: /Arizalar/ }).first().click()
+      await page.getByLabel("Namuna do'kon").selectOption({ label: option })
+      await expect(page.getByText(said)).toBeVisible()
+    }
+
+    await pick(business.name, `Saytda namuna do'kon: «${business.name}»`)
+    await openLanding()
+    await expect(sample).toBeVisible()
+    await expect(sample.getByRole('link')).toHaveAttribute('href', `${urls.shop(business.slug)}/`)
+
+    await pick("Ko'rsatilmasin", "Saytda namuna do'kon ko'rsatilmaydi")
+    await openLanding()
+    await expect(sample).toBeHidden()
+  })
+
   test('the owner signs in to the admin panel and fills the catalog', async () => {
     await signInToAdmin(owner, business)
     await fillCatalog(owner, business, product)

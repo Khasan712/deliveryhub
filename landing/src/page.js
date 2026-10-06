@@ -329,7 +329,7 @@
       if (!ok && n === s) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
     });
     const key = D.confirm ? 'confirm' : D.phase === 'shop' ? (count() ? 'cart' : 'empty') : D.phase === 'checkout' ? 'checkout' : D.status;
-    hint.textContent = T.demo.hint[key];
+    if (!D.auto && !D.scroll) hint.textContent = T.demo.hint[key];  // a played demo says who pressed what instead
     ddone.hidden = D.status !== 'completed';
     $('#ddTaps').textContent = D.taps;
   }
@@ -342,6 +342,7 @@
     paneClient.toggleAttribute('data-off', !client);
     paneStaff.toggleAttribute('data-off', client);
     (client ? tabClient : tabStaff).querySelector('.dot')?.remove();
+    if (!client) staffBody.scrollTop = staffBody.scrollHeight;  // a chat opens at its newest message
   }
   function flag(tab) {
     if (!narrow.matches || D.tab === tab) return;
@@ -454,51 +455,149 @@
   });
   tabClient.addEventListener('click', () => setTab('client'));
   tabStaff.addEventListener('click', () => setTab('staff'));
-  $('#dreset').addEventListener('click', reset);
+  $('#dreset').addEventListener('click', () => { stopAuto(); reset(); });
 
-  const SCRIPT = [['inc', 'osh'], ['inc', 'osh'], ['inc', 'choy'], ['checkout'], ['place'], ['accept'], ['go'], ['done']];
-  function stopAuto() { D.auto = false; playBtn.textContent = T.demo.play; }
+  /* The played demo — by the page's scroll, or by "▶ O‘zi ko‘rsatsin": one state of the order at a time. Moving one
+     state on, a touch comes to each button, presses it and says whose finger it is (Mijoz / Xodim); then the button
+     does what it does. A jump (a fast scroll, going back) puts the state in place quietly. */
+  const STORY = [[], [['inc', 'osh']], [['inc', 'osh'], ['inc', 'choy']], [['checkout']], [['place']], [['accept']], [['go']], [['done']]];
+  const STAFF_MOVES = ['accept', 'go', 'done', 'ask', 'reject', 'keep'];
+  const touch = $('#touch');
+  const whoOf = (a) => (STAFF_MOVES.includes(a) ? 'staff' : 'client');
+  const targetOf = (a, id) => $$(id ? `[data-act="${a}"][data-id="${id}"]` : `[data-act="${a}"]`, whoOf(a) === 'staff' ? paneStaff : paneClient).pop();
+  function pressLabel(a) {
+    const b = T.demo.buttons;
+    return { inc: '+', checkout: T.demo.cart, place: T.demo.sheet.place.split(' · ')[0], accept: b.accept, go: b.go, done: b.done }[a];
+  }
+  /** Under the steps: whose finger and which buttons — shown as the touch sets off — and, once pressed, what they
+      did. Nothing before the first press. */
+  function caption(k, pressed = true) {
+    const moves = STORY[k];
+    if (!moves.length) { hint.textContent = ''; return; }
+    const who = whoOf(moves[0][0]);
+    hint.innerHTML = `<span class="who ${who}">${T.demo.who[who]}</span> ${T.demo.pressed}: ` +
+      moves.map(([a]) => `<span class="press">${pressLabel(a)}</span>`).join(' ') +
+      ` <span class="result${pressed ? '' : ' wait'}">${T.demo.result[k]}</span>`;
+    hint.classList.remove('played'); void hint.offsetWidth; hint.classList.add('played');
+  }
+  function hideTouch() {
+    touch.classList.remove('on', 'press');
+    paneClient.classList.remove('acting');
+    paneStaff.classList.remove('acting');
+  }
+  /** A list or a chat in a phone scrolls the button into sight first (not the page). */
+  async function reveal(el) {
+    const box = el.closest('.slist, .tg-body');
+    if (!box) return;
+    const cover = box.matches('.slist') ? 84 : 0;  // the cart bar covers the bottom of the shop's list
+    const br = box.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    if (er.top >= br.top && er.bottom <= br.bottom - cover) return;
+    const by = er.top < br.top ? er.top - br.top - 24 : er.bottom - br.bottom + cover + 12;
+    box.scrollTo({ top: box.scrollTop + by, behavior: reduce ? 'auto' : 'smooth' });
+    await wait(320);
+  }
+  /** The touch comes to the button and presses it; false when something newer took over meanwhile. */
+  async function tap(a, id, run) {
+    const who = whoOf(a);
+    if (narrow.matches) setTab(who);
+    const el = targetOf(a, id);
+    if (!el) return run === storyRun;
+    await reveal(el);
+    if (run !== storyRun) return false;
+    const box = demo.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const first = !touch.classList.contains('on');
+    // A new touch appears at the button; a following one glides over to it.
+    touch.className = `touch on ${who}${first ? ' jump' : ''}`;
+    touch.style.setProperty('--x', `${Math.round(r.left + r.width / 2 - box.left)}px`);
+    touch.style.setProperty('--y', `${Math.round(r.top + r.height / 2 - box.top)}px`);
+    touch.querySelector('.touch-who').textContent = T.demo.who[who];
+    paneClient.classList.toggle('acting', who === 'client');
+    paneStaff.classList.toggle('acting', who === 'staff');
+    await wait(first ? 380 : 480);
+    if (run !== storyRun) return false;
+    touch.classList.remove('jump');
+    touch.classList.add('press');
+    el.classList.add('tap');  // the button goes down under the touch, then does what it does
+    setTimeout(() => el.classList.remove('tap'), 500);
+    await wait(260);
+    return run === storyRun;
+  }
+
+  let storyAt = -1;
+  let storyRun = 0;
+  let inflight = null;  // the state being shown and its presses still to come
+  /** Finishes a state being shown at once (quietly), so a newer one starts from a whole state. */
+  function flush() {
+    if (!inflight) return;
+    inflight.moves.forEach(([a, id]) => act(a, id, true));
+    storyAt = inflight.k;
+    inflight = null;
+  }
+  /** After a state: what it did in the caption, and the screen to look at on a phone. */
+  function settle(k, run, pressed = false) {
+    if (pressed) hint.querySelector('.result')?.classList.remove('wait'); else caption(k);
+    setTimeout(() => { if (run === storyRun) hideTouch(); }, 700);
+    if (!narrow.matches) return;
+    // The order goes to the staff after the customer's press; the customer sees "delivered" after the staff's.
+    const tab = k >= 4 && k <= 6 ? 'staff' : 'client';
+    if (D.tab === tab) return;
+    setTimeout(() => { if (run === storyRun) setTab(tab); }, k === 4 || k === 7 ? 900 : 0);
+  }
+  async function story(k, animate = true) {
+    const run = ++storyRun;
+    flush();
+    if (storyAt < 0 || k < storyAt) { reset(); storyAt = 0; hideTouch(); }
+    if (k !== storyAt + 1 || !animate) {
+      while (storyAt < k) {
+        storyAt += 1;
+        STORY[storyAt].forEach(([a, id]) => act(a, id, true));
+      }
+      hideTouch();
+      settle(k, run);
+      return;
+    }
+    inflight = { k, moves: [...STORY[k]] };
+    caption(k, false);
+    while (inflight && inflight.moves.length) {
+      const [a, id] = inflight.moves[0];
+      if (!(await tap(a, id, run)) || !inflight || run !== storyRun) return;
+      inflight.moves.shift();
+      act(a, id, inflight.moves.length > 0);  // the last press of a state brings its message, toast and arrow
+    }
+    if (run !== storyRun) return;
+    storyAt = k;
+    inflight = null;
+    settle(k, run, true);
+  }
+
+  function stopAuto() {
+    D.auto = false;
+    storyRun += 1;  // a state being shown stops where it is: from here on the visitor presses
+    inflight = null;
+    hideTouch();
+    playBtn.textContent = T.demo.play;
+    if (!D.scroll) renderSteps();  // the hint for pressing by hand again
+  }
   async function autoplay() {
     reset();
+    storyAt = 0;
     D.auto = true;
     const mine = D;
     playBtn.textContent = T.demo.stop;
-    for (const [a, id] of SCRIPT) {
+    for (let k = 1; k < STORY.length; k += 1) {
+      await wait(k === 1 ? 300 : 1100);
       if (!mine.auto || D !== mine) return;
-      const staffSide = ['accept', 'go', 'done'].includes(a);
-      if (narrow.matches) setTab(staffSide ? 'staff' : 'client');
-      await wait(a === 'accept' ? 1200 : 650);
+      await story(k);
       if (!mine.auto || D !== mine) return;
-      const sel = id ? `[data-act="${a}"][data-id="${id}"]` : `[data-act="${a}"]`;
-      const target = $$(sel, staffSide ? paneStaff : paneClient).pop();
-      if (target) { target.classList.add('tap'); await wait(420); target.classList.remove('tap'); }
-      if (!mine.auto || D !== mine) return;
-      act(a, id);
-      await wait(a === 'place' ? 900 : 700);
     }
-    if (D === mine) {
-      mine.auto = false;
-      playBtn.textContent = T.demo.play;
-      if (narrow.matches) setTimeout(() => { if (D === mine) setTab('client'); }, 600);
-    }
+    mine.auto = false;
+    playBtn.textContent = T.demo.play;
   }
   playBtn.addEventListener('click', () => { if (D.auto) stopAuto(); else autoplay(); });
   narrow.addEventListener?.('change', () => setTab(D.tab));
   reset();
-
-  /* The demo, driven by the page's scroll: each stretch is one state of the order; going back replays it quietly. */
-  const STORY = [[], [['inc', 'osh']], [['inc', 'osh'], ['inc', 'choy']], [['checkout']], [['place']], [['accept']], [['go']], [['done']]];
-  let storyAt = -1;
-  function story(k) {
-    if (storyAt < 0 || k < storyAt) { reset(); storyAt = 0; }
-    while (storyAt < k) {
-      storyAt += 1;
-      const moves = STORY[storyAt];
-      moves.forEach(([a, id], i) => act(a, id, storyAt < k || i < moves.length - 1));
-    }
-    hint.textContent = T.demo.story[k];
-    if (narrow.matches) setTab(k >= 4 && k <= 6 ? 'staff' : 'client');
-  }
 
   /* ------------------------------------------------------------------
      The application: POST /api/v1/leads on this host (docs/api.md, "Applications")
@@ -589,6 +688,28 @@
     }
   });
 
+  /* The live sample shop, chosen in our panel (GET /api/v1/landing/config): none chosen → no link at all. */
+  function showSample(sample) {
+    const note = $('#sampleNote');
+    const shop = $('#sampleShop');
+    note.hidden = !sample;
+    shop.hidden = !sample;
+    if (!sample) return;
+    const link = $('#sampleLink');
+    link.href = sample.url;
+    shop.href = sample.url;
+    link.textContent = new URL(sample.url).host;
+    link.title = sample.name;
+  }
+  if (I18N.preview) {
+    showSample(I18N.sample ?? null);
+  } else {
+    fetch('/api/v1/landing/config', { headers: { Accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((config) => showSample(config?.sample ?? null))
+      .catch(() => showSample(null));
+  }
+
   /* the "Ariza qoldirish" bar on phones: after the first screen, until the form is in view; never over a pinned stage */
   const sticky = $('#stickyCta');
   const seen = { hero: true, form: false };
@@ -625,36 +746,37 @@
      back goes back. Only when the stage fits the screen and motion is welcome: with "reduce motion", on a screen too
      short for the stage (a phone on its side) or without the script, the parts work as before.
      ------------------------------------------------------------------ */
-  function scrollStage(wrapper, { steps, wide, onMode, onStep }) {
+  const MIN_ZOOM = 0.66;  // a phone any smaller and its text no longer reads: the stage is not pinned then
+  const PHONE = 640;  // a phone's full height (.phone: up to 320px wide, 1:2); a smaller one may be narrower than its column
+  function scrollStage(wrapper, { steps, onMode, onStep }) {
     const pin = wrapper.querySelector('.scrolly-pin');
-    const wideQuery = window.matchMedia(wide);
-    const stage = { on: false, step: -1, progress: 0 };
+    const stage = { on: false, step: -1, progress: 0, hidesNav: false };
     const pinTop = () => parseFloat(wrapper.style.getPropertyValue('--pin-top')) || 80;
     const distance = () => wrapper.offsetHeight - pin.offsetHeight;
     stage.layout = () => {
       let on = false;
+      stage.hidesNav = false;
       if (!reduceMotion.matches) {
-        // Measure the stage as it would be pinned, then fit its phone into the screen: smaller on a wide screen,
-        // shorter on a narrow one (text keeps its size there). Too small to read → not pinned.
+        // Measure the stage as it would be pinned, then fit it into the screen. Its phone keeps a phone's shape and only
+        // gets smaller as a whole; where the menu would make it much smaller, the menu steps aside while the stage is
+        // pinned (a phone, a low laptop screen).
         wrapper.classList.add('on');
         wrapper.classList.remove('compact');
         wrapper.style.removeProperty('--phone-zoom');
-        wrapper.style.removeProperty('--phone-h');
         const phone = [...pin.querySelectorAll('.phone')].find((each) => each.offsetParent !== null);
-        const navH = nav.getBoundingClientRect().height;
-        const fits = window.innerHeight - navH - 24;
         const natural = phone.offsetHeight;
-        const room = fits - (pin.offsetHeight - natural);
-        // Wide: the phone shrinks whole down to 80 %, then gets shorter; narrow: only shorter (its text keeps its size).
-        let zoom = 1;
-        let height = Math.min(natural, Math.floor(room));
-        if (wideQuery.matches) {
-          zoom = Math.max(0.8, Math.min(1, room / natural));
-          height = Math.min(natural, Math.floor(room / zoom));
+        const rest = pin.offsetHeight - natural;
+        const navH = nav.getBoundingClientRect().height;
+        // Shrunk, a phone takes its full width again (its width is a share of its column), so it is scaled from that.
+        const zoomFor = (fits) => (fits - rest >= natural ? 1 : (fits - rest) / PHONE);
+        let fits = window.innerHeight - navH - 24;
+        if (zoomFor(fits) < 0.92) {
+          fits = window.innerHeight - 24;
+          stage.hidesNav = true;
         }
-        if (height >= 340) {
+        const zoom = zoomFor(fits);
+        if (zoom >= MIN_ZOOM) {
           if (zoom < 1) wrapper.style.setProperty('--phone-zoom', zoom.toFixed(3));
-          if (height < natural) wrapper.style.setProperty('--phone-h', `${height}px`);
           on = pin.offsetHeight <= fits + 1;  // the whole stage, the list beside the phone too
           if (!on) {
             wrapper.classList.add('compact');  // only the step it is on keeps its text
@@ -662,12 +784,13 @@
           }
         }
         if (on) {
-          const top = navH + Math.max(12, (window.innerHeight - navH - pin.offsetHeight) / 2);
+          const above = stage.hidesNav ? 0 : navH;
+          const top = above + Math.max(12, (window.innerHeight - above - pin.offsetHeight) / 2);
           wrapper.style.setProperty('--pin-top', `${Math.round(top)}px`);
         } else {
+          stage.hidesNav = false;
           wrapper.classList.remove('on', 'compact');
           wrapper.style.removeProperty('--phone-zoom');
-          wrapper.style.removeProperty('--phone-h');
         }
       }
       if (on !== stage.on) { stage.on = on; stage.step = -1; onMode(on); }
@@ -691,7 +814,6 @@
 
   const problemStage = scrollStage($('#problemScroll'), {
     steps: 5,
-    wide: '(min-width: 961px)',
     onMode(on) {
       P.scroll = on;
       if (on) { playing = false; preplay.hidden = true; }
@@ -701,7 +823,6 @@
   });
   const demoStage = scrollStage($('#demoScroll'), {
     steps: STORY.length,
-    wide: '(min-width: 900px)',
     onMode(on) {
       stopAuto();
       D.scroll = on;
@@ -713,13 +834,15 @@
     onStep: story,
   });
   onLanguage.push(() => {
-    if (demoStage.on) { storyAt = -1; story(Math.max(0, demoStage.step)); } else reset();
+    if (demoStage.on) { storyAt = -1; story(Math.max(0, demoStage.step)); } else { stopAuto(); reset(); }
   });
 
+  // The menu steps aside while a stage that needs the whole screen is pinned.
+  const updateNav = () => nav.classList.toggle('away', stages.some((stage) => stage.hidesNav && stage.pinned()));
   let frame = 0;
   window.addEventListener('scroll', () => {
     if (frame) return;
-    frame = requestAnimationFrame(() => { frame = 0; stages.forEach((stage) => stage.update()); updateSticky(); });
+    frame = requestAnimationFrame(() => { frame = 0; stages.forEach((stage) => stage.update()); updateSticky(); updateNav(); });
   }, { passive: true });
   // A phone's address bar coming and going changes the height a little on every scroll: only a real change re-fits.
   let size = [window.innerWidth, window.innerHeight];
@@ -731,13 +854,15 @@
       if (w === size[0] && Math.abs(h - size[1]) < 120) return;
       size = [w, h];
       stages.forEach((stage) => stage.layout());
+      updateNav();
     }, 150);
   };
   window.addEventListener('resize', refit);
   window.screen?.orientation?.addEventListener?.('change', refit);  // a phone turned on its side
-  reduceMotion.addEventListener?.('change', () => stages.forEach((stage) => stage.layout()));
-  stages.forEach((stage) => stage.layout());
-  document.fonts?.ready.then(() => stages.forEach((stage) => stage.layout()));
+  const relayout = () => { stages.forEach((stage) => stage.layout()); updateNav(); };
+  reduceMotion.addEventListener?.('change', relayout);
+  relayout();
+  document.fonts?.ready.then(relayout);
 
   /* language: links between / and /ru on the site; the preview artifact switches in place */
   function markLanguage() {

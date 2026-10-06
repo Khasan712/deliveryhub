@@ -75,7 +75,7 @@ describe('the site', () => {
     assert.equal(uz.querySelector('#demoScroll #ddone'), null)
     assert.ok(uz.querySelector('#demoScroll + #ddone'))
     assert.equal(ruPage.querySelector('[data-t="demo.leadScroll"]').text, ru.markup['demo.leadScroll'])
-    assert.equal(strings.uz.demo.story.length, 8)
+    assert.equal(strings.uz.demo.result.length, 8)
   })
 
   it('links the two languages, and nothing of our panel', () => {
@@ -84,9 +84,11 @@ describe('the site', () => {
     assert.doesNotMatch(file('dist/index.html'), /\/login|deliveryhub\.sizlarbilan/)
   })
 
-  it('sends the application to the platform API of its own host', () => {
+  it('sends the application to the platform API of its own host, and asks it for the sample shop', () => {
     const script = uz.querySelectorAll('script').map((s) => s.text).join('\n')
     assert.match(script, /fetch\('\/api\/v1\/leads'/)
+    assert.match(script, /fetch\('\/api\/v1\/landing\/config'/)
+    assert.equal(uz.querySelector('#sampleNote').getAttribute('hidden'), '')  // until our panel says which shop
     assert.equal(i18nOf(uz).preview, undefined)
     const form = uz.querySelector('#leadForm')
     assert.deepEqual(form.querySelectorAll('input, textarea').map((el) => el.getAttribute('name')),
@@ -95,7 +97,7 @@ describe('the site', () => {
 
   it('serves every file it refers to, under content-hashed names', () => {
     const html = file('dist/index.html') + file('dist/ru/index.html')
-    const used = [...new Set(html.match(/\/landing\/[\w.-]+/g))]
+    const used = [...new Set(html.match(/(?<!\/api\/v1)\/landing\/[\w.-]+/g))]  // not the API's /landing/config
     assert.ok(used.length >= 8)
     for (const path of used) {
       assert.match(path, /\.[0-9a-f]{10}\.(webp|woff2|svg)$/)
@@ -114,7 +116,7 @@ describe('the preview artifact', () => {
     assert.deepEqual(Object.keys(data.strings), ['uz', 'ru'])
     assert.equal(data.markup['hero.q'], ru.markup['hero.q'])
     assert.equal(doc.querySelector('title').text, 'DeliveryHub sayti')
-    assert.doesNotMatch(file('dist/artifact.html'), /\/landing\/|<html|<body|\{\{/)
+    assert.doesNotMatch(file('dist/artifact.html'), /(?<!\/api\/v1)\/landing\/|<html|<body|\{\{/)
     assert.match(doc.querySelector('.prow, img[src^="data:image/webp"]')?.getAttribute('src') ?? '', /^data:image\/webp;base64,/)
   })
 })
