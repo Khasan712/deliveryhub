@@ -100,9 +100,13 @@ describe('the site', () => {
     const used = [...new Set(html.match(/(?<!\/api\/v1)\/landing\/[\w.-]+/g))]  // not the API's /landing/config
     assert.ok(used.length >= 8)
     for (const path of used) {
-      assert.match(path, /\.[0-9a-f]{10}\.(webp|woff2|svg)$/)
+      assert.match(path, /\.[0-9a-f]{10}\.(webp|woff2|svg|png)$/)
       assert.ok(existsSync(join(root, 'dist', path)), path)
     }
+    // Browsers that take no SVG icon ask for /favicon.ico; Apple's home screen gets its own PNG.
+    assert.match(html, /<link rel="icon" href="\/favicon\.ico" sizes="32x32">/)
+    assert.match(html, /<link rel="apple-touch-icon" href="\/landing\/apple-touch-icon\.[0-9a-f]{10}\.png">/)
+    assert.ok(existsSync(join(root, 'dist/favicon.ico')))
   })
 })
 

@@ -66,6 +66,17 @@ test.describe.serial('a new business from opening to the first order', () => {
     expect(orderId).toBeGreaterThan(0)
   })
 
+  test("the shop's tab and home-screen icon is the business's own, drawn by the server", async ({ page }) => {
+    await page.goto(urls.shop(business.slug))
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/api/v1/icon')
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/api/v1/icon/touch')
+    for (const path of ['/api/v1/icon', '/api/v1/icon/touch']) {
+      const response = await page.request.get(`${urls.shop(business.slug)}${path}`)
+      expect(response.status()).toBe(200)
+      expect(response.headers()['content-type']).toBe('image/png')
+    }
+  })
+
   test('the owner completes the order and the customer sees it', async () => {
     await completeOrder(owner, business, orderId)
     await customer.goto(`${urls.shop(business.slug)}/orders/${orderId}`)

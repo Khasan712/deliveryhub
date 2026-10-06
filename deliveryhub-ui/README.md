@@ -75,5 +75,7 @@ src/
 ## Container
 
 `Dockerfile` builds the app and serves `dist/` with Caddy (`Caddyfile`: SPA fallback to `index.html`, a year of cache
-for the hashed `/assets/*`, `no-cache` for the pages, `X-Frame-Options: DENY`). In the platform it runs as the
+for the hashed `/assets/*`, `no-cache` for the pages, `X-Frame-Options: DENY`). The icons — DeliveryHub's mark
+(`src/assets/mark.svg`, hashed by the build), Apple's home-screen PNG and `public/favicon.ico` for browsers that take
+no SVG icon — come from `../scripts/make-web-icons.sh`. In the platform it runs as the
 `deliveryhub-ui` service of `../docker-compose.yml`, behind the `web` container that routes the platform host to it.

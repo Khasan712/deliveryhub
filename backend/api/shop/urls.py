@@ -1,10 +1,12 @@
 from django.urls import path
 
-from ..common.views import ProductImageView
+from ..common.views import ProductImageView, ShopIconView
 from . import views
 
 urlpatterns = [
     path('shop', views.ShopCatalogView.as_view(), name='shop'),
+    path('icon', ShopIconView.as_view(), name='icon'),
+    path('icon/touch', ShopIconView.as_view(touch=True), name='icon-touch'),
     path('products/<int:pk>/image', ProductImageView.as_view(), name='product-image'),
     path('auth/telegram/webapp', views.TelegramWebAppAuthView.as_view(), name='auth-telegram-webapp'),
     path('auth/telegram/start', views.TelegramStartView.as_view(), name='auth-telegram-start'),

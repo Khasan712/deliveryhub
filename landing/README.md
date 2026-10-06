@@ -12,7 +12,8 @@ sends `www.` there), routed by `../Caddyfile`:
 |---|---|
 | `/`, `/uz` | Uzbek |
 | `/ru` | Russian |
-| `/landing/*` | fonts, photos, the icon (content-hashed names, cached for a year) |
+| `/landing/*` | fonts, photos, the icons (content-hashed names, cached for a year) |
+| `/favicon.ico` | the icon for browsers that take no SVG icon (`scripts/make-web-icons.sh` draws it and the home-screen PNG from the mark) |
 
 The form sends `POST /api/v1/leads` to its own host; the web container passes that path to the backend as our panel's
 host (docs/api.md, "Applications") — no account, rate limited, with a hidden field as a trap for bots. Nothing of our

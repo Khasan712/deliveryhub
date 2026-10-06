@@ -95,6 +95,13 @@ map).
 ### `GET /api/v1/products/{id}/image`
 Image bytes of a product stored in the database (old products). `Product.image` already points here when needed.
 
+### `GET /api/v1/icon`, `GET /api/v1/icon/touch`
+The shop's icon, PNG — for the browser tab (`icon`: 64 px, rounded corners) and the phone's home screen
+(`icon/touch`: 180 px, square; iOS rounds it): the business's logo covering the square (see-through parts on
+white), or — without a logo — the shop's bag on its `brand_color` (the shop's default `#FF5A1F` without one; a dark
+bag on a light colour). The shop's HTML names these addresses, so the icon is right from the first load.
+`Cache-Control: public, max-age=300`: a new logo or colour shows within minutes. No sign-in.
+
 ### Sign-in
 | Request | Response |
 |---|---|

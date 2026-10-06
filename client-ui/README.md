@@ -16,7 +16,9 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   The cart beside the menu starts level with the hero; from 1360px the header lines up with the columns below
   (the search exactly as wide as the hero); every page keeps the same width. `brand_color` becomes the accent (`--brand*` CSS variables,
   readable text colour is computed; a navy or near-black brand turns into light buttons on the dark theme) and is
-  cached so the next visit paints in the right colour.
+  cached so the next visit paints in the right colour. The tab and home-screen icon is the business's own, drawn
+  by the server for the host (`GET /api/v1/icon`, `/icon/touch`: its logo, or the bag on its brand colour) and
+  named in `index.html`, so it is right from the first load (Safari ignores an icon swapped in later).
 - Speed and deploys: cards, the cart and lists load the small photo (`thumb`, 512 px WebP), the product sheet the
   full one; the menu request starts before the Telegram SDK has loaded and the last menu shows at once; API answers
   revalidate with ETags. After a deploy the shop picks up the new build at a calm moment — a lazy chunk gone from the

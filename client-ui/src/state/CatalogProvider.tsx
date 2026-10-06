@@ -63,18 +63,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     writeStorage('brand', variables)
   }, [business])
 
-  useEffect(() => {
-    if (!business?.logo) return
-    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-    if (!icon) {
-      icon = document.createElement('link')
-      icon.rel = 'icon'
-      document.head.append(icon)
-    }
-    icon.removeAttribute('type')
-    icon.href = business.logo
-  }, [business?.logo])
-
   const value = useMemo((): CatalogContextValue => {
     const products = data?.products ?? []
     const productsById = new Map(products.map((product) => [product.id, product]))

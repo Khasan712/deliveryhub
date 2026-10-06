@@ -102,7 +102,7 @@ async function fontFaces() {
   return { css: rules.join('\n'), preload }
 }
 
-function head(lang, fonts, icon) {
+function head(lang, fonts, icons) {
   const { title, description } = meta[lang]
   const url = lang === 'uz' ? `${SITE_URL}/` : `${SITE_URL}/ru`
   const preload = [fonts.preload.latin, lang === 'ru' && fonts.preload.cyrillic].filter(Boolean)
@@ -122,7 +122,9 @@ function head(lang, fonts, icon) {
 <meta property="og:url" content="${url}">
 <meta property="og:locale" content="${lang === 'uz' ? 'uz_UZ' : 'ru_RU'}">
 <meta name="theme-color" content="#F6F5F2">
-<link rel="icon" href="${icon}" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="${icons.svg}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="${icons.touch}">
 ${preload}`
 }
 
@@ -135,8 +137,13 @@ async function buildSite() {
   await mkdir(join(dist, 'ru'), { recursive: true })
   const img = await images(false)
   const fonts = await fontFaces()
-  const icon = `/landing/icon.${hash(ICON)}.svg`
-  await writeFile(join(dist, icon), ICON)
+  // The mark as an SVG icon, its home-screen PNG (hashed, cached for good) and /favicon.ico for browsers that take no
+  // SVG icon (scripts/make-web-icons.sh draws the last two).
+  const touch = await readFile(join(root, 'public/icons/apple-touch-icon.png'))
+  const icons = { svg: `/landing/icon.${hash(ICON)}.svg`, touch: `/landing/apple-touch-icon.${hash(touch)}.png` }
+  await writeFile(join(dist, icons.svg), ICON)
+  await writeFile(join(dist, icons.touch), touch)
+  await copyFile(join(root, 'public/icons/favicon.ico'), join(dist, 'favicon.ico'))
   const values = { img, href: { uz: '/', ru: '/ru' } }
   const script = fillPlaceholders(js, values)
 
@@ -145,7 +152,7 @@ async function buildSite() {
     const page = `<!doctype html>
 <html lang="${lang}">
 <head>
-${head(lang, fonts, icon)}
+${head(lang, fonts, icons)}
 <style>
 ${fonts.css}
 ${css}</style>
