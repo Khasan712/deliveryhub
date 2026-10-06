@@ -114,8 +114,8 @@ export function DailyBars({ data }: { data: DashboardData['daily'] }) {
         <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -18 }}>
           <defs>
             <linearGradient id="dailyBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#6366f1" />
+              <stop offset="0%" stopColor="#fb923c" />
+              <stop offset="100%" stopColor="#ea580c" />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} strokeDasharray="4 4" />

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { errorMessage } from '../api/errors'
-import { IconAlert, IconLock, IconRefresh, IconTruck } from '../components/icons'
+import { DeliveryHubMark } from '../components/DeliveryHubMark'
+import { IconAlert, IconLock, IconRefresh } from '../components/icons'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { useI18n } from '../i18n/context'
@@ -21,7 +22,7 @@ export function CenteredScreen({
     <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-slate-950 px-4 py-16 text-white sm:py-10">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_40rem_at_10%_-10%,rgba(59,130,246,0.28),transparent_60%),radial-gradient(50rem_35rem_at_110%_110%,rgba(139,92,246,0.22),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_40rem_at_10%_-10%,rgba(249,115,22,0.24),transparent_60%),radial-gradient(50rem_35rem_at_110%_110%,rgba(244,63,94,0.16),transparent_60%)]"
       />
       <div
         aria-hidden="true"
@@ -34,16 +35,7 @@ export function CenteredScreen({
 }
 
 export function BrandMark({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        'flex size-16 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500 to-indigo-600 text-white shadow-lg shadow-primary-600/30 ring-1 ring-white/20',
-        className,
-      )}
-    >
-      <IconTruck size={32} />
-    </div>
-  )
+  return <DeliveryHubMark className={cn('size-16 rounded-2xl shadow-lg', className)} />
 }
 
 function MessageScreen({
@@ -80,9 +72,7 @@ export function FullPageLoader() {
   const { t } = useI18n()
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-app">
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500 to-indigo-600 text-white shadow-lg shadow-primary-600/25">
-        <IconTruck size={24} />
-      </div>
+      <DeliveryHubMark className="size-12 rounded-2xl shadow-lg" />
       <Spinner size={20} className="text-primary-500" label={t('loading')} />
     </div>
   )
@@ -125,7 +115,7 @@ export function NotFound() {
   const { t } = useI18n()
   return (
     <div className="flex flex-col items-center px-6 py-20 text-center">
-      <p className="bg-linear-to-br from-primary-500 to-indigo-600 bg-clip-text text-7xl font-black tracking-tight text-transparent">
+      <p className="bg-linear-to-br from-primary-500 to-primary-700 bg-clip-text text-7xl font-black tracking-tight text-transparent">
         404
       </p>
       <h1 className="mt-4 text-xl font-semibold text-fg">{t('not_found_title')}</h1>

@@ -40,7 +40,7 @@ export function RecentSales({ sales, isFlashed }: { sales: SaleSummary[]; isFlas
                   isFlashed(`sale-${sale.id}`) && 'line-flash',
                 )}
               >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-sm font-semibold text-white">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary-500 to-primary-700 text-sm font-semibold text-white">
                   {(sale.name || '#').trim().charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">

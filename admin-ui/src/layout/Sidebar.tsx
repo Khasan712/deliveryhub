@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router'
 import { useNewOrdersCount } from '../api/queries'
 import { useSession } from '../auth/session'
-import { IconPanelClose, IconPanelOpen, IconTruck, IconX } from '../components/icons'
+import { DeliveryHubMark } from '../components/DeliveryHubMark'
+import { IconPanelClose, IconPanelOpen, IconX } from '../components/icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { useI18n } from '../i18n/context'
 import { cn } from '../lib/cn'
@@ -22,9 +23,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onClose }: SidebarProps)
   return (
     <div className="flex h-full flex-col bg-sidebar text-slate-300">
       <div className={cn('flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] px-4', collapsed && 'justify-center px-0')}>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-900/40">
-          <IconTruck size={20} />
-        </div>
+        <DeliveryHubMark className="size-9 rounded-xl" />
         {!collapsed && (
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-[15px] font-bold tracking-tight text-white">{t('app_platform')}</p>
@@ -129,7 +128,7 @@ function SidebarLink({
             <span
               className={cn(
                 'rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                isActive ? 'bg-white/20 text-white' : 'bg-linear-to-r from-violet-500 to-fuchsia-500 text-white',
+                isActive ? 'bg-white/20 text-white' : 'bg-linear-to-r from-ai-1 to-ai-3 text-white',
               )}
             >
               AI

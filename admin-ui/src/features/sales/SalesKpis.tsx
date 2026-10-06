@@ -11,7 +11,7 @@ export function SalesKpis({ stats }: { stats: SalesStats }) {
     <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       <Kpi
         icon={<IconBag size={20} />}
-        iconClass="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300"
+        iconClass="bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"
         label={t('sales_today')}
         value={formatNumber(stats.count)}
         sub={t('sales_via_admin')}

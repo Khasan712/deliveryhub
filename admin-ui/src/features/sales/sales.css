@@ -7,7 +7,7 @@
   border-radius: 24px;
   color: #fff;
   background: linear-gradient(135deg, var(--color-ai-1) 0%, var(--color-ai-2) 52%, var(--color-ai-3) 100%);
-  box-shadow: 0 18px 40px -12px rgb(139 92 246 / 0.55);
+  box-shadow: 0 18px 40px -12px rgb(244 63 94 / 0.45);
   --voice-level: 0;
 }
 .voice-glow {
@@ -342,7 +342,7 @@
   }
 }
 .line-flash {
-  background: rgb(139 92 246 / 0.12);
+  background: rgb(244 63 94 / 0.1);
   animation: line-in 0.5s ease;
 }
 @keyframes line-in {
@@ -377,8 +377,8 @@
 }
 .ai-glow {
   border-color: var(--color-ai-2) !important;
-  box-shadow: 0 0 0 4px rgb(139 92 246 / 0.22) !important;
-  background-color: rgb(139 92 246 / 0.06);
+  box-shadow: 0 0 0 4px rgb(244 63 94 / 0.2) !important;
+  background-color: rgb(244 63 94 / 0.05);
 }
 
 .create-btn {
@@ -392,8 +392,8 @@
   color: #fff;
   font-weight: 700;
   font-size: 15px;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
-  box-shadow: 0 10px 24px -8px rgb(37 99 235 / 0.6);
+  background: linear-gradient(135deg, #f97316, #c2410c);
+  box-shadow: 0 10px 24px -8px rgb(234 88 12 / 0.55);
   transition:
     transform 0.12s,
     filter 0.15s,
@@ -424,8 +424,8 @@
 @keyframes hinted {
   50% {
     box-shadow:
-      0 0 0 6px rgb(139 92 246 / 0.35),
-      0 10px 24px -8px rgb(37 99 235 / 0.6);
+      0 0 0 6px rgb(249 115 22 / 0.3),
+      0 10px 24px -8px rgb(234 88 12 / 0.55);
   }
 }
 
@@ -570,7 +570,7 @@
   justify-content: space-between;
   color: #fff;
   background: linear-gradient(135deg, var(--color-ai-1), var(--color-ai-3));
-  box-shadow: 0 6px 14px -6px rgb(139 92 246 / 0.6);
+  box-shadow: 0 6px 14px -6px rgb(244 63 94 / 0.5);
   animation: tile-stepper-in 0.18s ease-out;
 }
 .tile-stepper button {

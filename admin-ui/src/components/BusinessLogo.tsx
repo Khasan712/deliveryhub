@@ -31,7 +31,7 @@ export function BusinessLogo({ name, logo, brandColor, size = 'md', className }:
       />
     )
   }
-  const color = brandColor && /^#[0-9a-f]{6}$/i.test(brandColor) ? brandColor : '#2563eb'
+  const color = brandColor && /^#[0-9a-f]{6}$/i.test(brandColor) ? brandColor : '#ff5a1f'  // the shop's own default
   return (
     <span
       aria-hidden="true"

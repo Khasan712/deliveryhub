@@ -350,7 +350,7 @@ function CustomerCard({ order }: { order: OrderDetail }) {
               <Avatar
                 name={order.customer_name || '?'}
                 size="lg"
-                colorClass="bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300"
+                colorClass="bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300"
               />
               <div className="min-w-0">
                 <p className="truncate font-semibold text-fg">{order.customer_name || '—'}</p>

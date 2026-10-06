@@ -21,7 +21,7 @@ import { useFirstPageOnMissing, useListParams } from '../../lib/useListParams'
 const FILTERS = ['search'] as const
 
 const ROLE_AVATAR = {
-  admin: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  admin: 'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300',
   manager: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
 }
 

@@ -90,7 +90,7 @@ export function DashboardPage() {
               label={t('total_products')}
               value={data?.products.total}
               icon={<IconProducts size={22} />}
-              iconClass="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300"
+              iconClass="bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"
               sub={t('in_categories', { count: formatNumber(data?.categories.total) })}
             />
           </div>
@@ -118,7 +118,7 @@ export function DashboardPage() {
               label={t('nav_categories')}
               value={data?.categories.total}
               icon={<IconTag size={26} />}
-              className="from-indigo-500 to-violet-500 shadow-indigo-500/25"
+              className="from-sky-500 to-blue-600 shadow-sky-500/25"
             />
           </div>
 

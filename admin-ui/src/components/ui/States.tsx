@@ -66,7 +66,7 @@ export function Callout({
   className,
   action,
 }: {
-  tone?: 'info' | 'warning' | 'danger' | 'violet' | 'success'
+  tone?: 'info' | 'warning' | 'danger' | 'ai' | 'success'
   icon?: ReactNode
   children: ReactNode
   className?: string
@@ -76,8 +76,7 @@ export function Callout({
     info: 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-200',
     warning: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200',
     danger: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200',
-    violet:
-      'border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-200',
+    ai: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200',
     success:
       'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200',
   }

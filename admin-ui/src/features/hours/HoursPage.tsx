@@ -404,7 +404,7 @@ function DayRow({ index, day, today, errors, disabled, onChange, onApplyToAll }:
           id={noteId}
           className={cn(
             'col-span-3 flex items-center gap-1.5 text-xs font-medium sm:col-span-2 sm:col-start-3',
-            error ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-300',
+            error ? 'text-rose-600 dark:text-rose-400' : 'text-primary-700 dark:text-primary-300',
           )}
         >
           {error ? <IconAlert size={14} className="shrink-0" /> : <IconMoon size={14} className="shrink-0" />}
@@ -433,7 +433,7 @@ function ReadOnlyDay({ index, day, today }: { index: number; day: DayDraft; toda
         <p className={cn('text-sm font-semibold tabular', day.working ? 'text-fg' : 'text-faint')}>
           {!day.working ? t('hours_day_off') : day.allDay ? t('hours_around_clock') : `${day.open} – ${day.close}`}
         </p>
-        {note && <p className="text-xs font-medium text-indigo-600 dark:text-indigo-300">{note}</p>}
+        {note && <p className="text-xs font-medium text-primary-700 dark:text-primary-300">{note}</p>}
       </div>
     </li>
   )

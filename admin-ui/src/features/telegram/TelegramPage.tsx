@@ -53,7 +53,7 @@ export function TelegramPage() {
             </Callout>
           ) : null}
           {data.bot && !data.voice_ready && (
-            <Callout tone="violet" icon={<IconMic size={18} />}>
+            <Callout tone="ai" icon={<IconMic size={18} />}>
               {t('tg_voice_off')}
             </Callout>
           )}
@@ -110,7 +110,7 @@ function BotHero({ data }: { data: TelegramData }) {
   const { t } = useI18n()
   const bot = data.bot
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-500 via-sky-600 to-indigo-600 p-6 text-white shadow-lg shadow-sky-600/20 sm:p-8">
+    <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-500 via-sky-600 to-blue-600 p-6 text-white shadow-lg shadow-sky-600/20 sm:p-8">
       <div aria-hidden="true" className="absolute -right-16 -top-16 size-64 rounded-full bg-white/10" />
       <div aria-hidden="true" className="absolute -bottom-24 right-24 size-56 rounded-full bg-white/5" />
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -173,7 +173,7 @@ function HowItWorks() {
       <ol className="mt-5 space-y-4">
         {steps.map(([title, sub], index) => (
           <li key={title} className="flex gap-3">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-indigo-500 text-sm font-bold text-white shadow-sm">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-blue-500 text-sm font-bold text-white shadow-sm">
               {index + 1}
             </span>
             <div className="min-w-0">
@@ -280,7 +280,7 @@ function LinkRow({ link, team }: { link: TelegramLink; team?: boolean }) {
   return (
     <li className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-sky-400 to-indigo-500 font-semibold text-white">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-sky-400 to-blue-500 font-semibold text-white">
           {(team ? link.user.name : display).trim().charAt(0).toUpperCase() || '?'}
         </span>
         <div className="min-w-0">

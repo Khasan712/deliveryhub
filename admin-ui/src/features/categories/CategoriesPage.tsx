@@ -54,7 +54,7 @@ export function CategoriesPage() {
         const other = lang === 'ru' ? category.name_uz : category.name_ru
         return (
           <div className="flex items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300">
               <IconTag size={18} />
             </span>
             <div className="min-w-0">
@@ -163,7 +163,7 @@ export function CategoriesPage() {
         submitLabel={current ? t('save_changes') : t('create')}
         initial={current ?? undefined}
         icon={
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300">
             <IconTag size={22} />
           </span>
         }
