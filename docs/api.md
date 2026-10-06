@@ -327,10 +327,20 @@ phone, the way its customers would use it.
   `MOBILE_MIN_VERSION`, `MOBILE_ANDROID_URL`, `MOBILE_IOS_URL`) asks to be updated from its store — needed only for
   changes of the app itself: the shop inside it is always the one on the server.
 
+### Our page for businesses
+Our page (`landing/`, at the bare domain `<domain>`) links to one business's shop as a live sample — chosen here.
+* `GET /api/v1/landing` → `{"sample": BusinessCard | null, "updated_at", "url": "https://<domain>/", "config": LandingConfig}`
+  (`config` — exactly what the page receives now).
+* `PUT /api/v1/landing` `{"sample": "<slug>" | null}` → the same. Errors: `validation` with `fields.sample`:
+  `does_not_exist` / `suspended`.
+* `GET /api/v1/landing/config` — **no sign-in**: asked by the page when it opens (the web container passes it from the
+  bare domain) → `LandingConfig`: `{"sample": {"name": "Navro'z Choyxona", "url": "https://navroz.<domain>/"} | null}`
+  (`null` when none is chosen or it is suspended: the page then shows no sample link).
+
 ### Applications
 A business that wants its own shop leaves an application on our page for businesses (`landing/`, at the bare domain
-`<domain>`; the web container passes its form's `POST /api/v1/leads` to this host — nothing else of this API is open
-there); our staff see it in the panel ("Arizalar") and call back.
+`<domain>`; the web container passes its form's `POST /api/v1/leads` to this host — of this API only that and
+`GET /api/v1/landing/config` are open there); our staff see it in the panel ("Arizalar") and call back.
 * `POST /api/v1/leads` — **no sign-in** (the landing's form):
   ```json
   {"name": "Aziz", "phone": "+998 90 123 45 67", "business": "Navro'z Choyxona", "kind": "cafe", "comment": "", "lang": "uz"}

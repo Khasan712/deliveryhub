@@ -8,7 +8,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { ApiError } from './client'
-import { authApi, businessesApi, leadsApi, mobileAppApi } from './endpoints'
+import { authApi, businessesApi, landingApi, leadsApi, mobileAppApi } from './endpoints'
 import type {
   Bot,
   BotRole,
@@ -17,6 +17,7 @@ import type {
   BusinessList,
   BusinessProfilePatch,
   BusinessStatus,
+  Landing,
   LeadCounts,
   LeadPatch,
   LeadStatus,
@@ -30,6 +31,7 @@ export const queryKeys = {
   business: (slug: string) => ['businesses', 'detail', slug] as const,
   slugCheck: (slug: string) => ['slug-check', slug] as const,
   mobileApp: ['mobile-app'] as const,
+  landing: ['landing'] as const,
   leadCounts: ['leads', 'counts'] as const,
   leadLists: ['leads', 'list'] as const,
   leadList: (status: LeadStatus | null, page: number) => ['leads', 'list', status ?? 'all', page] as const,
@@ -254,6 +256,22 @@ export function useSetMobileApp() {
   return useMutation({
     mutationFn: (business: string | null) => mobileAppApi.set(business),
     onSuccess: (data: MobileApp) => client.setQueryData(queryKeys.mobileApp, data),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Our page for businesses: its live sample shop
+// ---------------------------------------------------------------------------
+
+export function useLanding() {
+  return useQuery({ queryKey: queryKeys.landing, queryFn: landingApi.get })
+}
+
+export function useSetLanding() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (sample: string | null) => landingApi.set(sample),
+    onSuccess: (data: Landing) => client.setQueryData(queryKeys.landing, data),
   })
 }
 

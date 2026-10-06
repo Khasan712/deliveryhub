@@ -54,9 +54,10 @@ browsers ──► OpenFreeMap (map tiles of the checkout and our panel)
   a web page cannot: links to Telegram, the phone and maps go to their apps, Android's back button and location
   permission, the status bar in the shop's colours.
 * **Our page for businesses** (`landing/`) is a static page in two languages at the bare domain (`<domain>`, `/ru`;
-  `localhost` locally; the edge sends `www.` there). Its form sends `POST /api/v1/leads` to its own host, and the web
-  container passes that one path to the backend as the platform host (the backend knows no bare domain, and nothing
-  else of the platform API is open there): no account, rate limited, a hidden field traps bots. Our staff see the
+  `localhost` locally; the edge sends `www.` there). It makes two calls to its own host — the form's
+  `POST /api/v1/leads` and `GET /api/v1/landing/config` (the live sample shop, chosen in our panel) — and the web
+  container passes just those to the backend as the platform host (the backend knows no bare domain, and nothing else
+  of the platform API is open there). The form needs no account; it is rate limited and a hidden field traps bots. Our staff see the
   applications in the panel ("Arizalar", `GET/PATCH /api/v1/leads`) and call back.
 * **Speed on phones**: photos are stored as WebP at the size they are shown (`thumb` for cards, `image` for the product
   sheet), `/media` files are cached for good, API `GET`s revalidate with ETags (`304` without a body), the shop asks

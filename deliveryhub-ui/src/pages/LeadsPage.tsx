@@ -1,12 +1,14 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type Ref } from 'react'
 import { useSearchParams } from 'react-router'
-import { useLeads, useUpdateLead } from '../api/queries'
-import type { Lead, LeadCounts, LeadKind, LeadPatch, LeadStatus } from '../api/types'
+import { useBusinesses, useLanding, useLeads, useSetLanding, useUpdateLead } from '../api/queries'
+import type { BusinessCard, Lead, LeadCounts, LeadKind, LeadPatch, LeadStatus } from '../api/types'
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckIcon,
+  ChevronDownIcon,
   ClockIcon,
+  ExternalIcon,
   GlobeIcon,
   InboxIcon,
   PhoneIcon,
@@ -18,7 +20,7 @@ import { Field } from '../components/ui/Field'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Spinner } from '../components/ui/Spinner'
 import { EmptyState, ErrorState } from '../components/ui/States'
-import { cardClass, inputClass } from '../components/ui/styles'
+import { buttonClass, cardClass, inputClass } from '../components/ui/styles'
 import { useToast } from '../components/ui/toast'
 import { cx } from '../lib/cx'
 import { errorMessage, fieldErrors } from '../lib/errors'
@@ -143,6 +145,8 @@ export function LeadsPage() {
         Landing sahifasidagi formadan kelgan arizalar: qo'ng'iroq qiling va natijasini shu yerda belgilang.
       </p>
 
+      <SiteCard />
+
       <StatusTabs tab={tab} counts={list?.counts} onChoose={chooseTab} activeRef={activeTabRef} />
 
       <section ref={resultsRef} tabIndex={-1} aria-label="Arizalar ro'yxati" className="mt-5">
@@ -172,6 +176,96 @@ export function LeadsPage() {
         )}
       </section>
     </div>
+  )
+}
+
+/**
+ * Our page for businesses itself: its address, and the business whose shop it links to as a live sample ("Namuna
+ * do'kon" on the page, and after an application is sent). The page asks for it whenever it opens.
+ */
+function SiteCard() {
+  const landing = useLanding()
+  const list = useBusinesses()
+  const choose = useSetLanding()
+  const toast = useToast()
+  const selectId = useId()
+  const titleId = useId()
+
+  const data = landing.data
+  const chosen = data?.sample ?? null
+  const active = (list.data?.results ?? []).filter((business) => business.status === 'active')
+  // A chosen business that was suspended since stays in the list, so the choice still shows (and can be changed).
+  const options: BusinessCard[] =
+    chosen && !active.some((each) => each.slug === chosen.slug) ? [chosen, ...active] : active
+
+  const pick = (slug: string) => {
+    choose.mutate(slug || null, {
+      onSuccess: (next) =>
+        toast.success(
+          next.sample ? `Saytda namuna do'kon: «${next.sample.name}»` : "Saytda namuna do'kon ko'rsatilmaydi",
+          { description: next.sample ? "Sayt keyingi ochilishida shu do'konga havola beradi." : undefined },
+        ),
+      onError: (error) => toast.error(errorMessage(error)),
+    })
+  }
+
+  return (
+    <section
+      aria-labelledby={titleId}
+      className={cx(cardClass, 'mt-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 p-4 sm:p-5')}
+    >
+      <div className="min-w-0 max-w-xl">
+        <h2 id={titleId} className="flex items-center gap-2 font-extrabold tracking-tight">
+          <GlobeIcon size={18} className="text-indigo-600" />
+          Sayt
+          {data && <span className="font-semibold text-slate-400">{data.url.replace(/^https?:\/\/|\/$/g, '')}</span>}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Arizalar shu sahifadagi formadan keladi. «Namuna do'kon» havolasi bu yerda tanlangan do'konni ochadi.
+        </p>
+      </div>
+      <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+        <div className="min-w-0 flex-1 sm:w-64 sm:flex-none">
+          <label htmlFor={selectId} className="mb-1.5 block text-sm font-semibold text-slate-700">
+            Namuna do'kon
+          </label>
+          <div className="relative">
+            <select
+              id={selectId}
+              value={chosen?.slug ?? ''}
+              disabled={!data || !list.data || choose.isPending}
+              onChange={(event) => pick(event.target.value)}
+              className={inputClass(false, 'h-10 appearance-none pr-9 text-sm font-semibold')}
+            >
+              <option value="">Ko'rsatilmasin</option>
+              {options.map((business) => (
+                <option key={business.slug} value={business.slug}>
+                  {business.status === 'active' ? business.name : `${business.name} (to'xtatilgan)`}
+                </option>
+              ))}
+            </select>
+            {choose.isPending ? (
+              <Spinner size={16} className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400" />
+            ) : (
+              <ChevronDownIcon
+                size={16}
+                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-400"
+              />
+            )}
+          </div>
+        </div>
+        {data && (
+          <a
+            href={data.url}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonClass({ variant: 'secondary', size: 'sm' })}
+          >
+            Saytni ochish <ExternalIcon size={15} />
+          </a>
+        )}
+      </div>
+    </section>
   )
 }
 

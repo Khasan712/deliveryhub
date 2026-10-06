@@ -9,6 +9,7 @@ import type {
   BusinessProfilePatch,
   BusinessStatus,
   Credentials,
+  Landing,
   Lead,
   LeadList,
   LeadPatch,
@@ -72,6 +73,12 @@ export const businessesApi = {
 export const mobileAppApi = {
   get: () => request<MobileApp>('GET', '/mobile-app'),
   set: (business: string | null) => request<MobileApp>('PUT', '/mobile-app', { json: { business } }),
+}
+
+/** Our page for businesses: the live sample shop it links to. */
+export const landingApi = {
+  get: () => request<Landing>('GET', '/landing'),
+  set: (sample: string | null) => request<Landing>('PUT', '/landing', { json: { sample } }),
 }
 
 interface LeadsQuery {

@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { leadsPolling } from '../api/queries'
 import { backend } from './backend'
-import { makeLead, sampleLeads } from './fixtures'
+import { makeLead, sampleBusinesses, sampleLeads } from './fixtures'
 import { renderApp } from './render'
 import { server } from './server'
 
@@ -300,5 +300,36 @@ describe('applications', () => {
     expect(await screen.findByRole('article', { name: 'Bobur' })).toBeInTheDocument()
     expect(menu().getByRole('link', { name: 'Arizalar, 2 ta yangi' })).toBeInTheDocument()
     expect(tabs().getByRole('button', { name: 'Yangi 2' })).toBeInTheDocument()
+  })
+})
+
+describe('our page for businesses', () => {
+  it('links to the sample shop chosen here, active businesses only', async () => {
+    backend.state.businesses = sampleBusinesses()
+    const active = backend.state.businesses.filter((business) => business.status === 'active')
+    const suspended = backend.state.businesses.find((business) => business.status === 'suspended')
+    const { user } = renderApp('/leads')
+
+    const site = within(await screen.findByRole('region', { name: /^Sayt/ }))
+    const select = site.getByLabelText("Namuna do'kon")
+    await waitFor(() => expect(select).toBeEnabled())
+    expect(select).toHaveValue('')
+    expect(site.getByRole('link', { name: /Saytni ochish/ })).toHaveAttribute('href', 'https://portex.uz/')
+    const offered = within(select)
+      .getAllByRole('option')
+      .map((option) => option.textContent)
+    expect(offered).toEqual(["Ko'rsatilmasin", ...active.map((business) => business.name)])
+    expect(offered).not.toContain(suspended?.name)
+
+    const sample = active[0]!
+    await user.selectOptions(select, sample.slug)
+    expect(await screen.findByText(`Saytda namuna do'kon: «${sample.name}»`)).toBeInTheDocument()
+    expect(backend.requests('PUT', '/landing')[0]?.body).toEqual({ sample: sample.slug })
+    expect(backend.state.landingSample).toBe(sample.slug)
+    expect(select).toHaveValue(sample.slug)
+
+    await user.selectOptions(select, '')
+    expect(await screen.findByText("Saytda namuna do'kon ko'rsatilmaydi")).toBeInTheDocument()
+    expect(backend.state.landingSample).toBeNull()
   })
 })

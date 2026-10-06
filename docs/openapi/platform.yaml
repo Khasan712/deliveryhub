@@ -438,6 +438,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/GeoSearch'
           description: ''
+  /api/v1/landing:
+    get:
+      operationId: landing_retrieve
+      summary: The live sample shop of our page for businesses
+      tags:
+      - landing
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Landing'
+          description: ''
+    put:
+      operationId: landing_update
+      summary: 'Link another business as the sample (at once: the page asks when it
+        opens)'
+      tags:
+      - landing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LandingUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LandingUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LandingUpdateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Landing'
+          description: ''
+  /api/v1/landing/config:
+    get:
+      operationId: landing_config_retrieve
+      description: Asked by our page for businesses when it opens (through the bare
+        domain); no account.
+      summary: The live sample shop our page for businesses links to
+      tags:
+      - landing
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingConfig'
+          description: ''
   /api/v1/leads:
     get:
       operationId: leads_list
@@ -991,6 +1050,63 @@ components:
       type: string
       description: "* `` - \n* `cafe` - cafe\n* `fastfood` - fastfood\n* `shop` -
         shop\n* `other` - other"
+    Landing:
+      type: object
+      properties:
+        sample:
+          allOf:
+          - $ref: '#/components/schemas/BusinessCard'
+          nullable: true
+          description: Chosen in our panel
+        updated_at:
+          type: string
+          format: date-time
+        url:
+          type: string
+          format: uri
+          description: 'The page itself: https://<domain>/'
+        config:
+          allOf:
+          - $ref: '#/components/schemas/LandingConfig'
+          description: Exactly what the page receives now
+      required:
+      - config
+      - sample
+      - updated_at
+      - url
+    LandingConfig:
+      type: object
+      properties:
+        sample:
+          allOf:
+          - $ref: '#/components/schemas/LandingSample'
+          nullable: true
+          description: 'null: none chosen, or it is suspended'
+      required:
+      - sample
+    LandingSample:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+          description: Its shop
+      required:
+      - name
+      - url
+    LandingUpdateRequest:
+      type: object
+      properties:
+        sample:
+          type: string
+          nullable: true
+          minLength: 1
+          description: 'Slug of an active business; null: none'
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - sample
     LangEnum:
       enum:
       - uz

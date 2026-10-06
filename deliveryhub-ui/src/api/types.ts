@@ -159,6 +159,22 @@ export interface MobileApp {
   config: AppConfig
 }
 
+/** docs/api.md → "Our page for businesses": the live sample shop the page links to. */
+export interface LandingConfig {
+  /** null — none chosen, or it is suspended: the page shows no sample link. */
+  sample: { name: string; url: string } | null
+}
+
+export interface Landing {
+  /** Chosen here. */
+  sample: BusinessCard | null
+  updated_at: string
+  /** The page itself: https://<domain>/ */
+  url: string
+  /** Exactly what the page receives now. */
+  config: LandingConfig
+}
+
 /** docs/api.md → "Applications": a business that wants its own shop, from the form of our landing page. */
 export type LeadStatus = 'new' | 'contacted' | 'won' | 'lost'
 export type LeadKind = 'cafe' | 'fastfood' | 'shop' | 'other'

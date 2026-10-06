@@ -3,7 +3,7 @@
 #   /media/*                  → uploaded files (product images, logos)
 #   /django-admin/*, /static/* → backend (Django admin for our staff, on the platform host)
 #   the bare domain           → our page for businesses (landing/; localhost on a developer's machine); its
-#                               form's POST /api/v1/leads reaches the backend as our panel's host
+#                               two API calls (the form, the sample shop) reach the backend as our panel's host
 #   everything else           → the UI of the host: our panel, a business's admin panel or its shop
 # TLS ends in front of this container (the tunnel or a load balancer), so it serves plain HTTP.
 {
@@ -17,13 +17,13 @@
 :80 {
 	encode zstd gzip
 
-	# The form of our page for businesses: the backend answers the platform API only on our panel's host, and
-	# nothing else of that API is open on the bare domain.
-	@landingLeads {
+	# The two calls of our page for businesses (its form, its sample shop): the backend answers the platform API
+	# only on our panel's host, and nothing else of that API is open on the bare domain.
+	@landingApi {
 		host {$PLATFORM_DOMAIN}
-		path /api/v1/leads
+		path /api/v1/leads /api/v1/landing/config
 	}
-	handle @landingLeads {
+	handle @landingApi {
 		request_body {
 			max_size 16KB
 		}

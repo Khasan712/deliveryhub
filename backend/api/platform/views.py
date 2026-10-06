@@ -16,7 +16,8 @@ from rest_framework.views import APIView
 from apps.core import images
 from apps.platform import provisioning
 from apps.platform.bots import BotInUse, connect_bot, create_setup_link, release_bot
-from apps.platform.models import Business, BusinessBot, Lead, MobileApp
+from apps.platform.current import url_for
+from apps.platform.models import Business, BusinessBot, Domain, Landing, Lead, MobileApp
 from apps.platform.overview import businesses, owner_of
 from apps.platform.telegram_api import TelegramError
 from ..common import geo
@@ -267,6 +268,48 @@ class MobileAppView(PlatformView):
         mobile = MobileApp.current()
         mobile.business = data.validated_data['business']
         mobile.save()
+        return self.answer(request)
+
+
+# ---------------------------------------------------------------------------
+# our page for businesses (landing/): the live sample shop it links to
+# ---------------------------------------------------------------------------
+
+def landing_config(request):
+    sample = Landing.current().sample
+    shown = sample if sample and sample.is_active else None
+    return {'sample': {'name': shown.name, 'url': url_for(request, shown, Domain.KIND_SHOP)} if shown else None}
+
+
+class LandingConfigView(APIView):
+    """Asked by our page for businesses when it opens (through the bare domain); no account."""
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(summary='The live sample shop our page for businesses links to', responses=s.LandingConfigSerializer)
+    def get(self, request):
+        return Response(landing_config(request))
+
+
+class LandingView(PlatformView):
+    def answer(self, request):
+        landing = Landing.current()
+        card = s.BusinessCardSerializer(landing.sample, context={'request': request}).data if landing.sample else None
+        return Response({'sample': card, 'updated_at': iso(landing.updated_at),
+                         'url': f'https://{settings.PLATFORM_DOMAIN}/', 'config': landing_config(request)})
+
+    @extend_schema(summary='The live sample shop of our page for businesses', responses=s.LandingSerializer)
+    def get(self, request):
+        return self.answer(request)
+
+    @extend_schema(summary='Link another business as the sample (at once: the page asks when it opens)',
+                   request=s.LandingUpdateSerializer, responses=s.LandingSerializer)
+    def put(self, request):
+        data = s.LandingUpdateSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        landing = Landing.current()
+        landing.sample = data.validated_data['sample']
+        landing.save()
         return self.answer(request)
 
 

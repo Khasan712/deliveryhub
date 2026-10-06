@@ -12,7 +12,8 @@ live phone preview of its shop and what the app receives. **Arizalar** (`/leads`
 our landing page (`../landing`), in tabs by status with their counts (`GET /leads`, the new ones first) — the phone to
 call (a `tel:` link, copy), the language to speak and their message; staff mark how the call went and keep a note
 (`PATCH /leads/{id}`). The menu shows the number of new ones, re-read every minute and when the window gets the focus
-back. After a deploy, a page that misses a lazy chunk of the old build reloads once. Talks only to the **Platform API** on its own host (`/api/v1/...`, see
+back. Its **Sayt** card picks the sample shop the landing page links to (one of the active businesses or none; saved
+at once, `PUT /landing`). After a deploy, a page that misses a lazy chunk of the old build reloads once. Talks only to the **Platform API** on its own host (`/api/v1/...`, see
 [`../docs/api.md`](../docs/api.md)): session cookie + `X-CSRFToken`.
 
 React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanStack Query 5 · Tailwind CSS 4 ·
@@ -54,7 +55,7 @@ Fallbacks: `VITE_PLATFORM_DOMAIN` at build time, the links of existing businesse
 | `/` | totals, search/filter, business cards (status, address, numbers, bots with alive dot) |
 | `/new` | new business: address from the name (Uzbek Cyrillic → Latin), live availability, brand color, logo, owner |
 | `/b/<slug>` | header actions, numbers, bots (setup link + QR, token, disconnect), addresses, profile, owner password, delete (a suspended business; its slug typed to confirm) |
-| `/leads?status=…&page=…` | applications from the landing page: status tabs with counts (new ones by default), phone, language, message, status buttons («Bog'lanildi» at hand for a new one), our note; 20 a page |
+| `/leads?status=…&page=…` | applications from the landing page: status tabs with counts (new ones by default), phone, language, message, status buttons («Bog'lanildi» at hand for a new one), our note; 20 a page; the «Sayt» card above them picks the landing's sample shop |
 
 The owner's credentials after creating a business travel in the history state and are shown once (gone after a
 reload). Pages `/new`, `/b/<slug>`, `/leads` and `/mobile` are separate chunks, preloaded when the browser is idle.

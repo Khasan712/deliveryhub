@@ -6,6 +6,7 @@ import type {
   BotRole,
   BusinessCard,
   BusinessDetail,
+  Landing,
   Lead,
   LeadStatus,
   MobileApp,
@@ -38,6 +39,8 @@ interface State {
   geo: { address: string; places: Place[]; down: boolean }
   /** Slug of the business our mobile app opens. */
   mobileApp: string | null
+  /** Slug of the business our page for businesses links to as a sample. */
+  landingSample: string | null
   /** Applications from our landing page, in any order (the API answers newest first). */
   leads: Lead[]
   requests: RecordedRequest[]
@@ -62,6 +65,7 @@ function initialState(): State {
       down: false,
     },
     mobileApp: null,
+    landingSample: null,
     leads: [],
     requests: [],
   }
@@ -214,6 +218,17 @@ function applyProfile(business: BusinessDetail, body: Body) {
   if (logo === null || logo === '') business.logo = null
   else if (typeof logo === 'object' && logo.name) {
     business.logo = `/media/${business.slug.replace(/-/g, '_')}/logos/${logo.name}`
+  }
+}
+
+function landing(): Landing {
+  const business = backend.state.businesses.find((each) => each.slug === backend.state.landingSample) ?? null
+  const shown = business?.status === 'active' ? business : null
+  return {
+    sample: business && card(business),
+    updated_at: '2026-10-05T10:00:00+05:00',
+    url: `https://${DOMAIN}/`,
+    config: { sample: shown && { name: shown.name, url: shown.links.shop } },
   }
 }
 
@@ -460,6 +475,17 @@ export const handlers = [
     if (business && business.status !== 'active') return validation({ business: ['suspended'] })
     backend.state.mobileApp = slug
     return HttpResponse.json(mobileApp())
+  }),
+
+  // --- our page for businesses: its sample shop --------------------------------------------------------------
+  route('get', '/landing', () => HttpResponse.json(landing())),
+  route('put', '/landing', ({ body }) => {
+    const slug = body.sample === null ? null : String(body.sample ?? '')
+    const business = slug === null ? null : backend.state.businesses.find((each) => each.slug === slug)
+    if (slug !== null && !business) return validation({ sample: ['does_not_exist'] })
+    if (business && business.status !== 'active') return validation({ sample: ['suspended'] })
+    backend.state.landingSample = slug
+    return HttpResponse.json(landing())
   }),
 
   // --- applications (the form of our landing page) ---------------------------------------------------------

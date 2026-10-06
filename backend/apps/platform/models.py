@@ -115,6 +115,17 @@ class MobileApp(models.Model):
         return cls.objects.select_related('business').get_or_create(pk=1)[0]
 
 
+class Landing(models.Model):
+    """Our page for businesses (landing/, at the bare domain): the business whose shop it links to as a live sample,
+    chosen in our panel ("Arizalar"). A single row (pk 1)."""
+    sample = models.ForeignKey(Business, on_delete=models.SET_NULL, blank=True, null=True, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.select_related('sample').get_or_create(pk=1)[0]
+
+
 class Lead(models.Model):
     """An application from the form of our landing page (landing/): a business that wants its own shop. Our staff
     call it back and keep its status in our panel ("Arizalar")."""

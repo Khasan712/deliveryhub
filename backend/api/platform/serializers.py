@@ -153,6 +153,22 @@ class MobileAppSerializer(serializers.Serializer):
     config = AppConfigSerializer(help_text='Exactly what the app receives now')
 
 
+class LandingSampleSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    url = serializers.URLField(help_text='Its shop')
+
+
+class LandingConfigSerializer(serializers.Serializer):
+    sample = LandingSampleSerializer(allow_null=True, help_text='null: none chosen, or it is suspended')
+
+
+class LandingSerializer(serializers.Serializer):
+    sample = BusinessCardSerializer(allow_null=True, help_text='Chosen in our panel')
+    updated_at = serializers.DateTimeField()
+    url = serializers.URLField(help_text='The page itself: https://<domain>/')
+    config = LandingConfigSerializer(help_text='Exactly what the page receives now')
+
+
 def choices(of):
     return [key for key, _ in of]
 
@@ -273,18 +289,30 @@ class PlatformUserSerializer(serializers.Serializer):
         return {'id': user.pk, 'phone_number': user.phone_number, 'first_name': user.first_name or ''}
 
 
+def active_business(slug):
+    """An active business by its slug, or None for null; `does_not_exist` / `suspended` otherwise."""
+    if slug is None:
+        return None
+    business = Business.objects.filter(slug=slug).first()
+    if business is None:
+        raise serializers.ValidationError('does_not_exist', code='does_not_exist')
+    if not business.is_active:
+        raise serializers.ValidationError('suspended', code='suspended')
+    return business
+
+
 class MobileAppUpdateSerializer(serializers.Serializer):
     business = serializers.SlugField(allow_null=True, help_text='Slug of an active business; null: none')
 
     def validate_business(self, slug):
-        if slug is None:
-            return None
-        business = Business.objects.filter(slug=slug).first()
-        if business is None:
-            raise serializers.ValidationError('does_not_exist', code='does_not_exist')
-        if not business.is_active:
-            raise serializers.ValidationError('suspended', code='suspended')
-        return business
+        return active_business(slug)
+
+
+class LandingUpdateSerializer(serializers.Serializer):
+    sample = serializers.SlugField(allow_null=True, help_text='Slug of an active business; null: none')
+
+    def validate_sample(self, slug):
+        return active_business(slug)
 
 
 class LeadCreateSerializer(serializers.Serializer):
