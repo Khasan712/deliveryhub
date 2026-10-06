@@ -32,7 +32,7 @@ export function ColorField({ value, onChange, label = 'Rang', error, id }: Color
   }
 
   const swatchClass =
-    'block size-8 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition peer-checked:ring-2 peer-checked:ring-slate-900 peer-checked:ring-offset-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-indigo-500 hover:scale-110'
+    'block size-8 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition peer-checked:ring-2 peer-checked:ring-slate-900 peer-checked:ring-offset-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-brand-500 hover:scale-110'
 
   return (
     <fieldset aria-describedby={error ? errorId : undefined}>
@@ -71,7 +71,7 @@ export function ColorField({ value, onChange, label = 'Rang', error, id }: Color
           />
           <span
             className={cx(
-              'block size-8 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-indigo-500',
+              'block size-8 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-brand-500',
               !isPreset && 'ring-2 ring-slate-900 ring-offset-2',
             )}
             style={{
