@@ -8,7 +8,7 @@ from apps.core.enums import OrderEnum
 from apps.core.models import Client
 from ..serializers import ClientSerializer, ClientUpdateSerializer, OrderSummarySerializer
 from .base import StaffListView, StaffView, search_term
-from .orders import orders
+from .orders import orders, with_lines
 
 
 def clients():
@@ -39,7 +39,7 @@ ClientDetail = inline_serializer('ClientDetail', {
 
 
 def client_detail(client):
-    client_orders = orders().filter(client=client).prefetch_related('order_items')
+    client_orders = with_lines(orders().filter(client=client))
     return {
         **ClientSerializer(client).data,
         'location': client.location or '',

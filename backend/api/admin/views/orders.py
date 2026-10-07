@@ -15,6 +15,11 @@ def orders():
     return Order.objects.exclude(status=OrderEnum.new.value).select_related('client').order_by('-created_at')
 
 
+def with_lines(queryset):
+    """Orders with their lines and the lines' products: an OrderSummary names what was ordered."""
+    return queryset.prefetch_related(Prefetch('order_items__product', Product.objects.light()))
+
+
 def search_orders(queryset, search):
     if not search:
         return queryset
@@ -34,7 +39,7 @@ class OrderListView(StaffListView):
 
     def get_queryset(self):
         params = self.request.query_params
-        queryset = orders().prefetch_related('order_items')
+        queryset = with_lines(orders())
         if params.get('status'):
             queryset = queryset.filter(status=params['status'])
         if params.get('source'):
@@ -43,8 +48,7 @@ class OrderListView(StaffListView):
 
 
 def order_detail(pk):
-    items = Prefetch('order_items__product', Product.objects.light())
-    return get_object_or_404(orders().select_related('created_by').prefetch_related(items), pk=pk)
+    return get_object_or_404(with_lines(orders().select_related('created_by')), pk=pk)
 
 
 class OrderDetailView(StaffView):

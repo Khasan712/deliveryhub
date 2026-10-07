@@ -182,9 +182,11 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
  "clients": {"total": 40, "new_7_days": 6}, "products": {"total": 60}, "categories": {"total": 12},
  "by_status": [{"status": "completed", "count": 100}],
  "daily": [{"date": "2026-10-01", "count": 5}],
+ "today": {"orders": 8, "revenue": 572000},
  "latest_orders": [OrderSummary]}
 ```
 `daily` covers the last 7 days (days without orders are included with `0`). Counts never include unfinished carts.
+`today.revenue` — the totals of today's orders from every channel, rejected ones left out.
 
 ### Orders
 * `GET /api/v1/orders?status=&source=&search=&page=&page_size=` — *paginated* `OrderSummary`, newest first.
@@ -193,8 +195,10 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 * `PATCH /api/v1/orders/{id}` `{"status": "ordered"|"on_the_way"|"completed"|"rejected"}` → `OrderDetail`
   (the customer gets a Telegram message about the change).
 
-`OrderSummary`: `{"id", "status", "source", "created_at", "customer_name", "phone", "total", "items_count", "client_id"}`.
-`OrderDetail`: OrderSummary + `{"updated_at", "address", "lat", "lng", "delivery_type", "payment_method", "comment",
+`OrderSummary`: `{"id", "status", "source", "created_at", "customer_name", "phone", "total", "items_count", "client_id",
+"delivery_type": "pickup"|"delivery"|"", "payment_method": "cash"|"card"|"", "address",
+"lines": [{"name_uz", "name_ru", "quantity"}]}` — `lines` names what was ordered (the phone's order cards).
+`OrderDetail`: OrderSummary without `lines` + `{"updated_at", "lat", "lng", "comment",
 "created_by": {"id", "name"} | null, "client": {"id", "first_name", "last_name", "phone", "tg_nick"} | null,
 "items": [{"product_id", "name_uz", "name_ru", "quantity", "price", "total"}]}`.
 

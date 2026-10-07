@@ -221,6 +221,20 @@ class ClientUpdateSerializer(serializers.ModelSerializer):
 # orders
 # ---------------------------------------------------------------------------
 
+def line_names(item):
+    """A line's product names ('—' once the product is deleted). The lines' products should be prefetched."""
+    product = item.product
+    if not product:
+        return {'name_uz': '—', 'name_ru': '—'}
+    return {'name_uz': product.name_uz, 'name_ru': product.name_ru or product.name_uz}
+
+
+class OrderLinePreviewSerializer(serializers.Serializer):
+    name_uz = serializers.CharField()
+    name_ru = serializers.CharField()
+    quantity = serializers.IntegerField()
+
+
 class OrderSummarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
@@ -231,6 +245,11 @@ class OrderSummarySerializer(serializers.Serializer):
     total = serializers.IntegerField()
     items_count = serializers.IntegerField()
     client_id = serializers.IntegerField(allow_null=True)
+    delivery_type = serializers.CharField()
+    payment_method = serializers.CharField()
+    address = serializers.CharField()
+    # What was ordered, so a list (the phone's order cards) can show it without opening every order.
+    lines = OrderLinePreviewSerializer(many=True)
 
     def to_representation(self, order):
         return {
@@ -243,6 +262,11 @@ class OrderSummarySerializer(serializers.Serializer):
             'total': order.get_total(),
             'items_count': items_count(order),
             'client_id': order.client_id,
+            'delivery_type': order.delivery_type or '',
+            'payment_method': order.payment_method or '',
+            'address': order_address(order),
+            'lines': [{**line_names(item), 'quantity': parse_quantity(item.quantity)}
+                      for item in order.order_items.all()],
         }
 
 
@@ -270,37 +294,30 @@ class OrderClientSerializer(serializers.Serializer):
 
 class OrderDetailSerializer(OrderSummarySerializer):
     updated_at = serializers.DateTimeField()
-    address = serializers.CharField()
     lat = serializers.CharField()
     lng = serializers.CharField()
-    delivery_type = serializers.CharField()
-    payment_method = serializers.CharField()
     comment = serializers.CharField()
     created_by = PersonRefSerializer(allow_null=True)
     client = OrderClientSerializer(allow_null=True)
     items = OrderLineSerializer(many=True)
+    lines = None  # the full `items` instead
 
     def to_representation(self, order):
         client, author = order.client, order.created_by
-        items = []
-        for item in order.order_items.all():
-            product = item.product
-            items.append({
-                'product_id': item.product_id,
-                'name_uz': product.name_uz if product else '—',
-                'name_ru': (product.name_ru or product.name_uz) if product else '—',
-                'quantity': parse_quantity(item.quantity),
-                'price': parse_price(item.price),
-                'total': item.get_total(),
-            })
+        items = [{
+            'product_id': item.product_id,
+            **line_names(item),
+            'quantity': parse_quantity(item.quantity),
+            'price': parse_price(item.price),
+            'total': item.get_total(),
+        } for item in order.order_items.all()]
+        summary = super().to_representation(order)
+        del summary['lines']
         return {
-            **super().to_representation(order),
+            **summary,
             'updated_at': iso(order.updated_at),
-            'address': order_address(order),
             'lat': order.l_t or '',
             'lng': order.e_t or '',
-            'delivery_type': order.delivery_type or '',
-            'payment_method': order.payment_method or '',
             'comment': order.comment or '',
             'created_by': {'id': author.pk, 'name': person_name(author)} if author else None,
             'client': {

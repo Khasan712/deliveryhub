@@ -12,6 +12,7 @@ from apps.core.models import Category, Client, Order, Product
 from apps.core.utils import created_on
 from ..serializers import OrderSummarySerializer
 from .base import StaffView
+from .orders import with_lines
 
 DAYS = 7
 Number = serializers.IntegerField
@@ -28,6 +29,7 @@ class DashboardView(StaffView):
         'by_status': inline_serializer('StatusCount', {'status': serializers.CharField(), 'count': Number()},
                                        many=True),
         'daily': inline_serializer('DailyCount', {'date': serializers.DateField(), 'count': Number()}, many=True),
+        'today': inline_serializer('DashboardToday', {'orders': Number(), 'revenue': Number()}),
         'latest_orders': OrderSummarySerializer(many=True),
     }))
     def get(self, request):
@@ -41,8 +43,10 @@ class DashboardView(StaffView):
             row['day']: row['count']
             for row in recent.annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('id'))
         }
-        latest = (orders.select_related('client').prefetch_related('order_items')
-                  .order_by('-created_at')[:10])
+        latest = with_lines(orders.select_related('client')).order_by('-created_at')[:10]
+        # Today's money: every channel, a rejected order brings none.
+        today_orders = orders.filter(**created_on(today)).prefetch_related('order_items')
+        revenue = sum(order.get_total() for order in today_orders if order.status != OrderEnum.rejected.value)
         return Response({
             'orders': {
                 'total': sum(by_status.values()),
@@ -63,5 +67,6 @@ class DashboardView(StaffView):
                  'count': per_day.get(first_day + timedelta(days=offset), 0)}
                 for offset in range(DAYS)
             ],
+            'today': {'orders': per_day.get(today, 0), 'revenue': revenue},
             'latest_orders': OrderSummarySerializer(latest, many=True).data,
         })

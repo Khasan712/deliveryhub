@@ -133,6 +133,16 @@ class DashboardTests(AdminTestCase):
         self.assertEqual(data['daily'][-1], {'date': timezone.localdate().isoformat(), 'count': 4})
         latest = data['latest_orders'][0]
         self.assertEqual((latest['total'], latest['items_count'], latest['customer_name']), (70000, 2, 'Ali'))
+        self.assertEqual(latest['lines'], [{'name_uz': 'Chizburger', 'name_ru': 'Чизбургер', 'quantity': 2}])
+        self.assertEqual(data['today'], {'orders': 4, 'revenue': 280000})
+
+    def test_a_rejected_order_brings_no_money_today(self):
+        self.sign_in(self.manager)
+        _, _, burger, _ = make_catalog()
+        for status in ('completed', 'rejected'):
+            order = Order.objects.create(status=status, source='admin')
+            OrderItem.objects.create(order=order, product=burger, quantity='1', price='35000')
+        self.assertEqual(self.client.get('/api/v1/dashboard').json()['today'], {'orders': 2, 'revenue': 35000})
 
 
 class OrderTests(AdminTestCase):
@@ -163,6 +173,15 @@ class OrderTests(AdminTestCase):
                          {'customer_name': 'Olim', 'phone': '+998901112233', 'total': 105000, 'items_count': 3,
                           'client_id': self.telegram_client.id})
 
+    def test_a_list_row_tells_how_and_what(self):
+        rows = {row['id']: row for row in self.client.get('/api/v1/orders').json()['results']}
+        fields = ('delivery_type', 'payment_method', 'address', 'lines')
+        self.assertEqual({key: rows[self.web.id][key] for key in fields},
+                         {'delivery_type': 'delivery', 'payment_method': '', 'address': 'Chilonzor 9', 'lines': []})
+        self.assertEqual({key: rows[self.bot.id][key] for key in fields},
+                         {'delivery_type': 'pickup', 'payment_method': '', 'address': '',
+                          'lines': [{'name_uz': 'Chizburger', 'name_ru': 'Чизбургер', 'quantity': 3}]})
+
     def test_detail(self):
         data = self.client.get(f'/api/v1/orders/{self.bot.id}').json()
         self.assertEqual(data['client'], {'id': self.telegram_client.id, 'first_name': 'Olim', 'last_name': '',
@@ -170,6 +189,7 @@ class OrderTests(AdminTestCase):
         self.assertEqual(data['items'], [{'product_id': self.burger.id, 'name_uz': 'Chizburger', 'name_ru': 'Чизбургер',
                                           'quantity': 3, 'price': 35000, 'total': 105000}])
         self.assertIsNone(data['created_by'])
+        self.assertNotIn('lines', data)  # the detail has the full `items`
         self.assertEqual(self.client.get(f'/api/v1/orders/{self.web.id}').json()['address'], 'Chilonzor 9')
 
     def test_status_change_tells_a_telegram_customer(self):
