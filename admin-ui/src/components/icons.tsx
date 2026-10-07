@@ -36,6 +36,26 @@ export function IconDashboard(props: IconProps) {
   )
 }
 
+export function IconHome(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 10.5 12 3.5l8.5 7V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z" />
+    </Svg>
+  )
+}
+
+/** Four tiles — "more" of the phone's bottom menu. */
+export function IconGrid(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="7" height="7" x="3.5" y="3.5" rx="2" />
+      <rect width="7" height="7" x="13.5" y="3.5" rx="2" />
+      <rect width="7" height="7" x="3.5" y="13.5" rx="2" />
+      <rect width="7" height="7" x="13.5" y="13.5" rx="2" />
+    </Svg>
+  )
+}
+
 export function IconOrders(props: IconProps) {
   return (
     <Svg {...props}>

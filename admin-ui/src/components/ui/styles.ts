@@ -10,8 +10,7 @@ const BUTTON_BASE =
   'disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50'
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    'bg-primary-600 text-white shadow-sm shadow-primary-600/25 hover:bg-primary-700 focus-visible:outline-primary-500 dark:bg-primary-500 dark:hover:bg-primary-400 dark:shadow-none',
+  primary: 'bg-cta text-white shadow-sm shadow-cta/25 hover:bg-cta-hover focus-visible:outline-primary-500 dark:shadow-none',
   secondary:
     'border border-line-strong bg-card text-fg-soft shadow-xs hover:border-faint/60 hover:bg-hover hover:text-fg',
   ghost: 'text-muted hover:bg-subtle hover:text-fg',

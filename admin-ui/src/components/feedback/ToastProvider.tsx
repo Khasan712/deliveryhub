@@ -39,7 +39,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {createPortal(
         <div
           className="pointer-events-none fixed bottom-0 left-0 right-0 z-[60] flex flex-col items-center gap-2 p-4 sm:left-auto sm:w-[26rem] sm:items-end sm:p-6"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          style={{ paddingBottom: 'var(--toast-offset, max(1rem, env(safe-area-inset-bottom)))' }}
         >
           {toasts.map((toast) => (
             <Toast key={toast.id} toast={toast} dismiss={dismiss} />

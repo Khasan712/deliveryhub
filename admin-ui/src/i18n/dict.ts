@@ -31,8 +31,6 @@ export const uz = {
   dark_mode: 'Tungi rejim',
   light_mode: 'Kunduzgi rejim',
   language: 'Til',
-  open_menu: 'Menyuni ochish',
-  close_menu: 'Menyuni yopish',
   collapse_sidebar: "Panelni yig'ish",
   expand_sidebar: 'Panelni yoyish',
   user_menu: 'Foydalanuvchi menyusi',
@@ -65,6 +63,11 @@ export const uz = {
   nav_users: 'Foydalanuvchilar',
   nav_hours: 'Ish vaqti',
   new_orders_badge: '{count} ta yangi buyurtma',
+  // the phone: the bottom menu and its «more» page
+  nav_home: 'Bosh sahifa',
+  nav_more: 'Yana',
+  main_menu: 'Asosiy menyu',
+  app_settings: 'Ilova',
 
   // ------------------------------------------------------------------ roles
   role: 'Rol',
@@ -210,6 +213,15 @@ export const uz = {
   last_updated: 'Oxirgi yangilanish',
   reset_filters: 'Filtrlarni tozalash',
   product_not_available: 'Mahsulot mavjud emas',
+  // the phone's order cards: the next step in one tap
+  action_send: "Yo'lga chiqarish",
+  action_delivered: 'Yetkazildi',
+  action_done: 'Bajarildi',
+  call_customer: "Qo'ng'iroq qilish",
+  status_new_short: 'Yangi',
+  no_new_orders: "Yangi buyurtma yo'q",
+  nameless_customer: 'Ismsiz mijoz',
+  reject_order: 'Bekor qilish',
 
   // ------------------------------------------------------------------ clients
   clients_title: 'Mijozlar',
@@ -392,6 +404,13 @@ export const uz = {
   pos_frozen_many: 'Muzlatilgan mahsulotlar',
   pos_frozen_text_one: 'Mijozlar hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.',
   pos_frozen_text_many: 'Mijozlar ularni hozir buyurtma qila olmaydi, siz baribir sotishingiz mumkin.',
+  // the phone's point of sale: pick → details → done
+  voice_order: 'Ovoz bilan',
+  continue: 'Davom etish',
+  checkout_title: 'Rasmiylashtirish',
+  change_items: "O'zgartirish",
+  add_comment: "Izoh qo'shish",
+  open_order: 'Buyurtmani ochish',
 
   voice_idle: 'Mikrofonni bosing va buyurtmani ayting',
   voice_starting: 'Mikrofon ulanmoqda…',
@@ -570,8 +589,6 @@ export const ru: Record<DictKey, string> = {
   dark_mode: 'Тёмная тема',
   light_mode: 'Светлая тема',
   language: 'Язык',
-  open_menu: 'Открыть меню',
-  close_menu: 'Закрыть меню',
   collapse_sidebar: 'Свернуть панель',
   expand_sidebar: 'Развернуть панель',
   user_menu: 'Меню пользователя',
@@ -604,6 +621,10 @@ export const ru: Record<DictKey, string> = {
   nav_users: 'Пользователи',
   nav_hours: 'Время работы',
   new_orders_badge: 'Новых заказов: {count}',
+  nav_home: 'Главная',
+  nav_more: 'Ещё',
+  main_menu: 'Главное меню',
+  app_settings: 'Приложение',
 
   // ------------------------------------------------------------------ roles
   role: 'Роль',
@@ -748,6 +769,14 @@ export const ru: Record<DictKey, string> = {
   last_updated: 'Последнее обновление',
   reset_filters: 'Сбросить фильтры',
   product_not_available: 'Товар недоступен',
+  action_send: 'Отправить',
+  action_delivered: 'Доставлен',
+  action_done: 'Выполнен',
+  call_customer: 'Позвонить',
+  status_new_short: 'Новые',
+  no_new_orders: 'Новых заказов нет',
+  nameless_customer: 'Клиент без имени',
+  reject_order: 'Отменить',
 
   // ------------------------------------------------------------------ clients
   clients_title: 'Клиенты',
@@ -930,6 +959,12 @@ export const ru: Record<DictKey, string> = {
   pos_frozen_many: 'Замороженные товары',
   pos_frozen_text_one: 'Клиенты сейчас не могут его заказать, но вы всё равно можете его продать.',
   pos_frozen_text_many: 'Клиенты сейчас не могут их заказать, но вы всё равно можете их продать.',
+  voice_order: 'Голосом',
+  continue: 'Продолжить',
+  checkout_title: 'Оформление',
+  change_items: 'Изменить',
+  add_comment: 'Добавить комментарий',
+  open_order: 'Открыть заказ',
 
   voice_idle: 'Нажмите на микрофон и продиктуйте заказ',
   voice_starting: 'Подключаем микрофон…',

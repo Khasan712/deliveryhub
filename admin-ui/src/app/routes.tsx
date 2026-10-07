@@ -3,7 +3,8 @@ import { RequireAdmin, RequireAuth } from '../auth/guards'
 import { LoginPage } from '../auth/LoginPage'
 import { NotFound } from '../auth/SystemScreens'
 import { TelegramSignInPage } from '../auth/TelegramSignInPage'
-import { AppLayout } from '../layout/AppLayout'
+import { AppLayout, type RouteHandle } from '../layout/AppLayout'
+import { MorePage } from '../layout/MorePage'
 import { AppRoot, RouteError } from './AppRoot'
 import {
   CategoriesPage,
@@ -39,9 +40,10 @@ export const routes: RouteObject[] = [
         ),
         children: [
           { index: true, element: <DashboardPage /> },
-          { path: 'sales', element: <SalesPage /> },
+          // A phone sells in steps of its own, each with its own bars (the bottom menu would only be in the way).
+          { path: 'sales', element: <SalesPage />, handle: { phone: 'bare' } satisfies RouteHandle },
           { path: 'orders', element: <OrdersPage /> },
-          { path: 'orders/:id', element: <OrderDetailPage /> },
+          { path: 'orders/:id', element: <OrderDetailPage />, handle: { phone: 'own-bar' } satisfies RouteHandle },
           { path: 'clients', element: <ClientsPage /> },
           { path: 'clients/:id', element: <ClientDetailPage /> },
           { path: 'clients/:id/edit', element: <ClientEditPage /> },
@@ -66,6 +68,8 @@ export const routes: RouteObject[] = [
           { path: 'telegram', element: <TelegramPage /> },
           // Every staff member sees the working hours; only the admin role can change them (the page knows).
           { path: 'hours', element: <HoursPage /> },
+          // «Yana» of the phone's bottom menu.
+          { path: 'more', element: <MorePage /> },
           { path: '*', element: <NotFound /> },
         ],
       },

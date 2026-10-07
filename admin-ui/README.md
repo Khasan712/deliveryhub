@@ -9,13 +9,22 @@ It talks only to the **Admin API** on its own host (`/api/v1/...`, session cooki
 **Pages:** dashboard (KPIs, orders by status, last 7 days, latest orders) · sales point of sale with the AI voice
 assistant (Gemini Live captions, browser speech fallback, typed commands, undo, Space / Esc / `/` / Ctrl+Enter; frozen
 products can be sold, with a warning and one-tap "return to sale"; every tile has "+ Qo'shish" or − count + right
-under its price, so a phone, where the order panel is far above the tiles, can change the count in place, and the
-bottom bar shows the item count and scrolls back to the order) · orders (status / source filters, search,
-pagination) and order detail (items, customer, address with map links, status change) · clients (list, detail, edit) ·
+under its price) · orders (status / source filters, search, pagination) and order detail (items, customer, address
+with map links, status change) · clients (list, detail, edit) ·
 products (search, category and on sale / frozen filters, one-tap freeze with undo, create / edit with image upload,
 delete) · categories · units · working hours (open now / closed status, weekly schedule — admins edit, managers see
 it) · staff users (admins only) · Telegram bot (status, linked accounts, notifications, invite link + QR, team).
-Uzbek / Russian, light / dark theme, responsive down to phones. Lists and the point of sale show the small photo
+Uzbek / Russian, light / dark theme.
+
+**On a phone or a tablet** (below 1024 px) the side menu and the header give way to a bottom menu: the home page,
+the orders (with the number of new ones), a big «+» for a sale, the products, and «Yana» (`/more`: the other pages,
+language, theme, signing out). A sale goes in three screens, none of which needs scrolling to its button: the products
+(by category, a tap adds one, − count +, a bar with the total and «Davom etish»), the details (pickup / delivery,
+phone, name, address, payment, status, comment; «Buyurtma yaratish» fixed at the bottom), and «Buyurtma yaratildi»
+with the order's number and contents. The voice assistant opens in a sheet. Order cards name what was ordered and
+where to, with a call button and the next step in one tap («Yo'lga chiqarish», «Yetkazildi», «Bajarildi»); an
+order's page shows its progress and keeps that step and «Bekor qilish» at the bottom. The home page shows whether the
+business is open, today's money, the counts by status and the new orders. Lists and the point of sale show the small photo
 (`thumb`); after a deploy an open panel loads the new build at a calm moment (`src/lib/updates.ts`: a lazy chunk gone
 from the server, `/version.json` checked on return from the background and on page changes).
 
@@ -46,7 +55,7 @@ src/
   app/                       App (providers), routes, lazy pages, query client
   api/                       fetch client (CSRF, errors, 401 / 503 events), endpoints, React Query hooks, types
   auth/                      session (/auth/me), login, Telegram Mini App sign-in (/tg), guards, system screens
-  layout/                    sidebar (collapsible, mobile drawer), header (business, language, theme, user menu)
+  layout/                    sidebar (collapsible) and header for wide screens; the phone's bottom menu and «Yana» page
   components/ui/             design system: buttons, inputs, select, modal, data table, pagination, badges, …
   components/feedback/       toasts and confirm dialogs
   features/<page>/           one folder per section; features/sales/voice/ is the voice engine

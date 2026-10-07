@@ -392,15 +392,15 @@
   color: #fff;
   font-weight: 700;
   font-size: 15px;
-  background: linear-gradient(135deg, #f97316, #c2410c);
-  box-shadow: 0 10px 24px -8px rgb(234 88 12 / 0.55);
+  background: var(--color-cta);
+  box-shadow: 0 10px 24px -8px rgb(210 69 13 / 0.5);
   transition:
     transform 0.12s,
-    filter 0.15s,
+    background-color 0.15s,
     opacity 0.15s;
 }
 .create-btn:hover:not(:disabled) {
-  filter: brightness(1.07);
+  background: var(--color-cta-hover);
 }
 .create-btn:active:not(:disabled) {
   transform: scale(0.985);
@@ -425,7 +425,7 @@
   50% {
     box-shadow:
       0 0 0 6px rgb(249 115 22 / 0.3),
-      0 10px 24px -8px rgb(234 88 12 / 0.55);
+      0 10px 24px -8px rgb(210 69 13 / 0.5);
   }
 }
 

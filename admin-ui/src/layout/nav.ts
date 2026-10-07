@@ -57,3 +57,14 @@ export const NAV: NavGroup[] = [
     ],
   },
 ]
+
+/** Pages of the phone's bottom menu; the side menu's other pages are under its «Yana» (/more). */
+export const TAB_PATHS = ['/', '/sales', '/orders', '/products']
+
+/** The side menu's pages that are not in the phone's bottom menu. */
+export const MORE_PATHS = NAV.flatMap((group) => group.items.map((item) => item.to)).filter((to) => !TAB_PATHS.includes(to))
+
+/** `path` is `section` or a page inside it (`/orders/12` is in `/orders`). */
+export function isIn(path: string, section: string): boolean {
+  return section === '/' ? path === '/' : path === section || path.startsWith(`${section}/`)
+}

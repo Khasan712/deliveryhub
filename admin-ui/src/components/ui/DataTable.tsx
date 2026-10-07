@@ -31,6 +31,8 @@ interface DataTableProps<T> {
   rowHref?: (row: T) => string
   /** Card layout used below the `md` breakpoint instead of the table. */
   mobileCard?: (row: T) => ReactNode
+  /** The cards' list: rows divided by lines (default), or e.g. separate cards with gaps. */
+  mobileListClassName?: string
   skeletonRows?: number
   caption: string
   footer?: ReactNode
@@ -61,6 +63,7 @@ export function DataTable<T>({
   empty,
   rowHref,
   mobileCard,
+  mobileListClassName = 'divide-y divide-line',
   skeletonRows = 6,
   caption,
   footer,
@@ -95,7 +98,7 @@ export function DataTable<T>({
       ) : isEmpty ? (
         empty
       ) : cards ? (
-        <ul className={cn('divide-y divide-line', fetching && 'opacity-70 transition-opacity')} aria-label={caption}>
+        <ul className={cn(mobileListClassName, fetching && 'opacity-70 transition-opacity')} aria-label={caption}>
           {showSkeleton
             ? Array.from({ length: Math.min(skeletonRows, 5) }, (_, index) => (
                 <li key={index} className="flex items-center gap-3 px-4 py-4">

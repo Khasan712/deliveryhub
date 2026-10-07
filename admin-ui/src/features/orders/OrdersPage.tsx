@@ -32,8 +32,9 @@ export function OrdersPage() {
         description={data ? tn('orders', data.count) : t('orders_subtitle')}
       />
 
-      <Card className="overflow-hidden">
-        <div className="space-y-3 border-b border-line p-4">
+      {/* A phone shows the orders as separate cards: the frame of the table goes away there. */}
+      <Card className="overflow-hidden max-md:overflow-visible max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+        <div className="space-y-3 border-b border-line p-4 max-md:mb-3 max-md:border-0 max-md:p-0">
           <fieldset className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
             <legend className="sr-only">{t('status')}</legend>
             <FilterTab active={!status} onClick={() => setFilter('status', '')} label={t('all_statuses')} />
@@ -94,7 +95,14 @@ export function OrdersPage() {
           }
           footer={
             data && (
-              <Pagination page={data.page} pages={data.pages} count={data.count} pageSize={PAGE_SIZE} onPageChange={setPage} />
+              <Pagination
+                page={data.page}
+                pages={data.pages}
+                count={data.count}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+                className="max-md:mt-2 max-md:border-0 max-md:px-0"
+              />
             )
           }
         />

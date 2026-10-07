@@ -8,6 +8,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { EmptyState } from '../../components/ui/States'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime, formatFullDateTime, formatPhone } from '../../lib/format'
+import { OrderCard } from './OrderCard'
 
 type ColumnKey = 'id' | 'customer' | 'phone' | 'items' | 'total' | 'status' | 'date'
 
@@ -22,6 +23,8 @@ interface OrdersTableProps {
   skeletonRows?: number
   caption: string
   footer?: ReactNode
+  /** The phone's cards: separate, with gaps; their container adds its own padding when it needs it. */
+  mobileListClassName?: string
 }
 
 export function OrdersTable({
@@ -35,6 +38,7 @@ export function OrdersTable({
   skeletonRows,
   caption,
   footer,
+  mobileListClassName = 'space-y-3',
 }: OrdersTableProps) {
   const { t, tn, lang } = useI18n()
 
@@ -126,29 +130,8 @@ export function OrdersTable({
       skeletonRows={skeletonRows}
       footer={footer}
       empty={empty ?? <EmptyState icon={<IconOrders size={26} />} title={t('no_orders')} />}
-      mobileCard={(order) => (
-        <Link to={`/orders/${order.id}`} className="flex items-start gap-3 px-4 py-3.5 transition-colors active:bg-subtle">
-          <Avatar name={order.customer_name || '?'} size="md" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate font-semibold text-fg">
-                <span className="tabular">#{order.id}</span>
-                <span className="mx-1.5 text-faint">·</span>
-                {order.customer_name || '—'}
-              </p>
-              <Money value={order.total} className="shrink-0 text-sm font-semibold text-fg" />
-            </div>
-            <p className="mt-0.5 truncate text-[13px] text-muted tabular">
-              {[formatPhone(order.phone), tn('pieces', order.items_count)].filter(Boolean).join(' · ')}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <StatusBadge status={order.status} size="xs" />
-              <SourceBadge source={order.source} />
-              <span className="ml-auto text-xs text-muted tabular">{formatDateTime(order.created_at, lang)}</span>
-            </div>
-          </div>
-        </Link>
-      )}
+      mobileCard={(order) => <OrderCard order={order} />}
+      mobileListClassName={mobileListClassName}
     />
   )
 }

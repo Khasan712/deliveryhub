@@ -95,7 +95,12 @@ function normalizePhone(value: string): string {
 
 function summary(order: OrderDetail): OrderSummary {
   const { id, status, source, created_at, customer_name, phone, total, items_count, client_id } = order
-  return { id, status, source, created_at, customer_name, phone, total, items_count, client_id }
+  const { delivery_type, payment_method, address, items } = order
+  const lines = items.map(({ name_uz, name_ru, quantity }) => ({ name_uz, name_ru, quantity }))
+  return {
+    id, status, source, created_at, customer_name, phone, total, items_count, client_id,
+    delivery_type, payment_method, address, lines,
+  }
 }
 
 function clientSummary(id: number): ClientSummary | null {
@@ -242,6 +247,12 @@ export const handlers = [
       categories: { total: categories.length },
       by_status: (['completed', 'ordered', 'on_the_way', 'rejected'] as const).map((status) => ({ status, count: count(status) })),
       daily,
+      today: {
+        orders: daily[6].count,
+        revenue: orders
+          .filter((order) => new Date(order.created_at).getTime() >= startOfToday() && order.status !== 'rejected')
+          .reduce((sum, order) => sum + order.total, 0),
+      },
       latest_orders: [...orders].reverse().slice(0, 6).map(summary),
     })
   }),

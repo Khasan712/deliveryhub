@@ -70,6 +70,8 @@ export interface DashboardData {
   categories: { total: number }
   by_status: Array<{ status: OrderStatus | string; count: number }>
   daily: Array<{ date: string; count: number }>
+  /** Today, every channel: the orders and their money (rejected orders bring none). */
+  today: { orders: number; revenue: number }
   latest_orders: OrderSummary[]
 }
 
@@ -84,6 +86,17 @@ export interface OrderSummary {
   total: number
   items_count: number
   client_id: number | null
+  delivery_type: DeliveryType | ''
+  payment_method: PaymentMethod | ''
+  address: string
+  /** What was ordered (the phone's order cards show it). */
+  lines: OrderLinePreview[]
+}
+
+export interface OrderLinePreview {
+  name_uz: string
+  name_ru: string
+  quantity: number
 }
 
 export interface OrderItem {
@@ -95,13 +108,10 @@ export interface OrderItem {
   total: number
 }
 
-export interface OrderDetail extends OrderSummary {
+export interface OrderDetail extends Omit<OrderSummary, 'lines'> {
   updated_at: string
-  address: string
   lat: string | number | null
   lng: string | number | null
-  delivery_type: DeliveryType | ''
-  payment_method: PaymentMethod | ''
   comment: string
   created_by: { id: number; name: string } | null
   client: { id: number; first_name: string; last_name: string; phone: string; tg_nick: string } | null

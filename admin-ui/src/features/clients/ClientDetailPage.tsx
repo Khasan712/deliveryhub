@@ -120,6 +120,7 @@ export function ClientDetailPage() {
             orders={client.orders}
             hide={['customer', 'phone']}
             empty={<EmptyState icon={<IconOrders size={26} />} title={t('no_orders_yet')} compact />}
+            mobileListClassName="space-y-3 p-3"
           />
         </Card>
       </div>

@@ -1,28 +1,34 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Outlet, useLocation } from 'react-router'
+import { Outlet, useLocation, useMatches } from 'react-router'
 import { PageSkeleton } from '../components/ui/Skeleton'
 import { useI18n } from '../i18n/context'
 import { cn } from '../lib/cn'
 import { STORAGE_KEYS, storage } from '../lib/storage'
 import { checkForUpdate, reloadIfUpdated } from '../lib/updates'
 import { SIDEBAR_QUERY, useMediaQuery } from '../lib/useMediaQuery'
+import { BottomNav } from './BottomNav'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+
+/** What a route asks of the phone's layout (`handle` of a route in app/routes.tsx). */
+export interface RouteHandle {
+  /** `bare` — the page draws its own top and bottom bars (no menu, no padding); `own-bar` — the page has its own
+   *  bottom bar in place of the menu. */
+  phone?: 'bare' | 'own-bar'
+}
 
 export function AppLayout() {
   const { t } = useI18n()
   const { pathname } = useLocation()
   const [collapsed, setCollapsed] = useState(() => storage.get(STORAGE_KEYS.sidebar) === 'collapsed')
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerPath, setDrawerPath] = useState(pathname)
+  // A wide screen gets the side menu and the header; a phone or a tablet the bottom menu (BottomNav).
   const desktop = useMediaQuery(SIDEBAR_QUERY)
-  const drawerRef = useRef<HTMLDialogElement>(null)
-
-  // Navigation closes the mobile drawer (state adjusted during render, no effect needed).
-  if (drawerPath !== pathname) {
-    setDrawerPath(pathname)
-    if (drawerOpen) setDrawerOpen(false)
-  }
+  const phone = useMatches().reduce<RouteHandle['phone']>(
+    (mode, match) => (match.handle as RouteHandle | undefined)?.phone ?? mode,
+    undefined,
+  )
+  const bare = !desktop && phone === 'bare'
+  const menu = !desktop && !phone
 
   // A new version deployed meanwhile loads on the next move to another page (src/lib/updates.ts).
   const shown = useRef(pathname)
@@ -38,24 +44,6 @@ export function AppLayout() {
       return !value
     })
   }
-
-  const showDrawer = drawerOpen && !desktop
-
-  useEffect(() => {
-    if (!showDrawer) return
-    const opener = document.activeElement as HTMLElement | null
-    drawerRef.current?.querySelector<HTMLElement>('a[aria-current="page"], a, button')?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDrawerOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-      opener?.focus({ preventScroll: true })
-    }
-  }, [showDrawer])
 
   return (
     <div
@@ -80,38 +68,30 @@ export function AppLayout() {
         </aside>
       )}
 
-      {showDrawer && (
-        <dialog
-          open
-          ref={drawerRef}
-          aria-modal="true"
-          aria-label={t('app_admin_panel')}
-          className="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none border-0 bg-transparent p-0"
-        >
-          <div
-            className="absolute inset-0 animate-fade-in bg-slate-950/60 backdrop-blur-[2px]"
-            aria-hidden="true"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <div className="absolute inset-y-0 left-0 w-[min(18rem,85vw)] animate-slide-in-left shadow-2xl">
-            <Sidebar collapsed={false} onClose={() => setDrawerOpen(false)} />
-          </div>
-        </dialog>
-      )}
-
       <div
         className={cn(
           'flex min-h-dvh flex-col transition-[padding] duration-200 ease-out',
           collapsed ? 'lg:pl-[76px]' : 'lg:pl-64',
         )}
       >
-        <Header onOpenMenu={() => setDrawerOpen(true)} />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8">
+        {desktop && <Header />}
+        <main
+          id="main"
+          tabIndex={-1}
+          className={cn(
+            'mx-auto w-full flex-1 outline-none',
+            !bare && 'max-w-[1480px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8',
+            menu && 'pb-[calc(6rem+env(safe-area-inset-bottom))]',
+          )}
+          style={bare || desktop ? undefined : { paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}
+        >
           <Suspense fallback={<PageSkeleton />}>
             <Outlet />
           </Suspense>
         </main>
       </div>
+
+      {menu && <BottomNav />}
     </div>
   )
 }

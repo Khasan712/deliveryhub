@@ -12,8 +12,9 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { ErrorState } from '../../components/ui/States'
 import { useI18n } from '../../i18n/context'
 import type { DictKey } from '../../i18n/dict'
-import { useMediaQuery } from '../../lib/useMediaQuery'
+import { SIDEBAR_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { cartLines, cartTotal, itemsCount } from './cart'
+import { MobileSale, type DoneSale } from './MobileSale'
 import { OrderPanel } from './OrderPanel'
 import { ProductPicker } from './ProductPicker'
 import { RecentSales } from './RecentSales'
@@ -33,6 +34,9 @@ export function SalesPage() {
   const create = useCreateSale()
   const { flash, isFlashed } = useFlash()
   const wide = useMediaQuery('(min-width: 1280px)')
+  // Phones and tablets sell in steps (MobileSale); a wide screen has everything side by side.
+  const desktop = useMediaQuery(SIDEBAR_QUERY)
+  const [done, setDone] = useState<DoneSale | null>(null)
 
   // The state is mirrored in a ref synchronously: the voice session and keyboard shortcuts read it between renders.
   const [state, setState] = useState<SaleState>(INITIAL_SALE)
@@ -54,9 +58,9 @@ export function SalesPage() {
   const controllerRef = useRef<VoiceController | null>(null)
 
   // Latest values for callbacks that outlive a render (voice session, global shortcuts).
-  const latest = useRef({ t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending })
+  const latest = useRef({ t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending, phone: !desktop })
   useEffect(() => {
-    latest.current = { t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending }
+    latest.current = { t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending, phone: !desktop }
   })
 
   const understand = useCallback(
@@ -135,7 +139,7 @@ export function SalesPage() {
     [dispatch, flash],
   )
 
-  // Phones show the order panel above the tiles: the bar at the bottom brings it back into view.
+  // Below xl the order panel is above the tiles: the bar at the bottom brings it back into view.
   const panelRef = useRef<HTMLDivElement>(null)
   const showOrder = () => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -148,7 +152,8 @@ export function SalesPage() {
   const createOrder = useCallback(() => {
     if (latest.current.creating) return
     const current = stateRef.current
-    const items = cartLines(current.items, latest.current.byId).map(({ product_id, quantity }) => ({ product_id, quantity }))
+    const sold = cartLines(current.items, latest.current.byId)
+    const items = sold.map(({ product_id, quantity }) => ({ product_id, quantity }))
     const translate = latest.current.t
     if (!items.length) {
       toast.error(translate('add_items_first'))
@@ -161,9 +166,13 @@ export function SalesPage() {
       {
         onSuccess: (data) => {
           latest.current.flash(`sale-${data.order.id}`)
-          toast.success(`${translate('sale_created')} · #${data.order.id}`, {
-            action: { label: translate('open'), to: `/orders/${data.order.id}` },
-          })
+          // A phone shows a whole screen for it; a wide screen a toast beside the next sale.
+          if (latest.current.phone) setDone({ order: data.order, lines: sold, form: current.form })
+          else {
+            toast.success(`${translate('sale_created')} · #${data.order.id}`, {
+              action: { label: translate('open'), to: `/orders/${data.order.id}` },
+            })
+          }
           dispatch({ type: 'reset' })
         },
         onError: (error) => toast.error(errorMessage(error, translate, { empty: 'add_items_first' })),
@@ -208,6 +217,20 @@ export function SalesPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  if (!desktop && !sales.data) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-3 p-4" aria-busy={!sales.error}>
+        {sales.error ? (
+          <Card>
+            <ErrorState error={sales.error} onRetry={() => void sales.refetch()} />
+          </Card>
+        ) : (
+          Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-16 rounded-2xl" />)
+        )}
+      </div>
+    )
+  }
+
   if (sales.error && !sales.data) {
     return (
       <>
@@ -243,6 +266,45 @@ export function SalesPage() {
 
   const data = sales.data
   const engine = displayEngine(state.voice.engine, data.voice)
+
+  if (!desktop) {
+    return (
+      <MobileSale
+        data={data}
+        state={state}
+        lines={lines}
+        count={count}
+        total={total}
+        dispatch={dispatch}
+        isFlashed={isFlashed}
+        onAdd={addProduct}
+        onQty={setQuantity}
+        onReset={reset}
+        onCreate={createOrder}
+        creating={create.isPending}
+        done={done}
+        onNewSale={() => setDone(null)}
+        voiceCard={
+          <VoiceCard
+            voice={state.voice}
+            engine={engine}
+            canUndo={!!state.undo}
+            demo={!data.voice.gemini}
+            onToggle={() => controllerRef.current?.toggle()}
+            onUndo={() => dispatch({ type: 'undo' })}
+            onSendText={(text) => void controllerRef.current?.sendText(text)}
+            cardRef={cardRef}
+            waveRef={waveRef}
+            headless
+          />
+        }
+        onVoiceClose={() => {
+          const controller = controllerRef.current
+          if (controller?.phase === 'listening') void controller.stop(true)
+        }}
+      />
+    )
+  }
 
   return (
     <div className={lines.length && !wide ? 'pb-24' : undefined}>

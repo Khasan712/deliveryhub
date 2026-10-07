@@ -20,6 +20,11 @@
   --color-primary-900: #7c2d12;
   --color-primary-950: #431407;
 
+  /* Filled buttons: a shade deeper than the brand, so their white text reads 4.6:1 (on primary-600 it is 3.5:1),
+     in the sun on a phone too. */
+  --color-cta: #d2450d;
+  --color-cta-hover: #b63c0b;
+
   /* AI accents (voice assistant): a warm sunset beside the brand's orange, no purple */
   --color-ai-1: #fb923c;
   --color-ai-2: #f43f5e;

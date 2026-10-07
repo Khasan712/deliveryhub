@@ -1,12 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { isApiError } from '../../api/client'
-import { errorMessage } from '../../api/errors'
-import { useOrder, useUpdateOrderStatus } from '../../api/queries'
+import { useOrder } from '../../api/queries'
 import { ORDER_STATUSES, type OrderDetail, type OrderStatus } from '../../api/types'
 import { Money, SourceBadge, StatusBadge } from '../../components/badges'
-import { useConfirm, useToast } from '../../components/feedback/feedback'
 import {
+  IconArrowRight,
   IconBag,
   IconCalendar,
   IconCard,
@@ -29,16 +28,20 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonText } from '../../components/ui/Skeleton'
 import { Spinner } from '../../components/ui/Spinner'
 import { ErrorState } from '../../components/ui/States'
-import { TONES } from '../../components/ui/styles'
+import { buttonClass, TONES } from '../../components/ui/styles'
 import { NotFound } from '../../auth/SystemScreens'
 import { useI18n } from '../../i18n/context'
 import { cn } from '../../lib/cn'
 import { formatFullDateTime, formatPhone, fullName, mapLinks, phoneHref } from '../../lib/format'
+import { SIDEBAR_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
+import { useToastOffset } from '../../lib/useToastOffset'
+import { nextStatus, nextStatusLabel, statusSteps, useStatusChange } from './orderFlow'
 
 export function OrderDetailPage() {
   const { id = '' } = useParams()
   const { t, lang } = useI18n()
   const { data: order, isLoading, error, refetch } = useOrder(id)
+  const desktop = useMediaQuery(SIDEBAR_QUERY)
 
   if (isApiError(error) && error.status === 404) return <NotFound />
 
@@ -78,18 +81,117 @@ export function OrderDetailPage() {
         description={formatFullDateTime(order.created_at, lang)}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      {desktop ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <ItemsCard order={order} />
+            <DeliveryCard order={order} />
+          </div>
+          <div className="space-y-6">
+            <StatusCard order={order} />
+            <CustomerCard order={order} />
+            <ExtraCard order={order} />
+          </div>
+        </div>
+      ) : (
+        // A phone: where the order is first, then who to call; the next step waits at the bottom of the screen.
+        <div className="space-y-4 pb-28">
+          <ProgressCard order={order} />
+          <CustomerCard order={order} />
           <ItemsCard order={order} />
           <DeliveryCard order={order} />
-        </div>
-        <div className="space-y-6">
           <StatusCard order={order} />
-          <CustomerCard order={order} />
           <ExtraCard order={order} />
+          <NextStepBar order={order} />
         </div>
-      </div>
+      )}
     </>
+  )
+}
+
+/** Ordered → on its way → done (a pickup skips the middle step), or a red line for a rejected order. */
+function ProgressCard({ order }: { order: OrderDetail }) {
+  const { t } = useI18n()
+  if (order.status === 'rejected') {
+    return (
+      <div className="flex items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-semibold text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+        <IconXCircle size={18} className="shrink-0" />
+        {t('status_rejected')}
+      </div>
+    )
+  }
+  const steps = statusSteps(order)
+  const current = order.status === 'completed' ? steps.length : steps.indexOf(order.status)
+  return (
+    <Card className="px-2 py-4">
+      <ol className="flex" aria-label={t('order_status')}>
+        {steps.map((step, index) => {
+          const done = index < current
+          const now = index === current
+          return (
+            <li key={step} className="flex min-w-0 flex-1 flex-col items-center gap-2" aria-current={now ? 'step' : undefined}>
+              <span className="flex w-full items-center" aria-hidden="true">
+                <span className={cn('h-0.5 flex-1', index === 0 ? 'bg-transparent' : index <= current ? 'bg-emerald-500' : 'bg-line')} />
+                <span
+                  className={cn(
+                    'flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold',
+                    done
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : now
+                        ? 'border-cta bg-cta text-white'
+                        : 'border-line-strong bg-card text-faint',
+                  )}
+                >
+                  {done ? <IconCheck size={14} strokeWidth={3} /> : index + 1}
+                </span>
+                <span
+                  className={cn(
+                    'h-0.5 flex-1',
+                    index === steps.length - 1 ? 'bg-transparent' : index < current ? 'bg-emerald-500' : 'bg-line',
+                  )}
+                />
+              </span>
+              <span className={cn('px-1 text-center text-xs font-semibold', done || now ? 'text-fg' : 'text-faint')}>
+                {t(STATUS_KEYS[step])}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </Card>
+  )
+}
+
+/** The phone's bottom bar: the usual next step in one tap, and rejecting (asks first). */
+function NextStepBar({ order }: { order: OrderDetail }) {
+  const { t } = useI18n()
+  const { change, pending, busy } = useStatusChange({ ...order, notify: !!order.client })
+  const next = nextStatus(order)
+  const label = nextStatusLabel(order)
+  useToastOffset(next ? 'calc(5.75rem + env(safe-area-inset-bottom))' : false)
+  if (!next || !label) return null
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 pt-3 backdrop-blur-lg"
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="mx-auto flex max-w-2xl gap-2.5">
+        <button
+          type="button"
+          className={buttonClass('secondary', 'lg', 'border-rose-200 text-rose-700 hover:border-rose-300 hover:text-rose-800 dark:border-rose-500/30 dark:text-rose-300')}
+          disabled={busy}
+          onClick={() => void change('rejected')}
+        >
+          {pending === 'rejected' && <Spinner size={16} />}
+          {t('reject_order')}
+        </button>
+        <button type="button" className={buttonClass('primary', 'lg', 'flex-1')} disabled={busy} onClick={() => void change(next)}>
+          {pending === next && <Spinner size={16} />}
+          {t(label)}
+          <IconArrowRight size={18} />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -233,32 +335,7 @@ function DeliveryCard({ order }: { order: OrderDetail }) {
 
 function StatusCard({ order }: { order: OrderDetail }) {
   const { t } = useI18n()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const update = useUpdateOrderStatus(order.id)
-  const [pending, setPending] = useState<OrderStatus | null>(null)
-
-  const change = async (status: OrderStatus) => {
-    if (status === order.status || update.isPending) return
-    if (status === 'rejected') {
-      const ok = await confirm({
-        title: t('reject_confirm_title'),
-        message: t('reject_confirm_text'),
-        confirmLabel: t('reject_confirm'),
-        cancelLabel: t('back'),
-      })
-      if (!ok) return
-    }
-    setPending(status)
-    update.mutate(status, {
-      onSuccess: () =>
-        toast.success(t('status_updated'), {
-          description: order.client ? t('customer_notified') : undefined,
-        }),
-      onError: (error) => toast.error(errorMessage(error, t)),
-      onSettled: () => setPending(null),
-    })
-  }
+  const { change, pending, busy } = useStatusChange({ ...order, notify: !!order.client })
 
   const icons: Record<OrderStatus, ReactNode> = {
     ordered: <IconClock size={18} />,
@@ -270,7 +347,7 @@ function StatusCard({ order }: { order: OrderDetail }) {
   return (
     <Card>
       <CardHeader title={t('order_status')} description={t('change_status')} />
-      <fieldset className="space-y-2 p-4" disabled={update.isPending}>
+      <fieldset className="space-y-2 p-4" disabled={busy}>
         <legend className="sr-only">{t('order_status')}</legend>
         {ORDER_STATUSES.map((status) => {
           const current = order.status === status

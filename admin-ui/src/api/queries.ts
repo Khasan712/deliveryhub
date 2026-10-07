@@ -23,6 +23,7 @@ import type {
   NamePair,
   OrderDetail,
   OrderStatus,
+  OrderSummary,
   OrdersQuery,
   Paginated,
   Product,
@@ -114,6 +115,13 @@ export function useUpdateOrderStatus(id: string | number) {
     mutationFn: (status: OrderStatus) => ordersApi.setStatus(id, status),
     onSuccess: (order: OrderDetail) => {
       client.setQueryData(queryKeys.order(id), order)
+      // The lists show the new status at once (a phone changes it right on the order's card in a list).
+      client.setQueriesData<Paginated<OrderSummary>>({ queryKey: [...queryKeys.orders, 'list'] }, (data) =>
+        data && {
+          ...data,
+          results: data.results.map((row) => (row.id === order.id ? { ...row, status: order.status } : row)),
+        },
+      )
       void client.invalidateQueries({ queryKey: queryKeys.orders, refetchType: 'none' })
       void client.invalidateQueries({ queryKey: queryKeys.dashboard })
       void client.invalidateQueries({ queryKey: queryKeys.newOrdersCount })

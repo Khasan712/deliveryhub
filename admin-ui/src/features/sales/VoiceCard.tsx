@@ -31,9 +31,22 @@ interface VoiceCardProps {
   onSendText: (text: string) => void
   cardRef: Ref<HTMLElement>
   waveRef: Ref<HTMLDivElement>
+  /** Inside a dialog that already says what it is (the phone's sheet): no title of its own. */
+  headless?: boolean
 }
 
-export function VoiceCard({ voice, engine, canUndo, demo, onToggle, onUndo, onSendText, cardRef, waveRef }: VoiceCardProps) {
+export function VoiceCard({
+  voice,
+  engine,
+  canUndo,
+  demo,
+  onToggle,
+  onUndo,
+  onSendText,
+  cardRef,
+  waveRef,
+  headless,
+}: VoiceCardProps) {
   const { t } = useI18n()
   const [command, setCommand] = useState('')
   const busy = voice.state === 'starting' || voice.state === 'processing'
@@ -48,18 +61,25 @@ export function VoiceCard({ voice, engine, canUndo, demo, onToggle, onUndo, onSe
   }
 
   return (
-    <section ref={cardRef} className={cn('voice-card', `is-${voice.state}`)} aria-labelledby="voice-title">
+    <section
+      ref={cardRef}
+      className={cn('voice-card', `is-${voice.state}`)}
+      aria-labelledby={headless ? undefined : 'voice-title'}
+      aria-label={headless ? t('voice_assistant') : undefined}
+    >
       <div className="voice-glow" />
       <div className="relative">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <IconSparkles size={20} className="shrink-0" />
-            <h2 id="voice-title" className="font-semibold">
-              {t('voice_assistant')}
-            </h2>
-          </div>
+          {!headless && (
+            <div className="flex min-w-0 items-center gap-2">
+              <IconSparkles size={20} className="shrink-0" />
+              <h2 id="voice-title" className="font-semibold">
+                {t('voice_assistant')}
+              </h2>
+            </div>
+          )}
           {engine && (
-            <span className="engine-chip">
+            <span className="engine-chip ml-auto">
               <span className={cn('engine-dot', recording && 'is-live')} />
               {t(ENGINE_LABELS[engine])}
             </span>

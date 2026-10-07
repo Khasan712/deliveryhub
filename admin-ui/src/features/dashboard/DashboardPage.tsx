@@ -20,10 +20,16 @@ import { EmptyState, ErrorState } from '../../components/ui/States'
 import { useI18n } from '../../i18n/context'
 import { cn } from '../../lib/cn'
 import { formatNumber } from '../../lib/format'
+import { SIDEBAR_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { OrdersTable } from '../orders/OrdersTable'
 import { DailyBars, StatusDonut } from './DashboardCharts'
+import { MobileHome } from './MobileHome'
 
 export function DashboardPage() {
+  return useMediaQuery(SIDEBAR_QUERY) ? <DesktopDashboard /> : <MobileHome />
+}
+
+function DesktopDashboard() {
   const { t, tn } = useI18n()
   const { user } = useAuthed()
   const { data, isLoading, error, refetch } = useDashboard()

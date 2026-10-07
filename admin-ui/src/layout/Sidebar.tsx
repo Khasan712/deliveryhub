@@ -2,7 +2,7 @@ import { NavLink } from 'react-router'
 import { useNewOrdersCount } from '../api/queries'
 import { useSession } from '../auth/session'
 import { DeliveryHubMark } from '../components/DeliveryHubMark'
-import { IconPanelClose, IconPanelOpen, IconX } from '../components/icons'
+import { IconPanelClose, IconPanelOpen } from '../components/icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { useI18n } from '../i18n/context'
 import { cn } from '../lib/cn'
@@ -11,11 +11,9 @@ import { NAV, type NavItem } from './nav'
 interface SidebarProps {
   collapsed: boolean
   onToggleCollapsed?: () => void
-  /** Mobile drawer variant. */
-  onClose?: () => void
 }
 
-export function Sidebar({ collapsed, onToggleCollapsed, onClose }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { t } = useI18n()
   const { isAdmin } = useSession()
   const newOrders = useNewOrdersCount(true).data ?? 0
@@ -29,16 +27,6 @@ export function Sidebar({ collapsed, onToggleCollapsed, onClose }: SidebarProps)
             <p className="truncate text-[15px] font-bold tracking-tight text-white">{t('app_platform')}</p>
             <p className="truncate text-[11.5px] font-medium text-slate-400">{t('app_admin_panel')}</p>
           </div>
-        )}
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label={t('close_menu')}
-          >
-            <IconX size={20} />
-          </button>
         )}
       </div>
 
@@ -58,7 +46,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onClose }: SidebarProps)
               <ul className="space-y-1">
                 {items.map((item) => (
                   <li key={item.to}>
-                    <SidebarLink item={item} collapsed={collapsed} count={item.counter ? newOrders : 0} onNavigate={onClose} />
+                    <SidebarLink item={item} collapsed={collapsed} count={item.counter ? newOrders : 0} />
                   </li>
                 ))}
               </ul>
@@ -90,17 +78,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onClose }: SidebarProps)
   )
 }
 
-function SidebarLink({
-  item,
-  collapsed,
-  count,
-  onNavigate,
-}: {
-  item: NavItem
-  collapsed: boolean
-  count: number
-  onNavigate?: () => void
-}) {
+function SidebarLink({ item, collapsed, count }: { item: NavItem; collapsed: boolean; count: number }) {
   const { t } = useI18n()
   const Icon = item.icon
   const label = t(item.label)
@@ -108,7 +86,6 @@ function SidebarLink({
     <NavLink
       to={item.to}
       end={item.end}
-      onClick={onNavigate}
       aria-label={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
