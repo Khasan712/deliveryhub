@@ -46,7 +46,7 @@ export function TabBar() {
   return (
     <nav
       aria-label={t('mainNavigation')}
-      className="fixed inset-x-0 bottom-0 z-[44] border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] pb-[var(--safe-bottom)] backdrop-blur-xl backdrop-saturate-[1.8]"
+      className="fixed inset-x-0 bottom-0 z-[44] border-t border-line bg-surface pb-[var(--safe-bottom)] shadow-[0_-6px_18px_-12px_rgb(22_22_26/0.25)]"
     >
       <ul className="mx-auto grid h-[var(--tabbar-h)] max-w-[560px] grid-cols-4">
         {link('/', pathname === '/' && !cartOpen, 'utensils', t('menu'))}
