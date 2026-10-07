@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { getMe, updateMe } from '../api/shop'
-import type { Lang } from '../api/types'
+import type { Lang, Order } from '../api/types'
 import { useI18n } from '../i18n/i18n'
 import { clockTick, openStatus, subscribeClock, tickTime, type OpenStatus } from '../lib/hours'
 import { haptic } from '../lib/telegram'
@@ -82,6 +82,34 @@ export function useClearCart() {
     haptic('medium')
     toast(t('cartCleared'), { action: { label: t('undo'), onClick: () => cart.replace(previous) } })
   }, [cart, t, toast])
+}
+
+/**
+ * «Yana buyurtma berish»: an order's dishes back in the cart (the ones still on the menu, with a word when some are
+ * not) and the cart opened over the menu.
+ */
+export function useReorder() {
+  const { t } = useI18n()
+  const cart = useCart()
+  const toast = useToast()
+  const { go } = useNav()
+  return useCallback(
+    (order: Pick<Order, 'items'>) => {
+      const entries = order.items
+        .filter((item) => item.product_id !== null)
+        .map((item) => ({ id: item.product_id!, qty: Math.max(1, Math.round(item.quantity)) }))
+      const added = cart.addMany(entries)
+      if (!added) {
+        haptic('error')
+        toast(t('productsUnavailable'), { type: 'error' })
+        return
+      }
+      if (added < order.items.length) toast(t('reorderPartial'))
+      haptic('success')
+      go('/', { state: { sheet: { type: 'cart' }, stacked: false } })
+    },
+    [cart, t, toast, go],
+  )
 }
 
 /** `<title>`: "Screen · Business". */

@@ -22,6 +22,7 @@ import { mapUrl } from '../../lib/format'
 import type { Coordinates } from '../../lib/geo'
 import { closedNotice, statusLabel } from '../../lib/hours'
 import { confirmClosing, haptic, telegram } from '../../lib/telegram'
+import { HEADER_SEARCH_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { useMainButton } from '../../lib/useTelegram'
 import { clientName, useAuth } from '../../state/auth'
 import { useCart } from '../../state/cart'
@@ -137,6 +138,14 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const block = useCheckoutBlock()
   const touched = useRef(new Set<keyof CheckoutForm>())
   const fields = useRef<Partial<Record<CheckoutField, HTMLElement | null>>>({})
+  // A wide screen shows the order beside the form; a phone or a tablet sums it up in one line above it.
+  const wide = useMediaQuery(HEADER_SEARCH_QUERY)
+  // The comment stays folded until wanted (or it came back from a draft).
+  const [commenting, setCommenting] = useState(false)
+  const comment = useRef<HTMLTextAreaElement | null>(null)
+  useEffect(() => {
+    if (commenting) comment.current?.focus()
+  }, [commenting])
 
   // Prefill from the account once it is known (never over what the customer typed meanwhile).
   useEffect(() => {
@@ -319,6 +328,29 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
     <div className="mx-auto max-w-[1040px] pb-36 lg:pb-16 tg:pb-10">
       <PageTitle>{t('checkoutTitle')}</PageTitle>
       <CheckoutNotice className="mb-4" />
+      <button
+        type="button"
+        onClick={() => openSheet({ type: 'cart' })}
+        aria-label={`${t('edit')}: ${t('yourOrder')}`}
+        className="mb-4 flex w-full items-center gap-3 rounded-[20px] border border-line bg-surface p-3 text-left shadow-sm transition-transform active:scale-[0.99] lg:hidden"
+      >
+        <span className="flex shrink-0">
+          {cart.lines.slice(0, 3).map(({ product }, index) => (
+            <ProductImage
+              key={product.id}
+              src={product.thumb}
+              name={name(product)}
+              className={cn('size-11 rounded-[13px] border-[2.5px] border-surface', index > 0 && '-ml-3')}
+              letterClassName="text-sm"
+            />
+          ))}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14.5px] font-extrabold">{t('itemsCount', { count: cart.count })}</span>
+          <span className="tabular block text-[13px] font-bold text-muted">{money(cart.total)}</span>
+        </span>
+        <span className="shrink-0 text-[13.5px] font-extrabold text-brand-text">{t('edit')}</span>
+      </button>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <form id="checkout-form" onSubmit={submit} noValidate className="min-w-0 space-y-4">
           <Card title={t('receive')} titleId="receive-title">
@@ -496,19 +528,32 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
             <p className="mt-2 text-[12.5px] font-semibold text-muted">{t('paymentNote')}</p>
           </Card>
 
-          <Card title={<>{t('comment')} <span className="tracking-normal normal-case">· {t('optional')}</span></>} titleId="comment-title">
-            <TextArea
-              id="checkout-comment"
-              aria-labelledby="comment-title"
-              value={form.comment}
-              onChange={(event) => set('comment', event.target.value)}
-              placeholder={t('commentPlaceholder')}
-              maxLength={1000}
-            />
-          </Card>
+          {commenting || form.comment ? (
+            <Card title={<>{t('comment')} <span className="tracking-normal normal-case">· {t('optional')}</span></>} titleId="comment-title">
+              <TextArea
+                id="checkout-comment"
+                ref={comment}
+                aria-labelledby="comment-title"
+                value={form.comment}
+                onChange={(event) => set('comment', event.target.value)}
+                placeholder={t('commentPlaceholder')}
+                maxLength={1000}
+              />
+            </Card>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCommenting(true)}
+              className="flex h-12 items-center gap-2 rounded-2xl px-1 text-[14.5px] font-extrabold text-brand-text"
+            >
+              <Icon name="plus" className="size-[18px]" />
+              {t('addComment')}
+              <span className="font-bold text-muted">· {t('optional')}</span>
+            </button>
+          )}
         </form>
 
-        <aside className="lg:sticky lg:top-[calc(var(--header-h)+var(--safe-top)+16px)]">
+        <aside className="hidden lg:sticky lg:top-[calc(var(--header-h)+var(--safe-top)+16px)] lg:block">
           <Card
             title={t('yourOrder')}
             titleId="summary-title"
@@ -544,7 +589,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
             <div className="border-t border-line pt-3">
               <CartSummary />
             </div>
-            <FormError message={formError} />
+            {wide && <FormError message={formError} />}
             {!inTelegram && <div className="mt-1 hidden lg:block">{submitButton}</div>}
           </Card>
         </aside>
@@ -559,7 +604,11 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
 
       {!inTelegram && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-4 pt-3 pb-[calc(12px+var(--safe-bottom))] backdrop-blur-xl lg:hidden">
-          {formError && <p className="mb-2 text-center text-[13px] font-bold text-red">{formError}</p>}
+          {formError && !wide && (
+            <p role="alert" className="mb-2 text-center text-[13px] font-bold text-red">
+              {formError}
+            </p>
+          )}
           {submitButton}
         </div>
       )}

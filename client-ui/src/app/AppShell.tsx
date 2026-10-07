@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router'
 import { isApiError } from '../api/client'
 import { CartBar } from '../components/CartBar'
 import { Header, PAGE_WIDTH } from '../components/Header'
+import { TabBar } from '../components/TabBar'
 import { Toaster } from '../components/Toaster'
 import { useI18n } from '../i18n/i18n'
 import { cn } from '../lib/cn'
@@ -11,6 +12,7 @@ import { useScrollRestoration } from '../lib/useScrollRestoration'
 import { useBackButton } from '../lib/useTelegram'
 import { useCatalog } from '../state/catalog'
 import { useNav } from '../state/nav'
+import { useTabBar } from '../state/phoneNav'
 import { SearchContext } from '../state/search'
 import { CheckoutScreen } from '../screens/checkout/CheckoutScreen'
 import { MenuScreen } from '../screens/menu/MenuScreen'
@@ -30,6 +32,7 @@ export function AppShell() {
   const nav = useNav()
   const [query, setQuery] = useState('')
   const search = useMemo(() => ({ query, setQuery }), [query])
+  const tabBar = useTabBar()
   useScrollRestoration()
   usePickUpUpdates(location.pathname)
   // Telegram: the native back button closes sheets and leaves screens (browser history does the same on the web).
@@ -49,7 +52,16 @@ export function AppShell() {
         {t('skipToContent')}
       </a>
       <Header />
-      <main id="main" tabIndex={-1} className={cn('mx-auto w-full px-4 outline-none md:px-6', PAGE_WIDTH)}>
+      <main
+        id="main"
+        tabIndex={-1}
+        className={cn(
+          'mx-auto w-full px-4 outline-none md:px-6',
+          PAGE_WIDTH,
+          // The phone's menu bar covers the bottom of the page: the page goes on below it.
+          tabBar && 'pb-[calc(var(--tabbar-h)+var(--safe-bottom))]',
+        )}
+      >
         <div key={location.pathname} className="animate-[fade-in_0.24s_ease_both]">
           <Routes location={location}>
             <Route path="/" element={<MenuScreen />} />
@@ -62,6 +74,7 @@ export function AppShell() {
         </div>
       </main>
       <CartBar />
+      <TabBar />
       <ProductSheet />
       <CartSheet />
       <AuthSheet />

@@ -13,16 +13,14 @@ import { useI18n } from '../../i18n/i18n'
 import { cn } from '../../lib/cn'
 import { errorMessageKey } from '../../lib/errors'
 import { displayPhone, mapUrl, toNumber } from '../../lib/format'
-import { haptic, isTelegram } from '../../lib/telegram'
+import { isTelegram } from '../../lib/telegram'
 import { useMainButton } from '../../lib/useTelegram'
 import { useAuth } from '../../state/auth'
-import { useCart } from '../../state/cart'
 import { useCatalog } from '../../state/catalog'
-import { useDocumentTitle } from '../../state/hooks'
+import { useDocumentTitle, useReorder } from '../../state/hooks'
 import { useNav, useNavState } from '../../state/nav'
 import { statusIcon, statusLabel, statusText } from '../../state/orderStatus'
 import { isActiveOrder, useOrder } from '../../state/orders'
-import { useToast } from '../../state/toast'
 
 export function OrderScreen() {
   const { t } = useI18n()
@@ -101,8 +99,6 @@ const STATUS_TONE: Record<Order['status'], string> = {
 function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing: boolean; onRefresh: () => void }) {
   const { t, name, money, date } = useI18n()
   const { business } = useCatalog()
-  const cart = useCart()
-  const toast = useToast()
   const { go } = useNav()
   const { placed } = useNavState()
   const inTelegram = isTelegram()
@@ -111,20 +107,8 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
   const lat = toNumber(order.lat)
   const lng = toNumber(order.lng)
 
-  const reorder = () => {
-    const entries = order.items
-      .filter((item) => item.product_id !== null)
-      .map((item) => ({ id: item.product_id!, qty: Math.max(1, Math.round(item.quantity)) }))
-    const added = cart.addMany(entries)
-    if (!added) {
-      haptic('error')
-      toast(t('productsUnavailable'), { type: 'error' })
-      return
-    }
-    if (added < order.items.length) toast(t('reorderPartial'))
-    haptic('success')
-    go('/', { state: { sheet: { type: 'cart' }, stacked: false } })
-  }
+  const repeat = useReorder()
+  const reorder = () => repeat(order)
 
   // A finished order is repeated with one tap (Telegram: the MainButton); an active one keeps it secondary.
   useMainButton(active ? null : { text: t('reorder'), onClick: reorder })

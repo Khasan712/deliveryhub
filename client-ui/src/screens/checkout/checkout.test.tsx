@@ -216,6 +216,10 @@ describe('checkout', () => {
   it('places the order, clears the cart and opens the order tracker', async () => {
     const { user } = await open()
     await user.click(await screen.findByRole('radio', { name: uz.card }))
+    // The comment waits folded until it is wanted; opening it puts the cursor in it.
+    expect(screen.queryByRole('textbox', { name: pattern(uz.comment) })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: pattern(uz.addComment) }))
+    expect(screen.getByRole('textbox', { name: pattern(uz.comment) })).toHaveFocus()
     await user.type(screen.getByRole('textbox', { name: pattern(uz.comment) }), 'Domofon 25')
     await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder, som(70000)) })[0]!)
 

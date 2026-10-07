@@ -9,6 +9,7 @@ import { useCart } from '../state/cart'
 import { useCatalog } from '../state/catalog'
 import { useChangeLanguage } from '../state/hooks'
 import { useNav } from '../state/nav'
+import { usePhoneNav } from '../state/phoneNav'
 import { useSearch } from '../state/search'
 import { useTheme } from '../state/theme'
 import { BusinessLogo } from './BusinessLogo'
@@ -37,6 +38,8 @@ export function Header() {
   const theme = useTheme()
   const { pathname } = useLocation()
   const inTelegram = isTelegram()
+  // A phone has the links, the cart and the profile in its menu bar at the bottom (TabBar).
+  const phoneNav = usePhoneNav()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -91,28 +94,30 @@ export function Header() {
         )}
 
         <div className={cn('ml-auto flex shrink-0 items-center justify-end gap-1', CART_COLUMN)}>
-          <nav aria-label={t('mainNavigation')} className="mr-1 hidden gap-0.5 md:flex">
-            {(
-              [
-                ['/', t('menu')],
-                ['/orders', t('orders')],
-              ] as const
-            ).map(([to, label]) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  cn(
-                    'flex h-[38px] items-center rounded-xl px-2.5 text-[14.5px] font-bold transition-colors',
-                    isActive ? 'bg-surface text-ink shadow-sm' : 'text-ink-2 hover:bg-surface-2',
-                  )
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          {!phoneNav && (
+            <nav aria-label={t('mainNavigation')} className="mr-1 hidden gap-0.5 md:flex">
+              {(
+                [
+                  ['/', t('menu')],
+                  ['/orders', t('orders')],
+                ] as const
+              ).map(([to, label]) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex h-[38px] items-center rounded-xl px-2.5 text-[14.5px] font-bold transition-colors',
+                      isActive ? 'bg-surface text-ink shadow-sm' : 'text-ink-2 hover:bg-surface-2',
+                    )
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
           {!inTelegram && (
             <div role="group" aria-label={t('language')} className="mr-1 hidden rounded-[11px] bg-surface-2 p-[3px] md:flex">
               {(['uz', 'ru'] as const).map((code) => (
@@ -139,15 +144,17 @@ export function Header() {
               className="hidden md:grid"
             />
           )}
-          <Link
-            to="/orders"
-            aria-label={t('orders')}
-            title={t('orders')}
-            className="grid size-[42px] place-items-center rounded-[13px] text-ink-2 transition-colors hover:bg-surface-2 md:hidden"
-          >
-            <Icon name="receipt" />
-          </Link>
-          {!inTelegram && (
+          {!phoneNav && (
+            <Link
+              to="/orders"
+              aria-label={t('orders')}
+              title={t('orders')}
+              className="grid size-[42px] place-items-center rounded-[13px] text-ink-2 transition-colors hover:bg-surface-2 md:hidden"
+            >
+              <Icon name="receipt" />
+            </Link>
+          )}
+          {!inTelegram && !phoneNav && (
             <IconButton
               key={pulse}
               icon="bag"
@@ -157,20 +164,22 @@ export function Header() {
               className={cn('lg:hidden', pulse > 0 && 'animate-bump')}
             />
           )}
-          <Link
-            to="/profile"
-            aria-label={t('profile')}
-            title={t('profile')}
-            className="grid size-[42px] place-items-center rounded-[13px] transition-colors hover:bg-surface-2"
-          >
-            {token && client ? (
-              <span className="grid size-[34px] place-items-center rounded-full bg-surface-3 text-[13px] font-extrabold text-ink">
-                {avatarLetter(client) ?? <Icon name="user" className="size-[18px]" />}
-              </span>
-            ) : (
-              <Icon name="user" className="text-ink-2" />
-            )}
-          </Link>
+          {!phoneNav && (
+            <Link
+              to="/profile"
+              aria-label={t('profile')}
+              title={t('profile')}
+              className="grid size-[42px] place-items-center rounded-[13px] transition-colors hover:bg-surface-2"
+            >
+              {token && client ? (
+                <span className="grid size-[34px] place-items-center rounded-full bg-surface-3 text-[13px] font-extrabold text-ink">
+                  {avatarLetter(client) ?? <Icon name="user" className="size-[18px]" />}
+                </span>
+              ) : (
+                <Icon name="user" className="text-ink-2" />
+              )}
+            </Link>
+          )}
         </div>
       </div>
     </header>

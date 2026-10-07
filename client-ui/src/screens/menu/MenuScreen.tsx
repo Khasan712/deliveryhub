@@ -15,6 +15,7 @@ import { searchProducts, useCatalog } from '../../state/catalog'
 import { useDocumentTitle } from '../../state/hooks'
 import { useNav } from '../../state/nav'
 import { useSearch } from '../../state/search'
+import { ActiveOrder } from './ActiveOrder'
 import { CartPanel } from './CartPanel'
 import { Hero, HeroSkeleton } from './Hero'
 import { FeaturedCard, ProductCard, ProductCardSkeleton } from './ProductCard'
@@ -235,6 +236,8 @@ export function MenuScreen() {
           <CategoryRail places={places} active={activeKey} onSelect={selectPlace} />
         </div>
       )}
+      {/* Phones and tablets: an order on its way first, then the search above the banner. */}
+      {!searchInHeader && <ActiveOrder />}
       {!searchInHeader && catalog.status !== 'error' && <SearchBox value={search} onChange={setSearch} />}
       <div className={cn('min-w-0', place.menu)}>
         {ready ? <Hero /> : catalog.status === 'loading' ? <HeroSkeleton /> : null}

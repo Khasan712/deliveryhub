@@ -53,15 +53,16 @@ export function Hero() {
   const images = (popular.length >= 3 ? popular : products).filter((product) => product.thumb).slice(0, 3)
 
   return (
-    <section className="flex items-center justify-between gap-6 rounded-[24px] bg-[var(--hero-bg)] p-5 text-[var(--hero-ink)] sm:py-7 sm:pr-7 sm:pl-8">
+    // A phone keeps it short — the tagline and one row of facts that scrolls sideways — so the dishes start higher.
+    <section className="flex items-center justify-between gap-6 overflow-hidden rounded-[22px] bg-[var(--hero-bg)] p-4 text-[var(--hero-ink)] sm:rounded-[24px] sm:py-7 sm:pr-7 sm:pl-8">
       <div className="min-w-0 max-w-[460px]">
-        <h1 className="text-[22px] leading-[1.15] font-extrabold tracking-[-0.03em] text-balance sm:text-[28px]">
+        <h1 className="line-clamp-2 text-[19px] leading-[1.2] font-extrabold tracking-[-0.03em] text-balance sm:text-[28px] sm:leading-[1.15]">
           {business.tagline || t('heroTitle')}
         </h1>
-        <p className="mt-2 text-sm font-medium text-[color-mix(in_srgb,var(--hero-ink)_74%,transparent)] sm:text-[15px]">
+        <p className="mt-2 hidden text-sm font-medium text-[color-mix(in_srgb,var(--hero-ink)_74%,transparent)] sm:block sm:text-[15px]">
           {t('heroText')}
         </p>
-        <div className="mt-3.5 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
+        <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] *:shrink-0 sm:mx-0 sm:mt-4 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:*:shrink">
           <HoursChip />
           {business.delivery_time && <Chip icon="clock">{t('deliveryTime', { time: business.delivery_time })}</Chip>}
           <Chip icon="cash">{t('cashOrCard')}</Chip>
@@ -91,5 +92,5 @@ export function Hero() {
 }
 
 export function HeroSkeleton() {
-  return <div className="skeleton h-[160px] rounded-[24px] sm:h-[188px]" aria-hidden="true" />
+  return <div className="skeleton h-[100px] rounded-[22px] sm:h-[188px] sm:rounded-[24px]" aria-hidden="true" />
 }
