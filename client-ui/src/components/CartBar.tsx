@@ -14,9 +14,9 @@ const BAR =
   'fixed inset-x-3 z-[45] mx-auto flex h-[60px] max-w-[520px] items-center gap-3 rounded-[19px] pr-[18px] pl-2.5 font-extrabold transition-transform active:scale-[0.985] lg:hidden'
 
 /**
- * The floating bar of the menu (Telegram uses its MainButton instead). On a phone, above its menu bar, it is the next
- * step: «Rasmiylashtirish» straight to the checkout — or, dark, what stands in the way (the minimum order, the
- * hours), which opens the cart. A tablet, without that menu bar, opens the cart.
+ * The floating bar of the menu. On a phone, above its menu bar (in Telegram too), it is the next step:
+ * «Rasmiylashtirish» straight to the checkout — or, dark, what stands in the way (the minimum order, the hours),
+ * which opens the cart. A tablet, without that menu bar, opens the cart; a wide Telegram window uses its MainButton.
  */
 export function CartBar() {
   const { t, money } = useI18n()
@@ -26,7 +26,8 @@ export function CartBar() {
   const tabBar = useTabBar()
   const block = useCheckoutBlock()
   const startCheckout = useStartCheckout()
-  const visible = pathname === '/' && cart.count > 0 && sheet === null && !isTelegram()
+  // Telegram without the phone's menu bar (a wide window) keeps the cart in its MainButton (MenuScreen).
+  const visible = pathname === '/' && cart.count > 0 && sheet === null && (tabBar || !isTelegram())
   const { mounted, closing } = usePresence(visible, 240)
   if (!mounted) return null
 

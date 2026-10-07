@@ -29,15 +29,17 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   the shop is the same page — the user agent ends with `DeliveryHubApp/<version>`.
 - Cart: persisted per shop host, synced between tabs, minimum-order progress, "clear" with undo; always-open side
   panel on desktop (lines with unit price, delivery time, total), bottom sheet + floating bar on phones.
-- On a phone (below 768px, not in Telegram) the main menu is a bar at the bottom: Menyu · Savat (the count; opens
-  the cart) · Buyurtmalarim (a dot while an order is on its way) · Profil — the header keeps the shop's name only.
+- On a phone (below 768px — the website, our app and the Telegram Mini App alike) the main menu is a bar at the
+  bottom: Menyu · Savat (the count; opens the cart) · Buyurtmalarim (a dot while an order is on its way) · Profil —
+  the header keeps the shop's name only.
   Above it the menu's floating bar is the next step: «Rasmiylashtirish» straight to the checkout (sign-in first for
   a guest), or, dark, what stands in the way — «Yana 22 000 so‘m qo‘shing» with a progress line below the minimum,
   the opening time while closed — which opens the cart. An order on its way waits on top of the menu (phones and
   tablets), the banner is one short block (the tagline and a row of facts that scrolls sideways), the checkout sums
   the order up in one line on top and keeps the comment folded, and a finished order is ordered again right from
   the list («Yana buyurtma berish»). The checkout has its own bar at the bottom, so the menu bar steps aside there.
-  Inside Telegram the header keeps its icons and the MainButton does the cart and the checkout.
+  Inside Telegram the MainButton stays off the screens with the menu bar (no two bars at the bottom): it does the
+  cart sheet, the product sheet, the map and the checkout; a wide Telegram window keeps the cart in it.
 - Working hours (`business.working_hours`, the business sets them in its admin panel): the banner shows "Ochiq ·
   22:00 gacha" / "Yopiq · ertaga 09:00 da ochiladi", worked out live on the business's clock (`lib/hours.ts`, the
   backend's rules: night shifts past midnight, days off), and opens the week in a sheet. While closed the menu and

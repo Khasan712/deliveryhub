@@ -112,14 +112,30 @@ describe('a phone', () => {
     expect(location.current?.pathname).toBe('/')
   })
 
-  it('inside Telegram keeps the header icons and its MainButton (no bar at the bottom)', async () => {
-    installTelegram()
-    renderApp({ cart: [{ id: 1, qty: 2 }] })
-    await screen.findByRole('heading', { level: 1 })
-    // The only main navigation is the header's (no bar at the bottom).
-    expect(within(screen.getByRole('banner')).getByRole('navigation', { name: uz.mainNavigation })).toBe(bar())
-    expect(within(screen.getByRole('banner')).getAllByRole('link', { name: uz.orders }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('button', { name: pattern(uz.checkout, som(70000)) })).not.toBeInTheDocument()
+  it('in Telegram too: the menu bar, and the next step on the page with no MainButton under them', async () => {
+    const telegram = installTelegram()
+    const { user } = renderApp({ cart: [{ id: 1, qty: 2 }] })
+
+    const next = await screen.findByRole('button', { name: pattern(uz.checkout, '2 ta mahsulot', som(70000)) })
+    expect(within(bar()).getByRole('link', { name: uz.orders })).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).queryByRole('link', { name: uz.profile })).not.toBeInTheDocument()
+    expect(telegram.mainButton.visible).toBe(false)
+
+    // Signed in by Telegram: straight to the checkout, whose button is the MainButton (the menu bar steps aside).
+    await user.click(next)
+    expect(await screen.findByRole('heading', { level: 1, name: uz.checkoutTitle })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: uz.mainNavigation })).not.toBeInTheDocument()
+    await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.placeOrder, som(70000))))
+  })
+
+  it('in Telegram repeats a finished order with the page\'s own button (no MainButton under the menu bar)', async () => {
+    const telegram = installTelegram()
+    db.orders = [makeOrder({ id: 120, status: 'completed' })]
+    renderApp({ route: '/orders/120' })
+
+    expect(await screen.findByRole('button', { name: uz.reorder })).toBeInTheDocument()
+    expect(within(bar()).getByRole('link', { name: uz.orders })).toHaveAttribute('aria-current', 'page')
+    expect(telegram.mainButton.visible).toBe(false)
   })
 })
 
@@ -131,6 +147,14 @@ describe('a wide screen', () => {
   })
   afterEach(() => {
     window.matchMedia = matchMedia
+  })
+
+  it('in a wide Telegram window keeps the cart in the MainButton', async () => {
+    const telegram = installTelegram()
+    renderApp({ cart: [{ id: 1, qty: 2 }] })
+    await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.cart, '2 ta mahsulot', som(70000))))
+    expect(telegram.mainButton.visible).toBe(true)
+    expect(screen.queryByRole('button', { name: pattern(uz.checkout, '2 ta mahsulot', som(70000)) })).not.toBeInTheDocument()
   })
 
   it('keeps its links in the header and has no bar at the bottom', async () => {

@@ -18,6 +18,7 @@ import { useMainButton } from '../../lib/useTelegram'
 import { useAuth } from '../../state/auth'
 import { useCatalog } from '../../state/catalog'
 import { useDocumentTitle, useReorder } from '../../state/hooks'
+import { useTabBar } from '../../state/phoneNav'
 import { useNav, useNavState } from '../../state/nav'
 import { statusIcon, statusLabel, statusText } from '../../state/orderStatus'
 import { isActiveOrder, useOrder } from '../../state/orders'
@@ -110,8 +111,11 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
   const repeat = useReorder()
   const reorder = () => repeat(order)
 
-  // A finished order is repeated with one tap (Telegram: the MainButton); an active one keeps it secondary.
-  useMainButton(active ? null : { text: t('reorder'), onClick: reorder })
+  // A finished order is repeated with one tap (Telegram: the MainButton — but not under a phone's menu bar, where the
+  // page's own button does it); an active one keeps it secondary.
+  const tabBar = useTabBar()
+  const pageButtons = !inTelegram || tabBar
+  useMainButton(active || pageButtons ? null : { text: t('reorder'), onClick: reorder })
 
   // Pickup: where to come (the business's place); delivery: where the order goes.
   const place = pickup
@@ -260,7 +264,7 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
             </>
           ) : (
             <>
-              {!inTelegram && (
+              {pageButtons && (
                 <Button variant="primary" icon="refresh" className="sm:flex-1" block onClick={reorder}>
                   {t('reorder')}
                 </Button>

@@ -11,6 +11,7 @@ import { haptic } from '../../lib/telegram'
 import { HEADER_SEARCH_QUERY, WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { useMainButton } from '../../lib/useTelegram'
 import { useCart } from '../../state/cart'
+import { useTabBar } from '../../state/phoneNav'
 import { searchProducts, useCatalog } from '../../state/catalog'
 import { useDocumentTitle } from '../../state/hooks'
 import { useNav } from '../../state/nav'
@@ -64,6 +65,7 @@ export function MenuScreen() {
   const results = useMemo(() => searchProducts(catalog.products, query), [catalog.products, query])
   const wide = useMediaQuery(WIDE_QUERY)
   const searchInHeader = useMediaQuery(HEADER_SEARCH_QUERY)
+  const tabBar = useTabBar()
   const [active, setActive] = useState<string | null>(null)
   const toolbar = useRef<HTMLDivElement>(null)
   const ignoreSpyUntil = useRef(0)
@@ -111,9 +113,9 @@ export function MenuScreen() {
     return () => observer.disconnect()
   }, [searching, showPlaces, places, rail, stickyOffset])
 
-  // Telegram: the cart lives in the MainButton.
+  // Telegram in a wide window: the cart lives in the MainButton (a phone has the page's own bar above its menu bar).
   useMainButton(
-    cart.count > 0
+    cart.count > 0 && !tabBar
       ? {
           text: `${t('cart')} · ${t('itemsCount', { count: cart.count })} · ${money(cart.total)}`,
           onClick: () => openSheet({ type: 'cart' }),

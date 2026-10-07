@@ -30,16 +30,18 @@ describe('Telegram Mini App', () => {
     const card = await findCard('Klassik burger')
     expect(telegram.mainButton.visible).toBe(false)
     expect(telegram.backButton.visible).toBe(false)
+    // A phone's menu bar at the bottom, as on the website.
+    const bar = screen.getByRole('navigation', { name: uz.mainNavigation })
 
     await user.click(within(card).getByRole('button', { name: uz.add }))
     expect(telegram.haptics.impact).toHaveBeenCalledWith('light')
     await user.click(within(card).getByRole('button', { name: uz.increase }))
-    await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.cart, '2 ta mahsulot', som(70000))))
-    expect(telegram.mainButton.visible).toBe(true)
-    // No floating cart bar inside Telegram.
-    expect(screen.queryByRole('button', { name: pattern(uz.openCart) })).not.toBeInTheDocument()
+    // The menu's next step is the page's own bar above the menu bar: no MainButton under them.
+    expect(await screen.findByRole('button', { name: pattern(uz.checkout, '2 ta mahsulot', som(70000)) })).toBeInTheDocument()
+    expect(telegram.mainButton.visible).toBe(false)
 
-    act(() => telegram.mainButton.click())
+    // The cart from the menu bar: its sheet hands the checkout to the MainButton.
+    await user.click(within(bar).getByRole('button', { name: pattern(uz.openCart, '2 ta mahsulot', som(70000)) }))
     expect(await screen.findByRole('dialog', { name: uz.cart })).toBeInTheDocument()
     await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.checkout, som(70000))))
     expect(telegram.backButton.visible).toBe(true)
