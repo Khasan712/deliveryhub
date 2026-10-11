@@ -9,7 +9,8 @@ One process that runs every Telegram bot of the platform:
   (Gemini, or a local parser without an API key) → draft card (a product the business froze is marked ❄️ with a
   warning — staff may still sell it) → order, new customer orders pushed to every
   staff chat with Accept / Reject / On the way / Delivered buttons, all card copies kept in sync, today's
-  orders and stats, uz / ru;
+  orders and stats, uz / ru; with **branches** on, the head office sends orders to branches from the cards and
+  branch staff see only their branch's orders;
 * **our platform bot** — creates the two bots of a business with Telegram Managed Bots from a setup link of
   our panel, stores their tokens encrypted and links the creator to the staff bot.
 
@@ -25,6 +26,7 @@ app/
 ├── crypto.py            Fernet token encryption, key derived from SECRET_KEY exactly like the backend
 ├── utils.py             money / quantity / phone rules of the backend, local time
 ├── businesses.py        businesses and their bots (public schema), public URLs of a business
+├── branches.py          a business's branches (our panel's switch, app_branch), who sees what, nearest branch
 ├── orders.py            an order with customer, author and items; order creation (backend rules)
 ├── outbox.py            customer messages: adminbot_outbox → customers' bot
 ├── db/
@@ -71,6 +73,22 @@ tests/                   pytest + pytest-asyncio against a real PostgreSQL and a
   changes made in the admin panel are noticed through `status_seen` and every card copy is re-rendered; the
   ticket takes the new status only after the copies were edited, so a refresh cut short is repeated. Telegram
   403 → `blocked_at`.
+* **Branches** (`app/branches.py`, the backend's rules). `hub_business.branches_enabled` is read for every update
+  and every round, so our panel's switch takes effect at once. Off: everything above, unchanged (role `branch`
+  acts like `manager`). On: the head office (roles `admin`, `manager`) gets every order's card; branch staff (role
+  `branch`) only orders of their branch — a new order that has it, and an order sent there later: the card goes
+  out while the ticket *or* the order's `assigned_at` is younger than 15 minutes and nobody has accepted the
+  order since it got the branch (however long after it was placed). With two or more active branches (dispatch)
+  an order without a branch shows the head office "🏪 Filial tanlanmagan · eng yaqini: … (2,1 km)" and a button
+  per active branch (nearest first — haversine from `l_t` / `e_t` or a "lat lon" location; without a point by
+  name; two per row, at most 8) plus «Rad etish»; nothing else is done with it before it has a branch. A branch
+  button (or «🔄 Boshqa filialga» on an order of a branch) sets `branch_id`, `assigned_at`, `assigned_by_id` and
+  `updated_at` like the admin panel, re-renders every copy and pushes the card to the branch's staff. Cards are
+  rendered per chat: "🏪 Filial: …", or for the staff of another branch after a move "↪️ Boshqa filialga
+  o'tkazildi: …" without buttons. Moves made in the admin panel are noticed through `branch_seen_id` (like
+  `status_seen`). Every button is checked again (branch staff: own branch only; branches: head office only); today's
+  list and stats of branch staff show their branch; an order dictated by branch staff gets their branch, one by
+  the head office the only active branch (in dispatch mode it waits).
 * **Status buttons** in the staff bot lock the order, update it and its ticket and — for customers with a
   Telegram chat — write an `adminbot_outbox` row (`order_status` + `accepted` / `on_the_way` / `completed` /
   `rejected`); customer messages have one code path, the outbox.
@@ -144,17 +162,18 @@ elsewhere; the database name must end with `_test`.
 
 Tables come from the backend's migrations (Django labels `hub`, `app`, `adminbot`); this service never creates
 or alters them. The mapping (`app/db/models.py`) follows the migrations; read-only tables map only the columns
-used. Django keeps no database defaults except `db_default` columns (`app_order.source`,
-`app_telegramlogintoken.status`, `adminbot_outbox`), so every insert here fills every NOT NULL column itself.
+used. Django keeps no database defaults except `db_default` columns (`hub_business.branches_enabled`,
+`app_order.source`, `app_telegramlogintoken.status`, `adminbot_outbox`), so every insert here fills every NOT NULL
+column itself.
 
 | Table | Schema | The service |
 |---|---|---|
-| `hub_business` | public | reads (`schema_name`, `name`, `slug`, `status`, `support_phone`) |
+| `hub_business` | public | reads (`schema_name`, `name`, `slug`, `status`, `support_phone`, `branches_enabled`) |
 | `hub_businessbot` | public | reads; inserts / updates bots from the platform bot; `last_seen_at` |
 | `hub_botsetup` | public | reads; sets `telegram_user_id` |
-| `app_user`, `app_product`, `app_descriptions` | business | reads |
+| `app_user`, `app_product`, `app_descriptions`, `app_branch` | business | reads |
 | `app_client` | business | inserts customers of the customers' bot; `lang` |
-| `app_order`, `app_orderitem` | business | inserts orders from staff drafts; status changes |
+| `app_order`, `app_orderitem` | business | inserts orders from staff drafts; status changes; sends orders to branches (`branch_id`, `assigned_at`, `assigned_by_id`) |
 | `app_telegramlogintoken` | business | confirms website sign-ins |
 | `adminbot_stafflink`, `adminbot_staffinvite`, `adminbot_draft`, `adminbot_orderticket`, `adminbot_ordercard` | business | the staff bot's bookkeeping |
 | `adminbot_outbox` | business | sends rows (`sent_at`, `attempts`, `error`); inserts status rows from staff buttons |

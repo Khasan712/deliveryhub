@@ -2,18 +2,23 @@
 
 Every function works in the schema of one business (a `db.tenant(schema)` session). Database work is committed
 before Telegram is asked anything, so no row stays locked while a chat is being updated (a new order card goes out
-under an advisory lock of its ticket instead, see push_order)."""
+under an advisory lock of its ticket instead, see push_order).
+
+Branches (app.branches), read for every update and round: with them on, the head office gets every order's card
+and branch staff only their branch's orders, from the moment the order has that branch; the head office sends
+orders to branches from the cards (send_to_branch)."""
 import hashlib
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import BigInteger, and_, delete, func, literal, or_, select, update
+from sqlalchemy import BigInteger, and_, delete, false, func, literal, or_, select, true, update
 from sqlalchemy.dialects.postgresql import insert
 
+from app.branches import HEAD_OFFICE, OFF, Viewer, load_setup
 from app.customer.texts import STATUS_EVENTS
 from app.db.models import (
-    Client, Descriptions, Draft, Order, OrderCard, OrderTicket, Outbox, Product, StaffInvite, StaffLink, User,
+    Branch, Client, Descriptions, Draft, Order, OrderCard, OrderTicket, Outbox, Product, StaffInvite, StaffLink, User,
 )
 from app.orders import (
     COMPLETED, DELIVERY, NEW, ON_THE_WAY, ORDERED, REJECTED, SOURCE_ADMIN, OrderError, create_order, load_order,
@@ -29,7 +34,8 @@ DRAFT_TTL = timedelta(minutes=30)
 # Customer orders older than this are not pushed when the service starts after a pause.
 PUSH_WINDOW = timedelta(hours=3)
 # A card that did not reach a staff chat (Telegram trouble) is sent again for this long after the order was taken
-# — while nobody has accepted the order and it is still `ordered`.
+# — while nobody has accepted the order and it is still `ordered`. For branch staff it counts from when the order
+# got their branch as well.
 REPUSH_WINDOW = timedelta(minutes=15)
 PUSH_BATCH = 20
 SYNC_WINDOW = timedelta(days=2)
@@ -69,12 +75,20 @@ class Staff:
     username: str = ''
     last_seen_at: datetime | None = None
     blocked: bool = False
+    # The user's role and branch (branches.Viewer).
+    role: str = ''
+    branch_id: int | None = None
 
 
 def _staff(link, user):
     return Staff(id=link.id, telegram_id=link.telegram_id, user_id=user.id, lang=link.lang,
                  user_first_name=user.first_name, user_phone=user.phone_number, first_name=link.first_name,
-                 username=link.username, last_seen_at=link.last_seen_at, blocked=link.blocked_at is not None)
+                 username=link.username, last_seen_at=link.last_seen_at, blocked=link.blocked_at is not None,
+                 role=user.role, branch_id=user.branch_id)
+
+
+def viewer_of(staff, setup):
+    return Viewer.of(setup, staff.role, staff.branch_id)
 
 
 async def find_staff(session, telegram_id):
@@ -146,13 +160,55 @@ def _notified():
                 User.is_deleted.is_(False))
 
 
-async def notified_staff(session, exclude_user_id=None):
-    """(id, telegram_id, lang) rows of the staff to tell about a new order."""
-    statement = (select(StaffLink.id, StaffLink.telegram_id, StaffLink.lang).join(User, User.id == StaffLink.user_id)
-                 .where(_notified()).order_by(StaffLink.id))
-    if exclude_user_id is not None:
-        statement = statement.where(StaffLink.user_id != exclude_user_id)
-    return (await session.execute(statement)).all()
+def _not_author():
+    """StaffLink vs Order: the author of an order is not told about it."""
+    return or_(Order.created_by_id.is_(None), StaffLink.user_id != Order.created_by_id)
+
+
+def _sees(setup):
+    """StaffLink + User vs Order: may see the order — everyone with branches off; with branches on the head office
+    every order and branch staff their branch's."""
+    if not setup.enabled:
+        return true()
+    return or_(User.role != User.ROLE_BRANCH, User.branch_id == Order.branch_id)
+
+
+def _due(stamp, setup):
+    """StaffLink + User vs Order + OrderTicket: should get the order's card now (when their chat has none yet).
+    The head office (everyone, with branches off): while the ticket is younger than REPUSH_WINDOW and nobody has
+    accepted the order. Branch staff: orders of their branch, while the ticket or the branch (assigned_at) is younger
+    than REPUSH_WINDOW and nobody has accepted the order since it got the branch — an order sent to a branch long
+    after it was placed reaches the branch all the same."""
+    fresh = OrderTicket.created_at >= stamp - REPUSH_WINDOW
+    unaccepted = OrderTicket.accepted_at.is_(None)
+    if not setup.enabled:
+        return and_(fresh, unaccepted)
+    branch = and_(
+        User.branch_id == Order.branch_id,
+        or_(fresh, Order.assigned_at >= stamp - REPUSH_WINDOW),
+        or_(unaccepted, OrderTicket.accepted_at < Order.assigned_at),
+    )
+    return or_(and_(User.role != User.ROLE_BRANCH, fresh, unaccepted), and_(User.role == User.ROLE_BRANCH, branch))
+
+
+def _staff_of(order_id, *conditions, ticket_id=None):
+    """(id, telegram_id, lang, role, branch_id) rows of the staff to tell about the order: notifications on, not its
+    author, and `conditions`."""
+    statement = (select(StaffLink.id, StaffLink.telegram_id, StaffLink.lang, User.role, User.branch_id)
+                 .join(User, User.id == StaffLink.user_id).join(Order, Order.id == order_id))
+    if ticket_id is not None:
+        statement = statement.join(OrderTicket, OrderTicket.id == ticket_id)
+    return statement.where(_notified(), _not_author(), *conditions).order_by(StaffLink.id)
+
+
+async def staff_seeing(session, setup, order_id):
+    """Everyone who may see the order — for an order just made in the bot."""
+    return (await session.execute(_staff_of(order_id, _sees(setup)))).all()
+
+
+async def staff_due(session, setup, order_id, ticket_id, stamp):
+    """The staff who should get the order's card now (_due)."""
+    return (await session.execute(_staff_of(order_id, _due(stamp, setup), ticket_id=ticket_id))).all()
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +275,15 @@ async def products_by_id(session, product_ids):
         await session.scalars(select(Product).where(Product.id.in_(product_ids)))).all()}
 
 
-async def create_order_from_draft(session, staff, draft_id):
+def draft_branch(staff, setup):
+    """The branch an order made in the bot gets by itself: branch staff's own branch; for the head office the only
+    active branch (in dispatch mode it waits for the head office to send it; with branches off there is none)."""
+    if viewer_of(staff, setup).branch_staff:
+        return staff.branch_id
+    return setup.only.id if setup.only else None
+
+
+async def create_order_from_draft(session, staff, draft_id, setup=OFF):
     """Creates the order with its ticket and drops the draft, in one transaction (committed). Returns the order
     id. Raises OrderError when the draft is gone or has no valid items (nothing changes then)."""
     try:
@@ -244,13 +308,15 @@ async def create_order_from_draft(session, staff, draft_id):
             delivery_type=delivery_type,
             payment_method=state.get('payment_method'),
             comment=state.get('comment'),
+            branch_id=draft_branch(staff, setup),
         )
     except OrderError:
         await session.rollback()
         raise
     stamp = now()
-    session.add(OrderTicket(order_id=order.id, status_seen=order.status, accepted_by_id=staff.user_id,
-                            accepted_at=stamp, changed_by_id=staff.user_id, changed_at=stamp, created_at=stamp))
+    session.add(OrderTicket(order_id=order.id, status_seen=order.status, branch_seen_id=order.branch_id,
+                            accepted_by_id=staff.user_id, accepted_at=stamp, changed_by_id=staff.user_id,
+                            changed_at=stamp, created_at=stamp))
     await session.delete(draft)
     await session.commit()
     return order.id
@@ -293,7 +359,8 @@ async def load_ticket(session, order_id):
 async def ensure_ticket(session, order):
     """The order's ticket, created when there is none yet (committed)."""
     await session.execute(
-        insert(OrderTicket).values(order_id=order.id, status_seen=order.status, created_at=now())
+        insert(OrderTicket).values(order_id=order.id, status_seen=order.status, branch_seen_id=order.branch_id,
+                                   created_at=now())
         .on_conflict_do_nothing(index_elements=[OrderTicket.order_id])
     )
     await session.commit()
@@ -315,17 +382,23 @@ async def queue_status_message(session, order, event):
                            attempts=0, error=''))
 
 
-async def apply_action(session, order_id, action, user_id):
+def may_apply(action, order, viewer, setup):
+    """Branch staff act only on their branch's orders; an order waiting for a branch may only be rejected."""
+    return viewer.may_act(order) and (action == 'reject' or not setup.waits(order))
+
+
+async def apply_action(session, order_id, action, user_id, viewer=HEAD_OFFICE, setup=OFF):
     """Applies a status button (committed). Returns the customer event, or None if the order is no longer in a
-    state where the action makes sense (someone else was faster)."""
+    state where the action makes sense (someone else was faster, or it was sent to another branch meanwhile)."""
     allowed, new_status, event = TRANSITIONS[action]
     stamp = now()
     order = await session.scalar(select(Order).where(Order.id == order_id).with_for_update())
-    if not order or order.status not in allowed:
+    if not order or order.status not in allowed or not may_apply(action, order, viewer, setup):
         await session.rollback()
         return None
     await session.execute(
-        insert(OrderTicket).values(order_id=order.id, status_seen=order.status, created_at=stamp)
+        insert(OrderTicket).values(order_id=order.id, status_seen=order.status, branch_seen_id=order.branch_id,
+                                   created_at=stamp)
         .on_conflict_do_nothing(index_elements=[OrderTicket.order_id])
     )
     ticket = await session.scalar(select(OrderTicket).where(OrderTicket.order_id == order.id).with_for_update())
@@ -338,10 +411,45 @@ async def apply_action(session, order_id, action, user_id):
     if not ticket.accepted_at:
         ticket.accepted_by_id, ticket.accepted_at = user_id, stamp
     ticket.changed_by_id, ticket.changed_at = user_id, stamp
-    ticket.status_seen = order.status
+    # The caller re-renders every copy of the card (refresh_cards).
+    ticket.status_seen, ticket.branch_seen_id = order.status, order.branch_id
     await queue_status_message(session, order, event)
     await session.commit()
     return event
+
+
+SENT, TAKEN, INACTIVE, CHANGED = 'sent', 'taken', 'inactive', 'changed'
+
+
+async def send_to_branch(session, order_id, branch_id, user_id, move=False):
+    """The head office sends an order waiting for a branch to one — or, with `move`, an order of a branch to another
+    one — as the admin panel does: branch, assigned_at, assigned_by and updated_at (committed). Only while the
+    order is `ordered` (not on its way or finished). The ticket notes the branch its cards will show: the caller
+    re-renders them and tells the branch's staff. Returns SENT, or why not: TAKEN — it has a branch already
+    (someone was faster) or is there already, INACTIVE — the branch is gone or inactive, CHANGED — it is no longer
+    waiting."""
+    stamp = now()
+    order = await session.scalar(select(Order).where(Order.id == order_id).with_for_update())
+    if order is None or order.status != ORDERED:
+        result = CHANGED
+    elif order.branch_id is not None and (not move or order.branch_id == branch_id):
+        result = TAKEN
+    elif not await session.scalar(select(Branch.id).where(Branch.id == branch_id, Branch.is_active.is_(True))):
+        result = INACTIVE
+    else:
+        result = SENT
+    if result != SENT:
+        await session.rollback()
+        return result
+    order.branch_id, order.assigned_at, order.assigned_by_id, order.updated_at = branch_id, stamp, user_id, stamp
+    await session.execute(
+        insert(OrderTicket).values(order_id=order.id, status_seen=order.status, created_at=stamp)
+        .on_conflict_do_nothing(index_elements=[OrderTicket.order_id])
+    )
+    await session.execute(update(OrderTicket).where(OrderTicket.order_id == order.id).values(branch_seen_id=branch_id)
+                          .execution_options(synchronize_session=False))
+    await session.commit()
+    return SENT
 
 
 # ---------------------------------------------------------------------------
@@ -356,8 +464,8 @@ async def remember_card(session, ticket_id, chat_id, message_id):
     await session.commit()
 
 
-async def send_card(session, bot, chat_id, order, ticket, lang):
-    text, markup = cards.order_card(order, ticket, lang)
+async def send_card(session, bot, chat_id, order, ticket, lang, setup=OFF, viewer=HEAD_OFFICE):
+    text, markup = cards.order_card(order, ticket, lang, setup=setup, viewer=viewer)
     message = await api.send(bot, chat_id, text, markup)
     await remember_card(session, ticket.id, chat_id, message.message_id)
     return message
@@ -372,12 +480,11 @@ def _push_lock(schema, ticket_id):
     return select(func.pg_try_advisory_xact_lock(literal(int.from_bytes(digest[:8], 'big', signed=True), BigInteger)))
 
 
-async def push_order(session, bot, schema, order, ticket, exclude_user_id=None):
-    """Sends the order card to every staff member who gets notifications and has no card of it yet. A chat counts
-    as told once its card is stored: each card goes out in a transaction of its own that holds the ticket's push
-    lock, checks the chat has no card and stores the new one. Raises api.Backoff on Telegram trouble — whoever is
-    left is told in a later round (push_new_orders)."""
-    links = await notified_staff(session, exclude_user_id)
+async def push_order(session, bot, schema, order, ticket, links, setup=OFF):
+    """Sends the order card to each of `links` (staff_seeing / staff_due rows) whose chat has no card of it yet,
+    rendered for them. A chat counts as told once its card is stored: each card goes out in a transaction of its
+    own that holds the ticket's push lock, checks the chat has no card and stores the new one. Raises api.Backoff on
+    Telegram trouble — whoever is left is told in a later round (push_new_orders)."""
     await session.commit()
     # Each transaction below ends with a commit (which releases the lock) even when it wrote nothing: a rollback
     # would expire the loaded order.
@@ -389,8 +496,9 @@ async def push_order(session, bot, schema, order, ticket, exclude_user_id=None):
                                                            OrderCard.chat_id == link.telegram_id).limit(1)):
             await session.commit()
             continue
-        try:
-            await send_card(session, bot, link.telegram_id, order, ticket, link.lang)  # stores the card, commits
+        try:  # stores the card, commits
+            await send_card(session, bot, link.telegram_id, order, ticket, link.lang, setup,
+                            Viewer.of(setup, link.role, link.branch_id))
         except api.ERRORS as exc:
             await session.commit()
             if api.is_retryable(exc):
@@ -402,9 +510,17 @@ async def push_order(session, bot, schema, order, ticket, exclude_user_id=None):
                 logger.warning('Order #%s card to %s failed: %s', order.id, link.telegram_id, api.describe(exc))
 
 
-async def refresh_cards(session, bot, order_id):
-    """Re-renders every copy of the order card (status, who accepted, buttons); copies deleted in the chat are
-    forgotten. Raises api.Backoff on Telegram trouble: the copies not edited yet keep their old text."""
+async def push_due(session, bot, schema, order, ticket, setup):
+    """Sends the order card to the staff who should get it now (staff_due) — e.g. the staff of the branch it was
+    just sent to. Raises api.Backoff on Telegram trouble (push_new_orders tries again)."""
+    links = await staff_due(session, setup, order.id, ticket.id, now())
+    await push_order(session, bot, schema, order, ticket, links, setup)
+
+
+async def refresh_cards(session, bot, order_id, setup=OFF):
+    """Re-renders every copy of the order card (status, who accepted, branch, buttons) for the chat it is in;
+    copies deleted in the chat are forgotten. Raises api.Backoff on Telegram trouble: the copies not edited yet keep
+    their old text."""
     order = await load_order(session, order_id)
     ticket = await load_ticket(session, order_id)
     if order is None or ticket is None:
@@ -413,14 +529,20 @@ async def refresh_cards(session, bot, order_id):
     card_rows = (await session.scalars(
         select(OrderCard).where(OrderCard.ticket_id == ticket.id).order_by(OrderCard.id))).all()
     chat_ids = {card.chat_id for card in card_rows}
-    languages = dict((await session.execute(
-        select(StaffLink.telegram_id, StaffLink.lang).where(StaffLink.telegram_id.in_(chat_ids))
-    )).all()) if chat_ids else {}
+    chats = {row.telegram_id: row for row in (await session.execute(
+        select(StaffLink.telegram_id, StaffLink.lang, User.role, User.branch_id)
+        .join(User, User.id == StaffLink.user_id).where(StaffLink.telegram_id.in_(chat_ids))
+    )).all()} if chat_ids else {}
     await session.commit()
 
     gone, trouble = [], None
     for card in card_rows:
-        text, markup = cards.order_card(order, ticket, languages.get(card.chat_id, 'uz'))
+        chat = chats.get(card.chat_id)
+        if chat is None:  # no longer linked
+            lang, viewer = 'uz', HEAD_OFFICE
+        else:
+            lang, viewer = chat.lang, Viewer.of(setup, chat.role, chat.branch_id)
+        text, markup = cards.order_card(order, ticket, lang, setup=setup, viewer=viewer)
         try:
             await api.edit(bot, card.chat_id, card.message_id, text, markup)
         except api.ERRORS as exc:
@@ -445,9 +567,9 @@ def _is_ordered():
     return Order.status == literal(ORDERED, literal_execute=True)
 
 
-def _untold_tickets(stamp):
-    """Taken orders whose card has not reached every staff chat that should get it — new tickets, or cards that
-    failed — while the order is young, unaccepted and still `ordered`."""
+def _untold_tickets(stamp, setup):
+    """Taken orders whose card has not reached every staff chat that should get it now (_due) — new tickets, cards
+    that failed, and (branches on) orders sent to a branch lately — while the order is still `ordered`."""
     # Correlated two levels up (to the ticket) and one up (to the staff member): named explicitly.
     told = (
         select(OrderCard.id).where(OrderCard.ticket_id == OrderTicket.id, OrderCard.chat_id == StaffLink.telegram_id)
@@ -455,60 +577,75 @@ def _untold_tickets(stamp):
     )
     untold_staff = (
         select(StaffLink.id).join(User, User.id == StaffLink.user_id)
-        .where(_notified(), or_(Order.created_by_id.is_(None), StaffLink.user_id != Order.created_by_id), ~told)
+        .where(_notified(), _not_author(), _due(stamp, setup), ~told)
         .exists()
     )
+    young = and_(OrderTicket.created_at >= stamp - REPUSH_WINDOW, Order.updated_at >= stamp - PUSH_WINDOW)
+    if setup.enabled:
+        # Also an order sent to a branch lately (among the tickets kept in sync), for the branch's staff: however
+        # long after it was placed, and whether or not updated_at moved with it.
+        window = [OrderTicket.created_at >= stamp - SYNC_WINDOW, or_(young, Order.assigned_at >= stamp - REPUSH_WINDOW)]
+    else:
+        window = [young, OrderTicket.accepted_at.is_(None)]
     return (
         select(OrderTicket.id, OrderTicket.order_id).join(Order, Order.id == OrderTicket.order_id)
-        .where(OrderTicket.created_at >= stamp - REPUSH_WINDOW, OrderTicket.accepted_at.is_(None), _is_ordered(),
-               Order.updated_at >= stamp - PUSH_WINDOW, untold_staff)
+        .where(_is_ordered(), *window, untold_staff)
         .order_by(OrderTicket.id).limit(PUSH_BATCH)
     )
 
 
 async def push_new_orders(db, business, bot, stopping=None):
     """New orders from customers (shop, Mini App, customers' bot) and from the admin panel → staff chats (the
-    author of an order is not told about it). A ticket marks the order as taken; a chat counts as told once its
-    card is stored, so a card that did not go out (Telegram trouble) is sent in a later round — at least once, never
-    twice (push_order). Stops between two orders once `stopping` is set; raises api.Backoff on Telegram trouble."""
+    author of an order is not told about it); with branches on, branch staff get their branch's orders — also when
+    the order is sent to the branch later. A ticket marks the order as taken; a chat counts as told once its card is
+    stored, so a card that did not go out (Telegram trouble) is sent in a later round — at least once, never twice
+    (push_order). Stops between two orders once `stopping` is set; raises api.Backoff on Telegram trouble."""
     schema = business.schema_name
     async with db.tenant(schema) as session:
         stamp = now()
-        new_ids = (await session.scalars(
-            select(Order.id).outerjoin(OrderTicket, OrderTicket.order_id == Order.id)
+        setup = await load_setup(session, business.id)
+        new = (await session.execute(
+            select(Order.id, Order.branch_id).outerjoin(OrderTicket, OrderTicket.order_id == Order.id)
             .where(_is_ordered(), OrderTicket.id.is_(None), Order.updated_at >= stamp - PUSH_WINDOW)
             .order_by(Order.id).limit(PUSH_BATCH)
         )).all()
-        if new_ids:
+        if new:
             await session.execute(
-                insert(OrderTicket).values([{'order_id': order_id, 'status_seen': ORDERED, 'created_at': stamp}
-                                            for order_id in new_ids])
+                insert(OrderTicket).values([{'order_id': row.id, 'status_seen': ORDERED,
+                                             'branch_seen_id': row.branch_id, 'created_at': stamp} for row in new])
                 .on_conflict_do_nothing(index_elements=[OrderTicket.order_id])
             )
         await session.commit()
-        rows = (await session.execute(_untold_tickets(stamp))).all()
+        rows = (await session.execute(_untold_tickets(stamp, setup))).all()
         await session.commit()
         with api.no_flood_wait():
-            for _ticket_id, order_id in rows:
+            for ticket_id, order_id in rows:
                 if stopping is not None and stopping.is_set():
                     return
                 order = await load_order(session, order_id)
                 ticket = await load_ticket(session, order_id)
+                links = await staff_due(session, setup, order_id, ticket_id, stamp) if order and ticket else []
                 await session.commit()
-                if order is not None and ticket is not None:
-                    await push_order(session, bot, schema, order, ticket, exclude_user_id=order.created_by_id)
+                if links:
+                    await push_order(session, bot, schema, order, ticket, links, setup)
 
 
 async def sync_changed_orders(db, business, bot, stopping=None):
-    """Status changed elsewhere (admin panel, shop) → every copy of the order card. The ticket takes the new status
-    (`status_seen`) only after the copies were edited, so a refresh that Telegram cut short is repeated in a later
-    round. Stops between two orders once `stopping` is set; raises api.Backoff on Telegram trouble."""
+    """Status changed elsewhere (admin panel, shop) — or, with branches on, the order was sent to another branch
+    (`branch_seen_id`) — → every copy of the order card. The ticket takes the new status and branch only after the
+    copies were edited, so a refresh that Telegram cut short is repeated in a later round. Stops between two orders
+    once `stopping` is set; raises api.Backoff on Telegram trouble."""
     async with db.tenant(business.schema_name) as session:
         since = now() - SYNC_WINDOW
+        setup = await load_setup(session, business.id)
+        changed = OrderTicket.status_seen != Order.status
+        if setup.enabled:
+            changed = or_(changed, OrderTicket.branch_seen_id.is_distinct_from(Order.branch_id))
         rows = (await session.execute(
-            select(OrderTicket.id, OrderTicket.order_id, OrderTicket.status_seen, Order.status, Order.updated_at)
+            select(OrderTicket.id, OrderTicket.order_id, OrderTicket.status_seen, OrderTicket.branch_seen_id,
+                   Order.status, Order.branch_id, Order.updated_at)
             .join(Order, Order.id == OrderTicket.order_id)
-            .where(OrderTicket.created_at >= since, OrderTicket.status_seen != Order.status)
+            .where(OrderTicket.created_at >= since, changed)
             .order_by(OrderTicket.id).limit(SYNC_BATCH)
         )).all()
         await session.commit()
@@ -516,17 +653,22 @@ async def sync_changed_orders(db, business, bot, stopping=None):
             for row in rows:
                 if stopping is not None and stopping.is_set():
                     return
-                unchanged = and_(OrderTicket.id == row.id, OrderTicket.status_seen == row.status_seen)
-                # The change was not made in the bot, so do not credit the last bot user with it.
+                unchanged = and_(OrderTicket.id == row.id, OrderTicket.status_seen == row.status_seen,
+                                 OrderTicket.branch_seen_id.is_not_distinct_from(row.branch_seen_id))
+                if row.status_seen != row.status:
+                    # The change was not made in the bot, so do not credit the last bot user with it.
+                    values = {'changed_by_id': None, 'changed_at': row.updated_at}
+                else:  # only the branch changed: nothing to write, the row is only claimed
+                    values = {'branch_seen_id': row.branch_seen_id}
                 result = await session.execute(
-                    update(OrderTicket).where(unchanged).values(changed_by_id=None, changed_at=row.updated_at)
-                    .execution_options(synchronize_session=False)
+                    update(OrderTicket).where(unchanged).values(**values).execution_options(synchronize_session=False)
                 )
                 await session.commit()
                 if not result.rowcount:
                     continue  # changed in the bot meanwhile, which refreshed the cards itself
-                await refresh_cards(session, bot, row.order_id)
-                await session.execute(update(OrderTicket).where(unchanged).values(status_seen=row.status)
+                await refresh_cards(session, bot, row.order_id, setup)
+                await session.execute(update(OrderTicket).where(unchanged)
+                                      .values(status_seen=row.status, branch_seen_id=row.branch_id)
                                       .execution_options(synchronize_session=False))
                 await session.commit()
 
@@ -535,12 +677,15 @@ async def sync_changed_orders(db, business, bot, stopping=None):
 # today
 # ---------------------------------------------------------------------------
 
-async def todays_orders(session):
-    """Today's orders (local day, without unfinished carts), newest first, and their tickets."""
+async def todays_orders(session, viewer=HEAD_OFFICE):
+    """Today's orders (local day, without unfinished carts), newest first, and their tickets. Branch staff: only
+    their branch's."""
     start, end = day_range(localdate())
+    statement = select(Order.id).where(Order.created_at >= start, Order.created_at < end, Order.status != NEW)
+    if viewer.branch_staff:
+        statement = statement.where(Order.branch_id == viewer.branch_id if viewer.branch_id else false())
     order_ids = (await session.scalars(
-        select(Order.id).where(Order.created_at >= start, Order.created_at < end, Order.status != NEW)
-        .order_by(Order.created_at.desc(), Order.id.desc())
+        statement.order_by(Order.created_at.desc(), Order.id.desc())
     )).all()
     views = await load_orders(session, order_ids)
     tickets = await load_tickets(session, order_ids)

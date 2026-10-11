@@ -21,7 +21,8 @@ from app.config import settings
 from app.crypto import encrypt
 from app.db import Database
 from app.db.models import (
-    PUBLIC, TENANT, Base, Business, BusinessBot, Client, Descriptions, Order, OrderItem, Product, StaffLink, User,
+    PUBLIC, TENANT, Base, Branch, Business, BusinessBot, Client, Descriptions, Order, OrderItem, Product, StaffLink,
+    User,
 )
 from app.telegram.runtime import Handlers, handle_business_update, handle_platform_update
 from app.utils import now
@@ -137,8 +138,12 @@ class Shop:
             await session.commit()
         return rows[0] if len(rows) == 1 else rows
 
-    async def user(self, phone, first_name=None, role='admin', is_active=True):
-        return await self.add(User(phone_number=phone, first_name=first_name, role=role, is_active=is_active))
+    async def user(self, phone, first_name=None, role='admin', is_active=True, branch=None):
+        return await self.add(User(phone_number=phone, first_name=first_name, role=role, is_active=is_active,
+                                   branch_id=branch.id if branch else None))
+
+    async def branch(self, name, latitude=None, longitude=None, is_active=True):
+        return await self.add(Branch(name=name, latitude=latitude, longitude=longitude, is_active=is_active))
 
     async def product(self, name_uz, name_ru, price, unit=None):
         return await self.add(Product(name_uz=name_uz, name_ru=name_ru, price=price,

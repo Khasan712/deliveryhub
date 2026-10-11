@@ -1,5 +1,6 @@
 """Message texts and keyboards of the staff bot: draft card, order card, today's orders, today's stats.
-Pure rendering: the data comes loaded (orders.OrderView, TicketView)."""
+Pure rendering: the data comes loaded (orders.OrderView, TicketView, branches.Setup); an order card is rendered for
+the chat it goes to (branches.Viewer)."""
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
@@ -7,12 +8,15 @@ from html import escape
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
+from app.branches import HEAD_OFFICE, OFF, by_distance, order_point
 from app.orders import DELIVERY, DELIVERY_TYPES, ON_THE_WAY, ORDERED, PICKUP, REJECTED, SOURCE_ADMIN, SOURCES
 from app.utils import format_money, is_coordinates, localdate, localtime, parse_price, parse_quantity
 from .texts import t
 
 TODAY_LIST_LIMIT = 30
 TODAY_BUTTONS_LIMIT = 12
+# Branch buttons on a card: the nearest ones, two per row.
+BRANCH_BUTTONS_LIMIT = 8
 ACTIVE_STATUSES = (ORDERED, ON_THE_WAY)
 STAGE_EMOJI = {'new': '🟡', 'accepted': '👨‍🍳', 'on_the_way': '🚚', 'completed': '✅', 'rejected': '❌'}
 
@@ -206,9 +210,41 @@ def status_line(order, ticket, lang):
     return f'{line} · {details}' if details else line
 
 
-def order_card(order, ticket, lang, confirm_reject=False):
-    """`order` — orders.OrderView, `ticket` — TicketView or None."""
-    title = t(lang, 'order_new_title' if stage(order, ticket) == 'new' else 'order_title', id=order.id)
+def km(distance, lang):
+    return t(lang, 'km', value=f'{distance:.1f}'.replace('.', ','))
+
+
+def branch_options(order, setup, exclude=None):
+    """[(active branch, km or None)] the order may be sent to: nearest first; without a point, by name."""
+    return [(branch, distance) for branch, distance in by_distance(order_point(order), setup.active)
+            if branch.id != exclude]
+
+
+def branch_line(order, setup, viewer, lang):
+    """🏪 the order's branch; for an order waiting for one (dispatch mode), that it has none yet — with the nearest
+    one for the head office; for the staff of another branch, where it went."""
+    if not setup.enabled:
+        return None
+    if order.branch_id is not None:
+        key = 'branch_line' if viewer.may_act(order) else 'branch_moved'
+        return t(lang, key, name=escape(setup.name(order.branch_id)))
+    if not setup.waits(order):
+        return None
+    line = t(lang, 'branch_none')
+    options = [] if viewer.branch_staff else branch_options(order, setup)
+    if options and options[0][1] is not None:
+        nearest, distance = options[0]
+        line += t(lang, 'branch_nearest', name=escape(nearest.name), distance=km(distance, lang))
+    return line
+
+
+def order_card(order, ticket, lang, confirm_reject=False, *, setup=OFF, viewer=HEAD_OFFICE, choose_branch=False):
+    """`order` — orders.OrderView, `ticket` — TicketView or None; `setup` — the business's branches, `viewer` — the
+    staff member whose chat it is. Branch staff see another branch's order (sent elsewhere after they got it)
+    without its status and buttons."""
+    elsewhere = not viewer.may_act(order)
+    new = stage(order, ticket) == 'new' and not elsewhere
+    title = t(lang, 'order_new_title' if new else 'order_title', id=order.id)
     lines = [title, ' · '.join(filter(None, [source_label(order, lang), short_time(order.created_at)])), '']
     total = 0
     for line in order.lines:
@@ -224,43 +260,84 @@ def order_card(order, ticket, lang, confirm_reject=False):
     )
     if details:
         lines += [''] + details
-    lines += ['', f'💰 <b>{t(lang, "total")}: {money(total, lang)}</b>', status_line(order, ticket, lang)]
-    return '\n'.join(lines), order_keyboard(order, ticket, lang, confirm_reject)
+    lines += ['', f'💰 <b>{t(lang, "total")}: {money(total, lang)}</b>']
+    branch = branch_line(order, setup, viewer, lang)
+    if branch:
+        lines.append(branch)
+    if elsewhere:
+        return '\n'.join(lines), inline([])
+    lines.append(status_line(order, ticket, lang))
+    return '\n'.join(lines), order_keyboard(order, ticket, lang, confirm_reject, setup=setup, viewer=viewer,
+                                            choose_branch=choose_branch)
 
 
-def order_keyboard(order, ticket, lang, confirm_reject=False):
+def branch_rows(order, setup, lang, action, exclude=None):
+    """Buttons that send the order to a branch ("Chilonzor · 2,1 km"): the nearest first, two per row."""
+    buttons = [
+        button(f'{branch.name} · {km(distance, lang)}' if distance is not None else branch.name,
+               f'order:{order.id}:{action}:{branch.id}')
+        for branch, distance in branch_options(order, setup, exclude)[:BRANCH_BUTTONS_LIMIT]
+    ]
+    return [buttons[index:index + 2] for index in range(0, len(buttons), 2)]
+
+
+def order_keyboard(order, ticket, lang, confirm_reject=False, *, setup=OFF, viewer=HEAD_OFFICE, choose_branch=False):
     def order_button(key, action):
         return button(t(lang, key), f'order:{order.id}:{action}')
 
     current = stage(order, ticket)
-    if current not in ('new', 'accepted', 'on_the_way'):
+    if current not in ('new', 'accepted', 'on_the_way') or not viewer.may_act(order):
         return inline([])
     if confirm_reject:
         return inline([[order_button('btn_reject_yes', 'reject'), order_button('btn_back', 'back')]])
-    if current == 'new':
-        return inline([[order_button('btn_accept', 'accept'), order_button('btn_reject', 'ask_reject')]])
+    # In dispatch mode the head office sends an order waiting for a branch to one ("to"), and may move an order
+    # that is not on its way yet to another one ("mv"). Nothing else is done before the order has a branch.
+    dispatching = setup.dispatch and not viewer.branch_staff and order.status == ORDERED
+    if dispatching and order.branch_id is None:
+        cancel = order_button('btn_reject' if current == 'new' else 'btn_cancel_order', 'ask_reject')
+        return inline(branch_rows(order, setup, lang, 'to') + [[cancel]])
+    if dispatching and choose_branch:
+        return inline(branch_rows(order, setup, lang, 'mv', exclude=order.branch_id)
+                      + [[order_button('btn_back', 'back')]])
 
-    if order_delivery_type(order) == PICKUP:
-        progress = [order_button('btn_handed_over', 'done')]
-    elif current == 'accepted':
-        progress = [order_button('btn_on_the_way', 'on_the_way'), order_button('btn_delivered', 'done')]
+    if current == 'new':
+        rows = [[order_button('btn_accept', 'accept'), order_button('btn_reject', 'ask_reject')]]
     else:
-        progress = [order_button('btn_delivered', 'done')]
-    return inline([progress, [order_button('btn_cancel_order', 'ask_reject')]])
+        if order_delivery_type(order) == PICKUP:
+            progress = [order_button('btn_handed_over', 'done')]
+        elif current == 'accepted':
+            progress = [order_button('btn_on_the_way', 'on_the_way'), order_button('btn_delivered', 'done')]
+        else:
+            progress = [order_button('btn_delivered', 'done')]
+        rows = [progress, [order_button('btn_cancel_order', 'ask_reject')]]
+    if dispatching:
+        rows.append([order_button('btn_move', 'ask_move')])
+    return inline(rows)
 
 
 # ---------------------------------------------------------------------------
 # today: `orders` — today's orders (not carts), newest first; `tickets` — {order id: TicketView}
 # ---------------------------------------------------------------------------
 
-def today_list(orders, tickets, lang):
+def scope_lines(orders, setup, viewer, lang):
+    """Under the title: the branch the list is about (branch staff); for the head office in dispatch mode, how many
+    orders wait for a branch."""
+    if viewer.branch_staff:
+        return [t(lang, 'branch_line', name=escape(setup.name(viewer.branch_id)))] if viewer.branch_id else []
+    waiting = sum(1 for order in orders if setup.waits(order))
+    return [t(lang, 'today_unassigned', count=waiting)] if waiting else []
+
+
+def today_list(orders, tickets, lang, setup=OFF, viewer=HEAD_OFFICE):
+    """Branch staff get their branch's orders only (service.todays_orders)."""
     refresh = [button(t(lang, 'btn_refresh'), 'today')]
+    scope = scope_lines(orders, setup, viewer, lang)
     if not orders:
-        return t(lang, 'today_empty'), inline([refresh])
+        return '\n'.join([t(lang, 'today_empty')] + scope), inline([refresh])
 
     valid = [order for order in orders if order.status != REJECTED]
     total = sum(order.total for order in valid)
-    lines = [t(lang, 'today_title', count=len(valid), total=money(total, lang)), '']
+    lines = [t(lang, 'today_title', count=len(valid), total=money(total, lang))] + scope + ['']
     for order in orders[:TODAY_LIST_LIMIT]:
         lines.append(' · '.join(filter(None, [
             f'{STAGE_EMOJI.get(stage(order, tickets.get(order.id)), "•")} #{order.id}',
@@ -281,8 +358,9 @@ def today_list(orders, tickets, lang):
     return '\n'.join(lines), inline(rows)
 
 
-def today_stats(orders, tickets, lang):
-    title = t(lang, 'stats_title', date=localdate().strftime('%d.%m.%Y'))
+def today_stats(orders, tickets, lang, setup=OFF, viewer=HEAD_OFFICE):
+    title = '\n'.join([t(lang, 'stats_title', date=localdate().strftime('%d.%m.%Y'))]
+                      + scope_lines(orders, setup, viewer, lang))
     if not orders:
         return f'{title}\n\n{t(lang, "stats_empty")}'
 

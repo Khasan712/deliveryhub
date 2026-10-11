@@ -131,8 +131,10 @@ def clean_choice(value, allowed):
 
 async def create_order(session, *, items, source, status=ORDERED, client_id=None, created_by_id=None,
                        customer_name=None, phone=None, address=None, latitude=None, longitude=None,
-                       delivery_type=None, payment_method=None, comment=None) -> Order:
-    """Adds an order with its items to the session's transaction (the caller commits)."""
+                       delivery_type=None, payment_method=None, comment=None, branch_id=None,
+                       assigned_by_id=None) -> Order:
+    """Adds an order with its items to the session's transaction (the caller commits). `branch_id`: the branch that
+    makes it, sent there by `assigned_by_id` (None: it got the branch by itself)."""
     location = (address or '').strip()[:255] or None
     if not location and latitude and longitude:
         # Same "lat lon" format the bot stores when a location pin is shared.
@@ -151,6 +153,9 @@ async def create_order(session, *, items, source, status=ORDERED, client_id=None
         payment_method=clean_choice(payment_method, PAYMENT_METHODS),
         comment=(comment or '').strip() or None,
         created_by_id=created_by_id,
+        branch_id=branch_id,
+        assigned_at=stamp if branch_id else None,
+        assigned_by_id=assigned_by_id if branch_id else None,
         created_at=stamp,
         updated_at=stamp,
     )

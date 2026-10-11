@@ -3,8 +3,9 @@
 The backend owns the schema (Django migrations); the service never creates or alters tables at runtime
 (`Base.metadata.create_all` is used only by the tests). Column names, types and constraints follow the
 migrations of apps/core (label `app`), apps/platform (label `hub`) and apps/telegram (label `adminbot`).
-Django keeps no column defaults in the database (except `db_default` columns: app_order.source,
-app_telegramlogintoken.status and adminbot_outbox), so every insert here fills every NOT NULL column.
+Django keeps no column defaults in the database (except `db_default` columns: hub_business.branches_enabled,
+app_order.source, app_telegramlogintoken.status and adminbot_outbox), so every insert here fills every NOT NULL
+column.
 
 * public schema (django-tenants SHARED_APPS): hub_business, hub_businessbot, hub_botsetup;
 * every business schema (TENANT_APPS): app_*, adminbot_* — mapped in the placeholder schema TENANT and
@@ -12,10 +13,11 @@ app_telegramlogintoken.status and adminbot_outbox), so every insert here fills e
 Read-only tables (users, products, businesses) map only the columns the bots read.
 """
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Identity, Index, MetaData, SmallInteger, String,
-    Text, UniqueConstraint, func, text,
+    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Identity, Index, MetaData, Numeric, SmallInteger,
+    String, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -65,6 +67,9 @@ class Business(Base):
     slug: Mapped[str] = mapped_column(String(40), unique=True)
     status: Mapped[str] = mapped_column(String(20), default=STATUS_ACTIVE)
     support_phone: Mapped[str] = mapped_column(String(30), default='')
+    # Our panel lets the business have branches (db_default false). Read at the moment it matters
+    # (branches.load_setup), never kept: switching it in the panel takes effect with the next update or round.
+    branches_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text('false'))
 
 
 class BusinessBot(Base):
@@ -110,16 +115,36 @@ class BotSetup(Base):
 # business schema: catalog, customers, orders (app)
 # ---------------------------------------------------------------------------
 
+class Branch(Base):
+    """app.Branch — a branch of the business with its own staff, on the map (read only: the admin panel manages
+    them). Used only while the business has branches on (hub_business.branches_enabled)."""
+    __tablename__ = 'app_branch'
+    __table_args__ = {'schema': TENANT}
+
+    id: Mapped[int] = _pk()
+    name: Mapped[str] = mapped_column(String(100))
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    # An inactive branch gets no new orders; its orders and staff stay.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class User(Base):
     """app.User of a business: staff accounts of the admin panel (read only)."""
     __tablename__ = 'app_user'
     __table_args__ = {'schema': TENANT}
+    ROLE_ADMIN = 'admin'
+    ROLE_MANAGER = 'manager'
+    # Staff of one branch (branch_id): only that branch's orders while the business has branches on; with branches
+    # off they act like managers.
+    ROLE_BRANCH = 'branch'
 
     id: Mapped[int] = _pk()
     first_name: Mapped[str | None] = mapped_column(String(100))
     last_name: Mapped[str | None] = mapped_column(String(100))
     phone_number: Mapped[str] = mapped_column(String(100), unique=True)
     role: Mapped[str] = mapped_column(String(10))
+    branch_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_branch.id'), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -193,6 +218,12 @@ class Order(Base):
     payment_method: Mapped[str | None] = mapped_column(String(20))
     comment: Mapped[str | None] = mapped_column(Text)
     created_by_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_user.id'), index=True)
+    # The branch that makes it: sent there by the head office (assigned_by), chosen by a pickup customer, or set by
+    # itself (the only active branch, a branch's own sale). Empty: no branches, or it waits to be sent.
+    branch_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_branch.id'), index=True)
+    # When it got its branch (the last time, after a move).
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    assigned_by_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_user.id'), index=True)
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = _updated()
 
@@ -286,6 +317,9 @@ class OrderTicket(Base):
     order_id: Mapped[int] = mapped_column(BigInteger, _fk(f'{TENANT}.app_order.id'), unique=True)
     # The order status the cards in the chats currently show.
     status_seen: Mapped[str] = mapped_column(String(20))
+    # The branch (app_branch id, no foreign key) the cards currently show: they are re-rendered when the order is
+    # sent elsewhere (the admin panel), like status_seen.
+    branch_seen_id: Mapped[int | None] = mapped_column(BigInteger)
     accepted_by_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_user.id'), index=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     changed_by_id: Mapped[int | None] = mapped_column(BigInteger, _fk(f'{TENANT}.app_user.id'), index=True)
