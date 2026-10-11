@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { SALE_STATUSES, type SaleForm, type SalesData, type SalesProduct, type SaleSummary } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { FrozenBadge, Money, StatusBadge } from '../../components/badges'
 import {
   IconArrowRight,
@@ -13,6 +14,7 @@ import {
   IconMic,
   IconMinus,
   IconPlus,
+  IconStore,
   IconTrash,
   IconTruck,
   IconX,
@@ -32,6 +34,7 @@ import { useToastOffset } from '../../lib/useToastOffset'
 import { ProductThumb } from '../products/ProductThumb'
 import { filterProducts, qtyOf, type CartLine } from './cart'
 import { FrozenNotice } from './FrozenNotice'
+import { SaleBranch } from './SaleBranch'
 import type { SaleAction, SaleState } from './saleState'
 import type { FormField } from './voiceResult'
 
@@ -40,6 +43,8 @@ export interface DoneSale {
   order: SaleSummary
   lines: CartLine[]
   form: SaleForm
+  /** The branch it is for, when one was chosen (or the seller's own). */
+  branch: string | null
 }
 
 interface MobileSaleProps {
@@ -61,6 +66,9 @@ interface MobileSaleProps {
   voiceCard: ReactNode
   /** The sheet was closed: a recording still running is cancelled. */
   onVoiceClose: () => void
+  onBranch: (id: number) => void
+  /** «Filialni tanlang»: a sale in dispatch mode without its branch. */
+  branchError: string | null
 }
 
 /**
@@ -351,6 +359,7 @@ function PickRow({
 }
 
 function DetailsScreen({
+  data,
   state,
   lines,
   count,
@@ -360,8 +369,12 @@ function DetailsScreen({
   onCreate,
   creating,
   onBack,
+  onBranch,
+  branchError,
 }: MobileSaleProps & { onBack: () => void }) {
   const { t, tn, name } = useI18n()
+  // The head office names the sale's branch while orders are dispatched; branch staff always sell for their own.
+  const { branch: ownBranch } = useAuthed()
   const { form, aiFields } = state
   const [comment, setComment] = useState(false)
   useToastOffset('calc(9rem + env(safe-area-inset-bottom))')
@@ -407,6 +420,14 @@ function DetailsScreen({
           </div>
         )}
 
+        <SaleBranch
+          branches={data.branches ?? []}
+          ownBranch={ownBranch?.name ?? null}
+          value={state.branch}
+          onChange={onBranch}
+          error={branchError}
+          large
+        />
         <Segmented<SaleForm['delivery_type']>
           label={
             <>
@@ -422,7 +443,6 @@ function DetailsScreen({
             { value: 'delivery', label: t('delivery'), icon: <IconTruck size={18} /> },
           ]}
         />
-
         <div className="space-y-4">
           <Field label={t('phone')} labelBadge={badge('phone')}>
             {(fieldProps) => (
@@ -615,6 +635,12 @@ function DoneScreen({ done, onNew, onExit }: { done: DoneSale; onNew: () => void
               {form.payment_method === 'card' ? t('card') : t('cash')}
             </span>
             <StatusBadge status={order.status} />
+            {done.branch && (
+              <span className={chip}>
+                <IconStore size={15} />
+                {done.branch}
+              </span>
+            )}
           </div>
           {delivery && form.address && (
             <p className="mt-2.5 flex items-start gap-1.5 text-[13px] text-muted">

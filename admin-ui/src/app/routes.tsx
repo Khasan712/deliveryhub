@@ -1,5 +1,5 @@
 import { Outlet, type RouteObject } from 'react-router'
-import { RequireAdmin, RequireAuth } from '../auth/guards'
+import { RequireAdmin, RequireAuth, RequireBranches, RequireHeadOffice } from '../auth/guards'
 import { LoginPage } from '../auth/LoginPage'
 import { NotFound } from '../auth/SystemScreens'
 import { TelegramSignInPage } from '../auth/TelegramSignInPage'
@@ -7,6 +7,8 @@ import { AppLayout, type RouteHandle } from '../layout/AppLayout'
 import { MorePage } from '../layout/MorePage'
 import { AppRoot, RouteError } from './AppRoot'
 import {
+  BranchesPage,
+  BranchFormPage,
   CategoriesPage,
   ClientDetailPage,
   ClientEditPage,
@@ -44,14 +46,26 @@ export const routes: RouteObject[] = [
           { path: 'sales', element: <SalesPage />, handle: { phone: 'bare' } satisfies RouteHandle },
           { path: 'orders', element: <OrdersPage /> },
           { path: 'orders/:id', element: <OrderDetailPage />, handle: { phone: 'own-bar' } satisfies RouteHandle },
-          { path: 'clients', element: <ClientsPage /> },
-          { path: 'clients/:id', element: <ClientDetailPage /> },
-          { path: 'clients/:id/edit', element: <ClientEditPage /> },
-          { path: 'products', element: <ProductsPage /> },
-          { path: 'products/new', element: <ProductFormPage /> },
-          { path: 'products/:id/edit', element: <ProductFormPage /> },
-          { path: 'categories', element: <CategoriesPage /> },
-          { path: 'units', element: <UnitsPage /> },
+          // The head office's: branch staff have their branch's orders, sales and bot only.
+          {
+            element: (
+              <RequireHeadOffice>
+                <Outlet />
+              </RequireHeadOffice>
+            ),
+            children: [
+              { path: 'clients', element: <ClientsPage /> },
+              { path: 'clients/:id', element: <ClientDetailPage /> },
+              { path: 'clients/:id/edit', element: <ClientEditPage /> },
+              { path: 'products', element: <ProductsPage /> },
+              { path: 'products/new', element: <ProductFormPage /> },
+              { path: 'products/:id/edit', element: <ProductFormPage /> },
+              { path: 'categories', element: <CategoriesPage /> },
+              { path: 'units', element: <UnitsPage /> },
+              // Every head office member sees the working hours; only the admin role can change them (the page knows).
+              { path: 'hours', element: <HoursPage /> },
+            ],
+          },
           {
             path: 'users',
             element: (
@@ -65,9 +79,22 @@ export const routes: RouteObject[] = [
               { path: ':id/edit', element: <UserFormPage /> },
             ],
           },
+          {
+            path: 'branches',
+            element: (
+              <RequireAdmin>
+                <RequireBranches>
+                  <Outlet />
+                </RequireBranches>
+              </RequireAdmin>
+            ),
+            children: [
+              { index: true, element: <BranchesPage /> },
+              { path: 'new', element: <BranchFormPage /> },
+              { path: ':id/edit', element: <BranchFormPage /> },
+            ],
+          },
           { path: 'telegram', element: <TelegramPage /> },
-          // Every staff member sees the working hours; only the admin role can change them (the page knows).
-          { path: 'hours', element: <HoursPage /> },
           // «Yana» of the phone's bottom menu.
           { path: 'more', element: <MorePage /> },
           { path: '*', element: <NotFound /> },

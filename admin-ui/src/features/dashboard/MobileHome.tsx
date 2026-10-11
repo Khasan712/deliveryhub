@@ -4,7 +4,7 @@ import type { DashboardData, OrderStatus } from '../../api/types'
 import { useAuthed } from '../../auth/session'
 import { BusinessLogo } from '../../components/BusinessLogo'
 import { Money } from '../../components/badges'
-import { IconCheckCircle, IconExternal } from '../../components/icons'
+import { IconCheckCircle, IconExternal, IconStore } from '../../components/icons'
 import { STATUS_KEYS, STATUS_TONES } from '../../components/statusMeta'
 import { Card } from '../../components/ui/Card'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -17,6 +17,7 @@ import { formatNumber, weekdayShort } from '../../lib/format'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { statusDetail } from '../hours/hours'
 import { OrderCard } from '../orders/OrderCard'
+import { BranchesToday, UnassignedBanner } from './BranchesToday'
 
 const TILES: Array<{ status: OrderStatus; label: DictKey; count: (data: DashboardData) => number }> = [
   { status: 'ordered', label: 'status_new_short', count: (data) => data.orders.new },
@@ -30,7 +31,7 @@ const TILES: Array<{ status: OrderStatus; label: DictKey; count: (data: Dashboar
  */
 export function MobileHome() {
   const { t, tn, lang } = useI18n()
-  const { business } = useAuthed()
+  const { business, branch, headOffice, dispatch } = useAuthed()
   const dashboard = useDashboard()
   const hours = useWorkingHours().data
   const fresh = useOrders({ status: 'ordered', page: 1, page_size: 5 })
@@ -45,6 +46,13 @@ export function MobileHome() {
         <BusinessLogo name={business.name} logo={business.logo} brandColor={business.brand_color} size="lg" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-bold text-fg">{business.name}</h1>
+          {/* Branch staff: every number here is their branch's. */}
+          {branch && (
+            <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-teal-700 dark:text-teal-300">
+              <IconStore size={14} className="shrink-0" />
+              <span className="truncate">{t('branch_of', { name: branch.name })}</span>
+            </p>
+          )}
           {hours && (
             <p
               className={cn(
@@ -79,6 +87,7 @@ export function MobileHome() {
         </Card>
       ) : (
         <>
+          {dispatch && !!data?.unassigned && <UnassignedBanner count={data.unassigned} />}
           <Card className="flex items-end justify-between gap-3 p-4">
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-muted">{t('sales_revenue')}</p>
@@ -141,6 +150,9 @@ export function MobileHome() {
           Array.from({ length: 2 }, (_, index) => <Skeleton key={index} className="h-40 rounded-2xl" />)
         )}
       </section>
+
+      {/* The head office: how each branch is doing today (below the orders that need a hand now). */}
+      {headOffice && !!data?.branches?.length && <BranchesToday rows={data.branches} />}
     </div>
   )
 }

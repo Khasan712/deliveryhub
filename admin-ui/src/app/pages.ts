@@ -22,3 +22,7 @@ export const UserFormPage = lazy(() => import('../features/users/UserFormPage').
 export const SalesPage = lazy(() => import('../features/sales/SalesPage').then((m) => ({ default: m.SalesPage })))
 export const TelegramPage = lazy(() => import('../features/telegram/TelegramPage').then((m) => ({ default: m.TelegramPage })))
 export const HoursPage = lazy(() => import('../features/hours/HoursPage').then((m) => ({ default: m.HoursPage })))
+export const BranchesPage = lazy(() => import('../features/branches/BranchesPage').then((m) => ({ default: m.BranchesPage })))
+export const BranchFormPage = lazy(() =>
+  import('../features/branches/BranchFormPage').then((m) => ({ default: m.BranchFormPage })),
+)

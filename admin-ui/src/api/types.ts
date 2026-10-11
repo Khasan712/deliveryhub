@@ -1,6 +1,7 @@
 /* Admin API types — docs/api.md, sections "Conventions" and "Admin API". */
 
-export type Role = 'admin' | 'manager'
+/** `admin` and `manager` are the head office; `branch` — the staff of one branch (with branches off: a manager). */
+export type Role = 'admin' | 'manager' | 'branch'
 export type OrderStatus = 'ordered' | 'on_the_way' | 'completed' | 'rejected'
 export type OrderSource = 'web' | 'miniapp' | 'bot' | 'admin'
 export type DeliveryType = 'delivery' | 'pickup'
@@ -23,6 +24,8 @@ export interface StaffUser {
   first_name: string
   last_name: string
   role: Role
+  /** The branch of a `branch` user (`null` for the head office). */
+  branch: BranchRef | null
   is_active: boolean
   created_at: string
 }
@@ -33,6 +36,10 @@ export interface Business {
   logo: string | null
   brand_color: string
   shop_url: string
+  /** Our panel lets this business have branches (off: everything works as without them). */
+  branches_enabled: boolean
+  /** Branches on and 2+ active ones: a delivery order waits for the head office to send it to a branch. */
+  dispatch: boolean
 }
 
 export interface MeResponse {
@@ -62,6 +69,66 @@ export interface WorkingHours {
   closes_at: string | null
 }
 
+// ------------------------------------------------------------------ branches
+export interface BranchRef {
+  id: number
+  name: string
+}
+
+export interface Branch {
+  id: number
+  name: string
+  address: string
+  lat: number | null
+  lng: number | null
+  phone: string
+  /** An inactive branch gets no new orders and is not offered to customers; its history stays. */
+  is_active: boolean
+  created_at: string
+  /** Its active staff users. */
+  staff_count: number
+  /** The same users, by first name. */
+  staff: BranchStaff[]
+  /** Its orders today (rejected ones not counted) and their money. */
+  today: { orders: number; revenue: number }
+}
+
+export interface BranchStaff {
+  id: number
+  name: string
+  phone_number: string
+}
+
+/** Create / update (admin). `lat` and `lng` always together: the point is how the nearest branch is found. */
+export interface BranchInput {
+  name: string
+  address: string
+  lat: number
+  lng: number
+  phone?: string
+  is_active?: boolean
+}
+
+/** A branch the head office may send an order to (OrderDetail), nearest first. */
+export interface BranchOption {
+  id: number
+  name: string
+  address: string
+  lat: number | null
+  lng: number | null
+  /** Straight line from the order's point; `null` when the order (or the branch) has no point. */
+  distance_km: number | null
+  /** The first one, when distances are known. */
+  nearest: boolean
+}
+
+/** A geocoder result (GET /geo/search). */
+export interface Place {
+  address: string
+  lat: number
+  lng: number
+}
+
 // ------------------------------------------------------------------ dashboard
 export interface DashboardData {
   orders: { total: number; new: number; on_the_way: number; completed: number; last_7_days: number }
@@ -73,6 +140,10 @@ export interface DashboardData {
   /** Today, every channel: the orders and their money (rejected orders bring none). */
   today: { orders: number; revenue: number }
   latest_orders: OrderSummary[]
+  /** The head office with branches on: today per branch (the active ones and any with orders today); `[]` otherwise. */
+  branches: Array<{ id: number; name: string; orders: number; revenue: number }>
+  /** The head office: new orders waiting to be sent to a branch (0 for branch staff / branches off). */
+  unassigned: number
 }
 
 // ------------------------------------------------------------------ orders
@@ -91,6 +162,15 @@ export interface OrderSummary {
   address: string
   /** What was ordered (the phone's order cards show it). */
   lines: OrderLinePreview[]
+  branch: BranchRef | null
+  /** The head office in dispatch mode, an order without a branch: the nearest active branch to its point (`null`
+   *  otherwise, also for an order with a typed address only). */
+  suggested_branch: SuggestedBranch | null
+}
+
+export interface SuggestedBranch extends BranchRef {
+  /** Straight line, rounded to 0.1. */
+  distance_km: number
 }
 
 export interface OrderLinePreview {
@@ -108,7 +188,7 @@ export interface OrderItem {
   total: number
 }
 
-export interface OrderDetail extends Omit<OrderSummary, 'lines'> {
+export interface OrderDetail extends Omit<OrderSummary, 'lines' | 'suggested_branch'> {
   updated_at: string
   lat: string | number | null
   lng: string | number | null
@@ -116,11 +196,19 @@ export interface OrderDetail extends Omit<OrderSummary, 'lines'> {
   created_by: { id: number; name: string } | null
   client: { id: number; first_name: string; last_name: string; phone: string; tg_nick: string } | null
   items: OrderItem[]
+  /** When it got its branch. */
+  assigned_at: string | null
+  /** Who sent it there; `null` — it got it by itself (the only branch, the customer's pickup choice, a branch's sale). */
+  assigned_by: { id: number; name: string } | null
+  /** The head office with branches on: every active branch, nearest first; `[]` for branch staff / branches off. */
+  branch_options: BranchOption[]
 }
 
 export interface OrdersQuery {
   status?: string
   source?: string
+  /** The head office: a branch id, or `none` — orders without a branch. */
+  branch?: string
   search?: string
   page?: number
   page_size?: number
@@ -217,6 +305,8 @@ export interface StaffUserInput {
   role: Role
   is_active: boolean
   password?: string
+  /** Required for the role `branch` (an active branch); the head office has none. */
+  branch_id?: number | null
 }
 
 // ------------------------------------------------------------------ sales
@@ -267,6 +357,8 @@ export interface SalesData {
   recent: SaleSummary[]
   stats: SalesStats
   voice: { gemini: boolean; live: boolean }
+  /** The head office with branches on: the active branches a sale can be for (`[]` otherwise). */
+  branches: BranchRef[]
 }
 
 export interface CartItem {
@@ -282,6 +374,14 @@ export interface SaleForm {
   payment_method: PaymentMethod
   status: SaleStatus
   comment: string
+}
+
+/** `POST /sales`. Branch staff always sell for their own branch (`branch_id` is ignored for them). */
+export interface SaleCreate extends SaleForm {
+  items: CartItem[]
+  /** The head office in dispatch mode (2+ active branches): the branch the sale is for — required (`fields.branch_id:
+   *  ["required"]`). With one active branch the sale gets it by itself. */
+  branch_id?: number | null
 }
 
 export interface SaleCreateResponse {

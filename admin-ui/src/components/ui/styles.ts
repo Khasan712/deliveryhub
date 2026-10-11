@@ -43,7 +43,7 @@ export const controlClass =
 
 export const cardClass = 'rounded-2xl border border-line bg-card shadow-card'
 
-export type Tone = 'gray' | 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'sky' | 'fuchsia' | 'indigo'
+export type Tone = 'gray' | 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'sky' | 'fuchsia' | 'indigo' | 'teal'
 
 export const TONES: Record<Tone, { badge: string; dot: string; soft: string }> = {
   gray: {
@@ -94,5 +94,10 @@ export const TONES: Record<Tone, { badge: string; dot: string; soft: string }> =
       'bg-indigo-50 text-indigo-700 ring-indigo-600/15 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-400/25',
     dot: 'bg-indigo-500',
     soft: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300',
+  },
+  teal: {
+    badge: 'bg-teal-50 text-teal-700 ring-teal-600/15 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-400/25',
+    dot: 'bg-teal-500',
+    soft: 'bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300',
   },
 }

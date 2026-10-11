@@ -22,13 +22,16 @@ export function useListParams<K extends string>(keys: readonly K[]) {
   const pageValue = Number(params.get('page'))
   const page = Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1
 
-  const setFilter = useCallback(
-    (key: K, value: string) => {
+  /** Several filters at once (one URL change): `{status: 'ordered', branch: 'none'}`; `''` removes one. */
+  const setFilters = useCallback(
+    (patch: Partial<Record<K, string>>) => {
       setParams(
         (current) => {
           const next = new URLSearchParams(current)
-          if (value) next.set(key, value)
-          else next.delete(key)
+          for (const [key, value] of Object.entries(patch) as Array<[K, string | undefined]>) {
+            if (value) next.set(key, value)
+            else next.delete(key)
+          }
           next.delete('page')
           return next
         },
@@ -37,6 +40,8 @@ export function useListParams<K extends string>(keys: readonly K[]) {
     },
     [setParams],
   )
+
+  const setFilter = useCallback((key: K, value: string) => setFilters({ [key]: value } as Partial<Record<K, string>>), [setFilters])
 
   const setPage = useCallback(
     (value: number) => {
@@ -55,5 +60,5 @@ export function useListParams<K extends string>(keys: readonly K[]) {
 
   const active = keys.some((key) => values[key])
 
-  return { values, page, setFilter, setPage, reset, active }
+  return { values, page, setFilter, setFilters, setPage, reset, active }
 }

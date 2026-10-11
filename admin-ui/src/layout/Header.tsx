@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router'
 import { useAuthed, useSession } from '../auth/session'
 import { RoleBadge } from '../components/badges'
 import { BusinessLogo } from '../components/BusinessLogo'
-import { IconChevronDown, IconExternal, IconLogOut, IconMoon, IconSun } from '../components/icons'
+import { IconChevronDown, IconExternal, IconLogOut, IconMoon, IconStore, IconSun } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Avatar } from '../components/ui/Avatar'
 import { Menu, MenuItem } from '../components/ui/Menu'
@@ -15,7 +15,7 @@ import { useTheme } from '../theme/theme'
 export function Header() {
   const { t } = useI18n()
   const { theme, toggleTheme } = useTheme()
-  const { business } = useAuthed()
+  const { business, branch } = useAuthed()
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-card/85 backdrop-blur-xl supports-[backdrop-filter]:bg-card/70">
@@ -24,7 +24,14 @@ export function Header() {
           <BusinessLogo name={business.name} logo={business.logo} brandColor={business.brand_color} />
           <div className="min-w-0 leading-tight">
             <p className="truncate text-[15px] font-semibold text-fg">{business.name}</p>
-            <p className="truncate text-xs text-muted">{t('app_admin_panel')}</p>
+            {branch ? (
+              <p className="flex min-w-0 items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+                <IconStore size={13} className="shrink-0" />
+                <span className="truncate">{t('branch_of', { name: branch.name })}</span>
+              </p>
+            ) : (
+              <p className="truncate text-xs text-muted">{t('app_admin_panel')}</p>
+            )}
           </div>
         </div>
 
@@ -61,7 +68,7 @@ export function Header() {
 function UserMenu() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const { user } = useAuthed()
+  const { user, branch } = useAuthed()
   const { logout } = useSession()
   const name = fullName(user.first_name, user.last_name) || formatPhone(user.phone_number)
 
@@ -87,8 +94,9 @@ function UserMenu() {
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-fg">{name}</p>
               <p className="truncate text-xs text-muted tabular">{formatPhone(user.phone_number)}</p>
-              <div className="mt-1.5">
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <RoleBadge role={user.role} />
+                {branch && <span className="text-xs font-medium text-muted">{branch.name}</span>}
               </div>
             </div>
           </div>

@@ -1,12 +1,21 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { useNewOrdersCount } from '../api/queries'
-import { IconGrid, IconHome, IconOrders, IconPlus, IconProducts, type IconComponent } from '../components/icons'
+import { useSession } from '../auth/session'
+import {
+  IconGrid,
+  IconHome,
+  IconOrders,
+  IconPlus,
+  IconProducts,
+  IconTelegram,
+  type IconComponent,
+} from '../components/icons'
 import { useI18n } from '../i18n/context'
 import type { DictKey } from '../i18n/dict'
 import { cn } from '../lib/cn'
 import { useToastOffset } from '../lib/useToastOffset'
-import { isIn, MORE_PATHS } from './nav'
+import { isIn, MORE_PATHS, tabPaths } from './nav'
 
 interface Tab {
   to: string
@@ -15,22 +24,27 @@ interface Tab {
   sections: string[]
 }
 
-const TABS: Record<'home' | 'orders' | 'products' | 'more', Tab> = {
+const TABS: Record<'home' | 'orders' | 'products' | 'telegram' | 'more', Tab> = {
   home: { to: '/', label: 'nav_home', icon: IconHome, sections: ['/'] },
   orders: { to: '/orders', label: 'nav_orders', icon: IconOrders, sections: ['/orders'] },
   products: { to: '/products', label: 'nav_products', icon: IconProducts, sections: ['/products'] },
+  telegram: { to: '/telegram', label: 'nav_telegram_short', icon: IconTelegram, sections: ['/telegram'] },
   more: { to: '/more', label: 'nav_more', icon: IconGrid, sections: ['/more', ...MORE_PATHS] },
 }
 
 /**
  * The phone's main menu, at the bottom where a thumb reaches it: the home page, the orders (with the number of new
- * ones), a big «+» for a new sale in the middle, the products, and «Yana» with everything else.
+ * ones), a big «+» for a new sale in the middle, the products — the bot for branch staff, who have no menu to keep —
+ * and «Yana» with everything else (for branch staff: the language, the theme, signing out).
  */
 export function BottomNav() {
   const { t } = useI18n()
   const { pathname } = useLocation()
+  const { branchStaff } = useSession()
   const newOrders = useNewOrdersCount(true).data ?? 0
   useToastOffset('calc(4.75rem + env(safe-area-inset-bottom))')
+  const tabs = tabPaths(branchStaff)
+  const more = { ...TABS.more, sections: TABS.more.sections.filter((section) => !tabs.includes(section)) }
 
   const tab = (item: Tab, badge?: ReactNode) => {
     const Icon = item.icon
@@ -80,8 +94,8 @@ export function BottomNav() {
             {t('nav_sales')}
           </Link>
         </li>
-        {tab(TABS.products)}
-        {tab(TABS.more)}
+        {tab(branchStaff ? TABS.telegram : TABS.products)}
+        {tab(more)}
       </ul>
     </nav>
   )

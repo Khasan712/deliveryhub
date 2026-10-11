@@ -5,7 +5,7 @@ import { authApi } from '../api/endpoints'
 import { queryKeys } from '../api/queries'
 import type { MeResponse } from '../api/types'
 import { SuspendedScreen } from './SystemScreens'
-import { SessionContext, fetchSession, rememberBusiness, type SessionValue } from './session'
+import { SessionContext, branchAccess, fetchSession, rememberBusiness, type SessionValue } from './session'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
@@ -90,6 +90,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       user: data?.user ?? null,
       business: data?.business ?? null,
       isAdmin: data?.user.role === 'admin',
+      ...branchAccess(data?.user, data?.business),
       error,
       signedOut,
       retry: () => void refetch(),

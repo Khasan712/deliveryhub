@@ -6,6 +6,7 @@ import {
   IconOrders,
   IconProducts,
   IconScale,
+  IconStore,
   IconTag,
   IconTelegram,
   IconUsersCog,
@@ -22,6 +23,10 @@ export interface NavItem {
   /** Shows the number of orders waiting to be processed. */
   counter?: 'newOrders'
   adminOnly?: boolean
+  /** Only while our panel lets the business have branches. */
+  branchesOnly?: boolean
+  /** The head office's: hidden from branch staff, whose panel is their branch's orders, sales and bot. */
+  headOfficeOnly?: boolean
   iconClassName?: string
 }
 
@@ -37,29 +42,48 @@ export const NAV: NavGroup[] = [
       { to: '/', label: 'nav_dashboard', icon: IconDashboard, end: true },
       { to: '/sales', label: 'nav_sales', icon: IconMic, badge: 'ai' },
       { to: '/orders', label: 'nav_orders', icon: IconOrders, counter: 'newOrders' },
-      { to: '/clients', label: 'nav_clients', icon: IconClients },
+      { to: '/clients', label: 'nav_clients', icon: IconClients, headOfficeOnly: true },
     ],
   },
   {
     label: 'nav_group_catalog',
     items: [
-      { to: '/products', label: 'nav_products', icon: IconProducts },
-      { to: '/categories', label: 'nav_categories', icon: IconTag },
-      { to: '/units', label: 'nav_units', icon: IconScale },
+      { to: '/products', label: 'nav_products', icon: IconProducts, headOfficeOnly: true },
+      { to: '/categories', label: 'nav_categories', icon: IconTag, headOfficeOnly: true },
+      { to: '/units', label: 'nav_units', icon: IconScale, headOfficeOnly: true },
     ],
   },
   {
     label: 'nav_group_settings',
     items: [
-      { to: '/hours', label: 'nav_hours', icon: IconClock },
+      { to: '/hours', label: 'nav_hours', icon: IconClock, headOfficeOnly: true },
+      { to: '/branches', label: 'nav_branches', icon: IconStore, adminOnly: true, branchesOnly: true },
       { to: '/telegram', label: 'nav_telegram', icon: IconTelegram, iconClassName: '-rotate-12' },
       { to: '/users', label: 'nav_users', icon: IconUsersCog, adminOnly: true },
     ],
   },
 ]
 
+/** Whether the signed-in staff member has the page in their menu. */
+export function navAllows(
+  item: NavItem,
+  access: { isAdmin: boolean; branchesOn: boolean; branchStaff: boolean },
+): boolean {
+  return (
+    (!item.adminOnly || access.isAdmin) &&
+    (!item.branchesOnly || access.branchesOn) &&
+    (!item.headOfficeOnly || !access.branchStaff)
+  )
+}
+
 /** Pages of the phone's bottom menu; the side menu's other pages are under its «Yana» (/more). */
 export const TAB_PATHS = ['/', '/sales', '/orders', '/products']
+
+/** Branch staff have no menu (products) to read: their bot takes its tab. */
+export const BRANCH_TAB_PATHS = ['/', '/sales', '/orders', '/telegram']
+
+/** The phone's tabs of a staff member. */
+export const tabPaths = (branchStaff: boolean) => (branchStaff ? BRANCH_TAB_PATHS : TAB_PATHS)
 
 /** The side menu's pages that are not in the phone's bottom menu. */
 export const MORE_PATHS = NAV.flatMap((group) => group.items.map((item) => item.to)).filter((to) => !TAB_PATHS.includes(to))

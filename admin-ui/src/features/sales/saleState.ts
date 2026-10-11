@@ -19,6 +19,8 @@ export interface VoiceUi {
 export interface SaleState {
   items: CartItem[]
   form: SaleForm
+  /** The head office: the branch the sale is for (`null` — later / the only one). */
+  branch: number | null
   statusAuto: boolean
   /** Fields filled by the AI (badge) until the user edits them. */
   aiFields: Partial<Record<FormField, true>>
@@ -42,6 +44,7 @@ export const INITIAL_VOICE: VoiceUi = {
 export const INITIAL_SALE: SaleState = {
   items: [],
   form: DEFAULT_SALE_FORM,
+  branch: null,
   statusAuto: true,
   aiFields: {},
   undo: null,
@@ -57,6 +60,7 @@ export type SaleAction =
   | { type: 'delivery'; value: SaleForm['delivery_type'] }
   | { type: 'payment'; value: SaleForm['payment_method'] }
   | { type: 'status'; value: SaleStatus }
+  | { type: 'branch'; value: number | null }
   | { type: 'reset' }
   | { type: 'voice'; patch: VoiceUiPatch }
   | {
@@ -109,6 +113,8 @@ export function saleReducer(state: SaleState, action: SaleAction): SaleState {
         statusAuto: false,
         aiFields: touch(state.aiFields, 'status'),
       }
+    case 'branch':
+      return { ...state, branch: action.value }
     case 'reset':
       return {
         ...INITIAL_SALE,

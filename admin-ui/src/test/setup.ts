@@ -5,6 +5,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { resetDb } from '../mocks/data'
 import { server } from './server'
 
+// jsdom has no WebGL: the maps are replaced by a list of their places (src/test/fakeMap.tsx).
+vi.mock('../components/map/MapCanvas', () => import('./fakeMap'))
+
 // Node's fetch (undici, used by MSW) only understands its own FormData / File / Blob — jsdom's are swapped out.
 const NodeFormData = (await new Response(new URLSearchParams('a=1')).formData()).constructor as typeof FormData
 Object.assign(globalThis, { File: NodeFile, Blob: NodeBlob, FormData: NodeFormData })

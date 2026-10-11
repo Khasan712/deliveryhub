@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useDashboard } from '../../api/queries'
+import type { DashboardData } from '../../api/types'
 import { useAuthed } from '../../auth/session'
+import { Money } from '../../components/badges'
 import {
   IconArrowRight,
   IconCheckCircle,
@@ -10,8 +12,11 @@ import {
   IconNavigation,
   IconOrders,
   IconProducts,
+  IconStore,
   IconTag,
+  IconWallet,
 } from '../../components/icons'
+import { Badge } from '../../components/ui/Badge'
 import { ButtonLink } from '../../components/ui/Button'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -22,6 +27,7 @@ import { cn } from '../../lib/cn'
 import { formatNumber } from '../../lib/format'
 import { SIDEBAR_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { OrdersTable } from '../orders/OrdersTable'
+import { BranchesToday, UnassignedBanner } from './BranchesToday'
 import { DailyBars, StatusDonut } from './DashboardCharts'
 import { MobileHome } from './MobileHome'
 
@@ -31,7 +37,7 @@ export function DashboardPage() {
 
 function DesktopDashboard() {
   const { t, tn } = useI18n()
-  const { user } = useAuthed()
+  const { user, headOffice, dispatch, branchStaff, branch } = useAuthed()
   const { data, isLoading, error, refetch } = useDashboard()
 
   return (
@@ -39,6 +45,15 @@ function DesktopDashboard() {
       <PageHeader
         title={user.first_name ? t('welcome', { name: user.first_name }) : t('dashboard_title')}
         description={t('dashboard_subtitle')}
+        // Branch staff: every number here is their branch's.
+        meta={
+          branch ? (
+            <Badge tone="teal" size="md">
+              <IconStore size={14} className="shrink-0" />
+              {t('branch_of', { name: branch.name })}
+            </Badge>
+          ) : undefined
+        }
       />
 
       {error && !data ? (
@@ -47,86 +62,95 @@ function DesktopDashboard() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <KpiCard
-              loading={isLoading}
-              to="/orders"
-              label={t('total_orders')}
-              value={data?.orders.total}
-              icon={<IconOrders size={22} />}
-              iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"
-              sub={
-                <>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    +{formatNumber(data?.orders.last_7_days)}
-                  </span>{' '}
-                  {t('this_week')}
-                </>
-              }
-            />
-            <KpiCard
-              loading={isLoading}
-              to="/orders?status=ordered"
-              label={t('new_orders')}
-              value={data?.orders.new}
-              icon={<IconClock size={22} />}
-              iconClass="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
-              sub={t('awaiting_processing')}
-              highlight={!!data?.orders.new}
-            />
-            <KpiCard
-              loading={isLoading}
-              to="/clients"
-              label={t('total_clients')}
-              value={data?.clients.total}
-              icon={<IconClients size={22} />}
-              iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
-              sub={
-                <>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    +{formatNumber(data?.clients.new_7_days)}
-                  </span>{' '}
-                  {t('this_week')}
-                </>
-              }
-            />
-            <KpiCard
-              loading={isLoading}
-              to="/products"
-              label={t('total_products')}
-              value={data?.products.total}
-              icon={<IconProducts size={22} />}
-              iconClass="bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"
-              sub={t('in_categories', { count: formatNumber(data?.categories.total) })}
-            />
-          </div>
+          {dispatch && !!data?.unassigned && <UnassignedBanner count={data.unassigned} />}
+          {branchStaff ? (
+            <BranchNumbers data={data} loading={isLoading} />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                <KpiCard
+                  loading={isLoading}
+                  to="/orders"
+                  label={t('total_orders')}
+                  value={data?.orders.total}
+                  icon={<IconOrders size={22} />}
+                  iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"
+                  sub={
+                    <>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        +{formatNumber(data?.orders.last_7_days)}
+                      </span>{' '}
+                      {t('this_week')}
+                    </>
+                  }
+                />
+                <KpiCard
+                  loading={isLoading}
+                  to="/orders?status=ordered"
+                  label={t('new_orders')}
+                  value={data?.orders.new}
+                  icon={<IconClock size={22} />}
+                  iconClass="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
+                  sub={t('awaiting_processing')}
+                  highlight={!!data?.orders.new}
+                />
+                <KpiCard
+                  loading={isLoading}
+                  to="/clients"
+                  label={t('total_clients')}
+                  value={data?.clients.total}
+                  icon={<IconClients size={22} />}
+                  iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
+                  sub={
+                    <>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        +{formatNumber(data?.clients.new_7_days)}
+                      </span>{' '}
+                      {t('this_week')}
+                    </>
+                  }
+                />
+                <KpiCard
+                  loading={isLoading}
+                  to="/products"
+                  label={t('total_products')}
+                  value={data?.products.total}
+                  icon={<IconProducts size={22} />}
+                  iconClass="bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"
+                  sub={t('in_categories', { count: formatNumber(data?.categories.total) })}
+                />
+              </div>
 
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
-            <GradientStat
-              loading={isLoading}
-              to="/orders?status=on_the_way"
-              label={t('status_on_the_way')}
-              value={data?.orders.on_the_way}
-              icon={<IconNavigation size={26} />}
-              className="from-orange-500 to-amber-500 shadow-orange-500/25"
-            />
-            <GradientStat
-              loading={isLoading}
-              to="/orders?status=completed"
-              label={t('status_completed')}
-              value={data?.orders.completed}
-              icon={<IconCheckCircle size={26} />}
-              className="from-emerald-500 to-teal-500 shadow-emerald-500/25"
-            />
-            <GradientStat
-              loading={isLoading}
-              to="/categories"
-              label={t('nav_categories')}
-              value={data?.categories.total}
-              icon={<IconTag size={26} />}
-              className="from-sky-500 to-blue-600 shadow-sky-500/25"
-            />
-          </div>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <GradientStat
+                  loading={isLoading}
+                  to="/orders?status=on_the_way"
+                  label={t('status_on_the_way')}
+                  value={data?.orders.on_the_way}
+                  icon={<IconNavigation size={26} />}
+                  className="from-orange-500 to-amber-500 shadow-orange-500/25"
+                />
+                <GradientStat
+                  loading={isLoading}
+                  to="/orders?status=completed"
+                  label={t('status_completed')}
+                  value={data?.orders.completed}
+                  icon={<IconCheckCircle size={26} />}
+                  className="from-emerald-500 to-teal-500 shadow-emerald-500/25"
+                />
+                <GradientStat
+                  loading={isLoading}
+                  to="/categories"
+                  label={t('nav_categories')}
+                  value={data?.categories.total}
+                  icon={<IconTag size={26} />}
+                  className="from-sky-500 to-blue-600 shadow-sky-500/25"
+                />
+              </div>
+            </>
+          )}
+
+          {headOffice && !!data?.branches?.length && <BranchesToday rows={data.branches} />}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
@@ -186,9 +210,76 @@ function DesktopDashboard() {
   )
 }
 
+/**
+ * Branch staff: the numbers of their branch only (the server scopes them) — today's money and orders, the new ones,
+ * on their way and done. The business-wide ones (customers, products, categories) are the head office's.
+ */
+function BranchNumbers({ data, loading }: { data: DashboardData | undefined; loading: boolean }) {
+  const { t } = useI18n()
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <KpiCard
+          loading={loading}
+          label={t('sales_revenue')}
+          display={<Money value={data?.today.revenue} />}
+          icon={<IconWallet size={22} />}
+          iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
+          sub={t('sales_all_channels')}
+        />
+        <KpiCard
+          loading={loading}
+          to="/orders"
+          label={t('today_orders')}
+          value={data?.today.orders}
+          icon={<IconOrders size={22} />}
+          iconClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"
+          sub={
+            <>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                +{formatNumber(data?.orders.last_7_days)}
+              </span>{' '}
+              {t('this_week')}
+            </>
+          }
+        />
+        <KpiCard
+          loading={loading}
+          to="/orders?status=ordered"
+          label={t('new_orders')}
+          value={data?.orders.new}
+          icon={<IconClock size={22} />}
+          iconClass="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
+          sub={t('awaiting_processing')}
+          highlight={!!data?.orders.new}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <GradientStat
+          loading={loading}
+          to="/orders?status=on_the_way"
+          label={t('status_on_the_way')}
+          value={data?.orders.on_the_way}
+          icon={<IconNavigation size={26} />}
+          className="from-orange-500 to-amber-500 shadow-orange-500/25"
+        />
+        <GradientStat
+          loading={loading}
+          to="/orders?status=completed"
+          label={t('status_completed')}
+          value={data?.orders.completed}
+          icon={<IconCheckCircle size={26} />}
+          className="from-emerald-500 to-teal-500 shadow-emerald-500/25"
+        />
+      </div>
+    </>
+  )
+}
+
 function KpiCard({
   label,
   value,
+  display,
   sub,
   icon,
   iconClass,
@@ -197,19 +288,23 @@ function KpiCard({
   highlight,
 }: {
   label: string
-  value: number | undefined
+  value?: number
+  /** Shown instead of the number (money). */
+  display?: ReactNode
   sub: ReactNode
   icon: ReactNode
   iconClass: string
   loading: boolean
-  to: string
+  /** No link: nothing to open behind the number. */
+  to?: string
   highlight?: boolean
 }) {
   return (
-    <Link
+    <Tile
       to={to}
       className={cn(
-        'group relative overflow-hidden rounded-2xl border border-line bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5 sm:p-5',
+        'group relative overflow-hidden rounded-2xl border border-line bg-card p-4 shadow-card transition-all duration-200 sm:p-5',
+        to && 'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5',
         highlight && 'ring-1 ring-amber-400/40',
       )}
     >
@@ -219,7 +314,9 @@ function KpiCard({
           {loading ? (
             <Skeleton className="mt-2 h-8 w-20" />
           ) : (
-            <p className="mt-1 text-2xl font-bold tracking-tight text-fg tabular sm:text-3xl">{formatNumber(value)}</p>
+            <p className="mt-1 truncate text-2xl font-bold tracking-tight text-fg tabular sm:text-3xl">
+              {display ?? formatNumber(value)}
+            </p>
           )}
         </div>
         <span
@@ -238,7 +335,18 @@ function KpiCard({
           <span className="relative inline-flex size-2.5 rounded-full bg-amber-500" />
         </span>
       )}
+    </Tile>
+  )
+}
+
+/** A link, or the same box without one. */
+function Tile({ to, className, children }: { to?: string; className: string; children: ReactNode }) {
+  return to ? (
+    <Link to={to} className={className}>
+      {children}
     </Link>
+  ) : (
+    <div className={className}>{children}</div>
   )
 }
 
@@ -255,13 +363,14 @@ function GradientStat({
   icon: ReactNode
   className: string
   loading: boolean
-  to: string
+  to?: string
 }) {
   return (
-    <Link
+    <Tile
       to={to}
       className={cn(
-        'group relative overflow-hidden rounded-2xl bg-linear-to-br p-3.5 text-white shadow-lg transition-transform duration-200 hover:-translate-y-0.5 sm:p-5',
+        'group relative overflow-hidden rounded-2xl bg-linear-to-br p-3.5 text-white shadow-lg transition-transform duration-200 sm:p-5',
+        to && 'hover:-translate-y-0.5',
         className,
       )}
     >
@@ -279,6 +388,6 @@ function GradientStat({
           {icon}
         </span>
       </div>
-    </Link>
+    </Tile>
   )
 }

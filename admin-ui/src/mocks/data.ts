@@ -1,5 +1,6 @@
 /* In-memory data of the mock Admin API (tests and `npm run dev:mock`). Deterministic: the same seed every time. */
 import type {
+  Branch,
   Business,
   Category,
   ClientDetail,
@@ -15,12 +16,22 @@ import type {
 } from '../api/types'
 
 export type MockClient = Omit<ClientDetail, 'orders' | 'orders_count'>
+/** An order as the mock keeps it: its branch by id (the API adds its name, the suggestions and the options). */
+export type MockOrder = Omit<OrderDetail, 'branch' | 'branch_options'> & { branch_id: number | null }
+/** A staff user with the id of their branch (the API answers with `{id, name}`). */
+export type MockUser = Omit<StaffUser, 'branch'> & { branch_id: number | null }
+export type MockBranch = Omit<Branch, 'staff_count' | 'staff' | 'today'>
+/** `dispatch` is worked out from the active branches on every answer. */
+export type MockBusiness = Omit<Business, 'dispatch'>
 
 export interface MockDb {
-  business: Business
+  business: MockBusiness
   /** Working hours (`null`: none set — open at any time). */
   hours: Week | null
-  users: StaffUser[]
+  branches: MockBranch[]
+  /** The geocoder behind GET /geo/* is out of reach (503). */
+  geoDown: boolean
+  users: MockUser[]
   passwords: Record<number, string>
   /** Signed-in staff user id (the session cookie of the mock). */
   sessionUserId: number | null
@@ -28,7 +39,7 @@ export interface MockDb {
   units: Unit[]
   products: Product[]
   clients: MockClient[]
-  orders: OrderDetail[]
+  orders: MockOrder[]
   links: TelegramLink[]
   bot: { username: string; alive: boolean } | null
   voice: { gemini: boolean; live: boolean }
@@ -77,18 +88,20 @@ export function createDb(): MockDb {
   const pick = <T>(list: readonly T[]) => list[Math.floor(rand() * list.length)]
   const iso = (time: number) => new Date(time).toISOString()
 
-  const business: Business = {
+  const business: MockBusiness = {
     name: 'Burger House',
     slug: 'food',
     logo: null,
     brand_color: '#ff6b00',
     shop_url: 'http://food.localhost:5173/',
+    // Branches are switched on by `withBranches` (dev:mock does it; tests that need them too).
+    branches_enabled: false,
   }
 
-  const users: StaffUser[] = [
-    { id: 1, phone_number: '+998901234567', first_name: 'Aziz', last_name: 'Karimov', role: 'admin', is_active: true, created_at: iso(now - 120 * DAY) },
-    { id: 2, phone_number: '+998935557788', first_name: 'Dilnoza', last_name: 'Rahimova', role: 'manager', is_active: true, created_at: iso(now - 60 * DAY) },
-    { id: 3, phone_number: '+998977001122', first_name: 'Sardor', last_name: 'Aliyev', role: 'manager', is_active: false, created_at: iso(now - 20 * DAY) },
+  const users: MockUser[] = [
+    { id: 1, phone_number: '+998901234567', first_name: 'Aziz', last_name: 'Karimov', role: 'admin', branch_id: null, is_active: true, created_at: iso(now - 120 * DAY) },
+    { id: 2, phone_number: '+998935557788', first_name: 'Dilnoza', last_name: 'Rahimova', role: 'manager', branch_id: null, is_active: true, created_at: iso(now - 60 * DAY) },
+    { id: 3, phone_number: '+998977001122', first_name: 'Sardor', last_name: 'Aliyev', role: 'manager', branch_id: null, is_active: false, created_at: iso(now - 20 * DAY) },
   ]
 
   const categories: Category[] = [
@@ -170,7 +183,7 @@ export function createDb(): MockDb {
 
   const statuses: OrderStatus[] = ['ordered', 'on_the_way', 'completed', 'completed', 'completed', 'rejected']
   const sources: OrderSource[] = ['web', 'miniapp', 'bot', 'admin']
-  const orders: OrderDetail[] = []
+  const orders: MockOrder[] = []
   for (let index = 0; index < 64; index++) {
     const id = 100 + index
     const created = now - Math.floor((63 - index) * 0.45 * DAY + rand() * 3_600_000)
@@ -214,6 +227,9 @@ export function createDb(): MockDb {
         ? { id: client.id, first_name: client.first_name, last_name: client.last_name, phone: client.phone, tg_nick: client.tg_nick }
         : null,
       items,
+      branch_id: null,
+      assigned_at: null,
+      assigned_by: null,
     })
   }
 
@@ -247,6 +263,8 @@ export function createDb(): MockDb {
   return {
     business,
     hours: defaultWeek(),
+    branches: [],
+    geoDown: false,
     users,
     passwords: { 1: 'admin12345', 2: 'manager12345', 3: 'manager12345' },
     sessionUserId: null,
@@ -271,7 +289,7 @@ export function resetDb(change?: (db: MockDb) => void): MockDb {
   return store.db
 }
 
-export function saleSummary(order: OrderDetail): SaleSummary {
+export function saleSummary(order: MockOrder): SaleSummary {
   return {
     id: order.id,
     name: order.customer_name,

@@ -1,0 +1,104 @@
+/* Name-tagged places on the maps (MapCanvas): branches, the chosen one, the nearest one, the customer. The tiles are
+   light in both themes, so are the tags. */
+
+.dh-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  font-family: var(--font-sans);
+}
+.dh-pin--clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dh-pin__tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 11rem;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.18), 0 4px 10px -2px rgb(15 23 42 / 0.2);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.dh-pin__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dh-pin__detail {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.dh-pin__dot {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #ec5b0b;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.4);
+}
+
+.dh-pin--nearest .dh-pin__dot {
+  background: #059669;
+}
+.dh-pin--nearest .dh-pin__tag {
+  box-shadow: 0 0 0 2px #059669, 0 4px 10px -2px rgb(15 23 42 / 0.2);
+}
+.dh-pin--nearest .dh-pin__detail {
+  color: #047857;
+}
+
+.dh-pin--selected .dh-pin__dot {
+  width: 18px;
+  height: 18px;
+  background: #d2450d;
+  box-shadow: 0 0 0 4px rgb(210 69 13 / 0.25), 0 1px 4px rgb(15 23 42 / 0.4);
+}
+.dh-pin--selected .dh-pin__tag {
+  background: #d2450d;
+  color: #fff;
+}
+.dh-pin--selected .dh-pin__detail {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.dh-pin--muted .dh-pin__dot {
+  background: #94a3b8;
+}
+.dh-pin--muted .dh-pin__tag {
+  color: #64748b;
+  opacity: 0.85;
+}
+
+.dh-pin--below {
+  flex-direction: column-reverse;
+}
+
+.dh-pin--customer .dh-pin__dot {
+  width: 16px;
+  height: 16px;
+  background: #2563eb;
+  box-shadow: 0 0 0 5px rgb(37 99 235 / 0.22), 0 1px 4px rgb(15 23 42 / 0.4);
+}
+.dh-pin--customer .dh-pin__tag {
+  background: #1e293b;
+  color: #fff;
+}
+
+/* The map sources stay readable but take less of a small map. */
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+  line-height: 1.4;
+}

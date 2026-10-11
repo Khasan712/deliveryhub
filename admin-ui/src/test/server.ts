@@ -16,7 +16,7 @@ export interface RecordedRequest {
  * Records the requests to one endpoint and lets them through to the mock API
  * (an MSW resolver that returns nothing falls through to the next handler).
  */
-export function recordRequests(method: 'get' | 'post' | 'patch' | 'delete', path: string): RecordedRequest[] {
+export function recordRequests(method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string): RecordedRequest[] {
   const calls: RecordedRequest[] = []
   server.use(
     http[method](path, async ({ request }) => {

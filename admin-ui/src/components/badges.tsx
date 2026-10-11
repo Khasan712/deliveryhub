@@ -1,8 +1,10 @@
 import type { OrderSource, OrderStatus, Role } from '../api/types'
 import { useI18n } from '../i18n/context'
+import type { DictKey } from '../i18n/dict'
 import { formatMoney } from '../lib/format'
 import { IconSnowflake } from './icons'
 import { Badge } from './ui/Badge'
+import type { Tone } from './ui/styles'
 import { STATUS_KEYS, STATUS_TONES, SOURCE_KEYS, SOURCE_TONES } from './statusMeta'
 
 export function StatusBadge({ status, size = 'sm' }: { status: OrderStatus | string; size?: 'xs' | 'sm' | 'md' }) {
@@ -26,9 +28,16 @@ export function SourceBadge({ source, size = 'xs' }: { source: OrderSource | str
   )
 }
 
+const ROLES: Record<Role, { tone: Tone; label: DictKey }> = {
+  admin: { tone: 'violet', label: 'role_admin' },
+  manager: { tone: 'blue', label: 'role_manager' },
+  branch: { tone: 'teal', label: 'role_branch' },
+}
+
 export function RoleBadge({ role }: { role: Role }) {
   const { t } = useI18n()
-  return <Badge tone={role === 'admin' ? 'violet' : 'blue'}>{role === 'admin' ? t('role_admin') : t('role_manager')}</Badge>
+  const meta = ROLES[role] ?? ROLES.manager
+  return <Badge tone={meta.tone}>{t(meta.label)}</Badge>
 }
 
 export function ActiveBadge({ active }: { active: boolean }) {

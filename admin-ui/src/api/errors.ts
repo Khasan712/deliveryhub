@@ -32,6 +32,10 @@ export function errorMessage(error: unknown, t: T, overrides: Partial<Record<str
       return t('tg_bot_missing')
     case 'product_not_found':
       return t('products_missing')
+    case 'branches_disabled':
+      return t('error_branches_disabled')
+    case 'branch_in_use':
+      return t('branch_in_use_text')
     case 'too_many_requests':
     case 'too_soon': {
       const seconds = error.retryAfter
@@ -58,6 +62,8 @@ const FIELD_CODES: Record<string, DictKey> = {
   unique: 'field_unique',
   does_not_exist: 'field_does_not_exist',
   invalid_image: 'field_image_type',
+  inactive: 'field_branch_inactive',
+  branches_disabled: 'error_branches_disabled',
 }
 
 /** Field error codes from the API (`required`, `unique`, …) → localized text. */

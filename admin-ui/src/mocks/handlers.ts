@@ -2,6 +2,7 @@
    browser). Session cookie, CSRF check, roles, pagination and error codes behave like the contract describes. */
 import { http, HttpResponse, delay } from 'msw'
 import type {
+  Branch,
   Category,
   ClientSummary,
   OrderDetail,
@@ -14,7 +15,19 @@ import type {
   VoiceResult,
   VoiceState,
 } from '../api/types'
-import { QR_SVG, saleSummary, store } from './data'
+import {
+  activeBranches,
+  branchesOn,
+  branchOptions,
+  branchRef,
+  dispatching,
+  isBranchStaff,
+  nearestBranch,
+  orderPoint,
+  reverseGeocode,
+  searchPlaces,
+} from './branches'
+import { QR_SVG, saleSummary, store, type MockBranch, type MockOrder, type MockUser } from './data'
 import { parseWeek, workingHours } from './hours'
 import { localParse } from './voiceParser'
 
@@ -56,13 +69,13 @@ function rotateCsrf(): Record<string, string> {
   return { 'Set-Cookie': `csrftoken=${token}; Path=/` }
 }
 
-function sessionUser(): StaffUser | null {
+function sessionUser(): MockUser | null {
   const db = store.db
   return db.users.find((user) => user.id === db.sessionUserId && user.is_active) ?? null
 }
 
-/** Session + CSRF + role checks; returns the user or the error response. */
-function guard(request: Request, options: { adminOnly?: boolean } = {}): StaffUser | Response {
+/** Session + CSRF + role checks; returns the user or the error response. `headOffice` — branch staff get 403. */
+function guard(request: Request, options: { adminOnly?: boolean; headOffice?: boolean } = {}): MockUser | Response {
   const user = sessionUser()
   if (!user) return fail(401, 'auth_required')
   if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
@@ -70,11 +83,75 @@ function guard(request: Request, options: { adminOnly?: boolean } = {}): StaffUs
     if (!token || token !== readCookie('csrftoken')) return fail(403, 'csrf_failed')
   }
   if (options.adminOnly && user.role !== 'admin') return fail(403, 'forbidden')
+  if (options.headOffice && isBranchStaff(user)) return fail(403, 'forbidden')
   return user
 }
 
-function me(user: StaffUser) {
-  return { user, business: store.db.business }
+/** A staff user as the API shows one: the branch by name, only for the role `branch`. */
+function userOut(user: MockUser): StaffUser {
+  const { branch_id: branchId, ...rest } = user
+  return { ...rest, branch: user.role === 'branch' ? branchRef(branchId) : null }
+}
+
+function me(user: MockUser) {
+  return { user: userOut(user), business: { ...store.db.business, dispatch: dispatching() } }
+}
+
+/** The orders `user` may see: their branch's for branch staff, all for the head office. */
+function visibleOrders(user: MockUser): MockOrder[] {
+  return isBranchStaff(user) ? store.db.orders.filter((order) => order.branch_id === user.branch_id) : store.db.orders
+}
+
+function findOrder(user: MockUser, id: unknown): MockOrder | undefined {
+  return visibleOrders(user).find((item) => item.id === Number(id))
+}
+
+function detail(order: MockOrder, user: MockUser): OrderDetail {
+  const { branch_id: branchId, ...rest } = order
+  return {
+    ...rest,
+    branch: branchRef(branchId),
+    branch_options: branchesOn() && !isBranchStaff(user) ? branchOptions(order) : [],
+  }
+}
+
+/** Branch: its active staff and today's orders (rejected ones not counted) with their money. */
+function branchOut(branch: MockBranch): Branch {
+  const todays = store.db.orders.filter(
+    (order) => order.branch_id === branch.id && order.status !== 'rejected' && new Date(order.created_at).getTime() >= startOfToday(),
+  )
+  const staff = store.db.users
+    .filter((user) => user.branch_id === branch.id && user.role === 'branch' && user.is_active)
+    .sort((a, b) => a.first_name.localeCompare(b.first_name) || a.id - b.id)
+    .map((user) => ({
+      id: user.id,
+      name: `${user.first_name} ${user.last_name}`.trim() || user.phone_number,
+      phone_number: user.phone_number,
+    }))
+  return {
+    ...branch,
+    staff_count: staff.length,
+    staff,
+    today: { orders: todays.length, revenue: todays.reduce((sum, order) => sum + order.total, 0) },
+  }
+}
+
+/** Active first, then by name. */
+function sortedBranches(branches: MockBranch[]): MockBranch[] {
+  return [...branches].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name) || a.id - b.id)
+}
+
+/** The branch a new sale gets: the one chosen, else the only active branch (in dispatch mode it waits). */
+function saleBranch(user: MockUser, chosen: number | null): number | null {
+  if (!branchesOn()) return null
+  if (isBranchStaff(user)) return user.branch_id
+  if (chosen !== null) return chosen
+  const active = activeBranches()
+  return active.length === 1 ? active[0].id : null
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
 }
 
 function paginate<T>(rows: T[], url: URL) {
@@ -93,13 +170,18 @@ function normalizePhone(value: string): string {
   return value.trim()
 }
 
-function summary(order: OrderDetail): OrderSummary {
+function summary(order: MockOrder, user: MockUser): OrderSummary {
   const { id, status, source, created_at, customer_name, phone, total, items_count, client_id } = order
   const { delivery_type, payment_method, address, items } = order
   const lines = items.map(({ name_uz, name_ru, quantity }) => ({ name_uz, name_ru, quantity }))
+  // The head office in dispatch mode: an order without a branch names the nearest active one to its point.
+  const nearest =
+    dispatching() && !isBranchStaff(user) && order.branch_id === null ? nearestBranch(orderPoint(order), activeBranches()) : null
   return {
     id, status, source, created_at, customer_name, phone, total, items_count, client_id,
     delivery_type, payment_method, address, lines,
+    branch: branchRef(order.branch_id),
+    suggested_branch: nearest && { id: nearest.branch.id, name: nearest.branch.name, distance_km: nearest.km },
   }
 }
 
@@ -125,9 +207,9 @@ function startOfToday() {
   return date.getTime()
 }
 
-function salesStats(): SalesStats {
+function salesStats(user: MockUser): SalesStats {
   const today = startOfToday()
-  const todays = store.db.orders.filter((order) => new Date(order.created_at).getTime() >= today)
+  const todays = visibleOrders(user).filter((order) => new Date(order.created_at).getTime() >= today)
   const sales = todays.filter((order) => order.source === 'admin' && order.status !== 'rejected')
   const revenue = sales.reduce((sum, order) => sum + order.total, 0)
   return {
@@ -166,6 +248,25 @@ function toId(value: unknown): number | null | undefined {
   if (value === null || value === '') return null
   const number = Number(value)
   return Number.isInteger(number) ? number : NaN
+}
+
+type UserBody = Partial<Omit<StaffUser, 'branch'>> & { password?: string; branch_id?: number | null }
+
+/**
+ * The branch of a staff user being saved: the role `branch` needs branches on (a new branch user) and an active branch
+ * (a new choice); the head office has none.
+ */
+function userBranch(body: UserBody, target: MockUser | null): { id: number | null } | { error: Record<string, string[]> } {
+  const role = body.role ?? target?.role
+  if (role !== 'branch') return { id: null }
+  const branchId = body.branch_id !== undefined ? body.branch_id : (target?.branch_id ?? null)
+  const newRole = !target || target.role !== role
+  if (newRole && !branchesOn()) return { error: { role: ['branches_disabled'] } }
+  if (branchId === null) return { error: { branch_id: ['required'] } }
+  const branch = store.db.branches.find((item) => item.id === Number(branchId))
+  if (!branch) return { error: { branch_id: ['does_not_exist'] } }
+  if (!branch.is_active && (newRole || branch.id !== target?.branch_id)) return { error: { branch_id: ['inactive'] } }
+  return { id: branch.id }
 }
 
 export const handlers = [
@@ -218,7 +319,11 @@ export const handlers = [
     await wait()
     const user = guard(request)
     if (user instanceof Response) return user
-    const { orders, clients, products, categories } = store.db
+    const { products, categories } = store.db
+    // Branch staff: every number of their branch only.
+    const orders = visibleOrders(user)
+    const clientIds = new Set(orders.map((order) => order.client_id))
+    const clients = isBranchStaff(user) ? store.db.clients.filter((client) => clientIds.has(client.id)) : store.db.clients
     const weekAgo = startOfToday() - 6 * 86_400_000
     const count = (status: OrderStatus) => orders.filter((order) => order.status === status).length
     const daily = Array.from({ length: 7 }, (_, index) => {
@@ -253,7 +358,18 @@ export const handlers = [
           .filter((order) => new Date(order.created_at).getTime() >= startOfToday() && order.status !== 'rejected')
           .reduce((sum, order) => sum + order.total, 0),
       },
-      latest_orders: [...orders].reverse().slice(0, 6).map(summary),
+      latest_orders: [...orders].reverse().slice(0, 6).map((order) => summary(order, user)),
+      branches:
+        branchesOn() && !isBranchStaff(user)
+          ? sortedBranches(store.db.branches)
+              .map(branchOut)
+              .filter((branch) => branch.is_active || branch.today.orders > 0)
+              .map(({ id, name, today }) => ({ id, name, orders: today.orders, revenue: today.revenue }))
+          : [],
+      unassigned:
+        branchesOn() && !isBranchStaff(user)
+          ? orders.filter((order) => order.status === 'ordered' && order.branch_id === null).length
+          : 0,
     })
   }),
 
@@ -285,11 +401,14 @@ export const handlers = [
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
     const source = url.searchParams.get('source')
+    // The head office: a branch id or `none`; branch staff always get their own branch (the parameter is ignored).
+    const branch = isBranchStaff(user) ? null : url.searchParams.get('branch')
     const search = url.searchParams.get('search')?.trim().toLowerCase()
-    const rows = [...store.db.orders]
+    const rows = [...visibleOrders(user)]
       .reverse()
       .filter((order) => !status || order.status === status)
       .filter((order) => !source || order.source === source)
+      .filter((order) => !branch || (branch === 'none' ? order.branch_id === null : String(order.branch_id) === branch))
       .filter(
         (order) =>
           !search ||
@@ -297,7 +416,7 @@ export const handlers = [
           order.customer_name.toLowerCase().includes(search) ||
           order.phone.replace(/\D/g, '').includes(search.replace(/\D/g, '') || '\u0000'),
       )
-      .map(summary)
+      .map((order) => summary(order, user))
     const page = paginate(rows, url)
     return page ? HttpResponse.json(page) : fail(404, 'not_found')
   }),
@@ -306,27 +425,51 @@ export const handlers = [
     await wait()
     const user = guard(request)
     if (user instanceof Response) return user
-    const order = store.db.orders.find((item) => item.id === Number(params.id))
-    return order ? HttpResponse.json(order) : fail(404, 'not_found')
+    // Another branch's order is not found for branch staff.
+    const order = findOrder(user, params.id)
+    return order ? HttpResponse.json(detail(order, user)) : fail(404, 'not_found')
   }),
 
   http.patch(`${API}/orders/:id`, async ({ request, params }) => {
     await wait()
     const user = guard(request)
     if (user instanceof Response) return user
-    const order = store.db.orders.find((item) => item.id === Number(params.id))
+    const order = findOrder(user, params.id)
     if (!order) return fail(404, 'not_found')
     const { status } = (await request.json()) as { status?: string }
     if (!status || !['ordered', 'on_the_way', 'completed', 'rejected'].includes(status)) return validation({ status: ['invalid'] })
     order.status = status as OrderStatus
     order.updated_at = new Date().toISOString()
-    return HttpResponse.json(order)
+    return HttpResponse.json(detail(order, user))
+  }),
+
+  // The head office sends an order to a branch (or moves it to another one), any status.
+  http.put(`${API}/orders/:id/branch`, async ({ request, params }) => {
+    await wait()
+    const user = guard(request, { headOffice: true })
+    if (user instanceof Response) return user
+    if (!branchesOn()) return fail(400, 'branches_disabled')
+    const order = findOrder(user, params.id)
+    if (!order) return fail(404, 'not_found')
+    const body = (await request.json().catch(() => ({}))) as { branch_id?: unknown }
+    if (body.branch_id === undefined || body.branch_id === null) return validation({ branch_id: ['required'] })
+    const branch = store.db.branches.find((item) => item.id === Number(body.branch_id))
+    if (!branch) return validation({ branch_id: ['does_not_exist'] })
+    if (!branch.is_active) return validation({ branch_id: ['inactive'] })
+    const now = new Date().toISOString()
+    Object.assign(order, {
+      branch_id: branch.id,
+      assigned_at: now,
+      assigned_by: { id: user.id, name: `${user.first_name} ${user.last_name}`.trim() },
+      updated_at: now,
+    })
+    return HttpResponse.json(detail(order, user))
   }),
 
   // ---------------------------------------------------------------- clients
   http.get(`${API}/clients`, async ({ request }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const url = new URL(request.url)
     const search = url.searchParams.get('search')?.trim().toLowerCase()
@@ -344,18 +487,21 @@ export const handlers = [
 
   http.get(`${API}/clients/:id`, async ({ request, params }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const id = Number(params.id)
     const client = store.db.clients.find((item) => item.id === id)
     if (!client) return fail(404, 'not_found')
-    const orders = store.db.orders.filter((order) => order.client_id === id).reverse().map(summary)
+    const orders = store.db.orders
+      .filter((order) => order.client_id === id)
+      .reverse()
+      .map((order) => summary(order, user))
     return HttpResponse.json({ ...clientSummary(id), location: client.location, orders })
   }),
 
   http.patch(`${API}/clients/:id`, async ({ request, params }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const client = store.db.clients.find((item) => item.id === Number(params.id))
     if (!client) return fail(404, 'not_found')
@@ -399,7 +545,8 @@ export const handlers = [
   ...(['post', 'patch'] as const).map((method) =>
     http[method](method === 'post' ? `${API}/products` : `${API}/products/:id`, async ({ request, params }) => {
       await wait()
-      const user = guard(request)
+      // Freezing too: one branch must not hide a dish for every branch.
+      const user = guard(request, { headOffice: true })
       if (user instanceof Response) return user
       const db = store.db
       const existing = method === 'patch' ? db.products.find((item) => item.id === Number(params.id)) : undefined
@@ -469,7 +616,7 @@ export const handlers = [
 
   http.delete(`${API}/products/:id`, async ({ request, params }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const before = store.db.products.length
     store.db.products = store.db.products.filter((item) => item.id !== Number(params.id))
@@ -499,7 +646,7 @@ export const handlers = [
 
   http.post(`${API}/categories`, async ({ request }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const body = (await request.json()) as { name_uz?: string; name_ru?: string }
     const errors: Record<string, string[]> = {}
@@ -513,7 +660,7 @@ export const handlers = [
 
   http.patch(`${API}/categories/:id`, async ({ request, params }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const category = store.db.categories.find((item) => item.id === Number(params.id))
     if (!category) return fail(404, 'not_found')
@@ -529,7 +676,7 @@ export const handlers = [
 
   http.delete(`${API}/categories/:id`, async ({ request, params }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const id = Number(params.id)
     if (!store.db.categories.some((item) => item.id === id)) return fail(404, 'not_found')
@@ -548,7 +695,7 @@ export const handlers = [
 
   http.post(`${API}/units`, async ({ request }) => {
     await wait()
-    const user = guard(request)
+    const user = guard(request, { headOffice: true })
     if (user instanceof Response) return user
     const body = (await request.json()) as { name_uz?: string; name_ru?: string }
     const errors: Record<string, string[]> = {}
@@ -567,9 +714,9 @@ export const handlers = [
     if (user instanceof Response) return user
     const url = new URL(request.url)
     const search = url.searchParams.get('search')?.trim().toLowerCase()
-    const rows = store.db.users.filter(
-      (item) => !search || `${item.first_name} ${item.last_name} ${item.phone_number}`.toLowerCase().includes(search),
-    )
+    const rows = store.db.users
+      .filter((item) => !search || `${item.first_name} ${item.last_name} ${item.phone_number}`.toLowerCase().includes(search))
+      .map(userOut)
     const page = paginate(rows, url)
     return page ? HttpResponse.json(page) : fail(404, 'not_found')
   }),
@@ -579,34 +726,37 @@ export const handlers = [
     const user = guard(request, { adminOnly: true })
     if (user instanceof Response) return user
     const target = store.db.users.find((item) => item.id === Number(params.id))
-    return target ? HttpResponse.json(target) : fail(404, 'not_found')
+    return target ? HttpResponse.json(userOut(target)) : fail(404, 'not_found')
   }),
 
   http.post(`${API}/users`, async ({ request }) => {
     await wait()
     const user = guard(request, { adminOnly: true })
     if (user instanceof Response) return user
-    const body = (await request.json()) as Partial<StaffUser> & { password?: string }
+    const body = (await request.json()) as UserBody
     const errors: Record<string, string[]> = {}
     const phone = normalizePhone(body.phone_number ?? '')
     if (!body.phone_number?.trim()) errors.phone_number = ['required']
     else if (store.db.users.some((item) => item.phone_number === phone)) errors.phone_number = ['unique']
     if (!body.password) errors.password = ['required']
     else if (body.password.length < 8) errors.password = ['min_length']
-    if (!body.role || !['admin', 'manager'].includes(body.role)) errors.role = ['invalid']
+    if (!body.role || !['admin', 'manager', 'branch'].includes(body.role)) errors.role = ['invalid']
+    const branch = body.role ? userBranch(body, null) : null
+    if (branch && 'error' in branch) Object.assign(errors, branch.error)
     if (Object.keys(errors).length) return validation(errors)
-    const created: StaffUser = {
+    const created: MockUser = {
       id: store.db.nextId++,
       phone_number: phone,
       first_name: body.first_name ?? '',
       last_name: body.last_name ?? '',
       role: body.role!,
+      branch_id: branch && 'id' in branch ? branch.id : null,
       is_active: body.is_active ?? true,
       created_at: new Date().toISOString(),
     }
     store.db.users.push(created)
     store.db.passwords[created.id] = body.password!
-    return HttpResponse.json(created, { status: 201 })
+    return HttpResponse.json(userOut(created), { status: 201 })
   }),
 
   http.patch(`${API}/users/:id`, async ({ request, params }) => {
@@ -615,11 +765,15 @@ export const handlers = [
     if (user instanceof Response) return user
     const target = store.db.users.find((item) => item.id === Number(params.id))
     if (!target) return fail(404, 'not_found')
-    const body = (await request.json()) as Partial<StaffUser> & { password?: string }
+    const body = (await request.json()) as UserBody
     if (target.id === user.id && ((body.role && body.role !== target.role) || body.is_active === false)) {
       return fail(400, 'cannot_change_self')
     }
     if (body.password !== undefined && body.password.length < 8) return validation({ password: ['min_length'] })
+    if (body.role !== undefined && !['admin', 'manager', 'branch'].includes(body.role)) return validation({ role: ['invalid'] })
+    const branch = body.role !== undefined || body.branch_id !== undefined ? userBranch(body, target) : null
+    if (branch && 'error' in branch) return validation(branch.error)
+    if (branch) target.branch_id = branch.id
     if (body.phone_number !== undefined) {
       const phone = normalizePhone(body.phone_number)
       if (!body.phone_number.trim()) return validation({ phone_number: ['required'] })
@@ -631,7 +785,7 @@ export const handlers = [
     if (body.role) target.role = body.role
     if (body.is_active !== undefined) target.is_active = body.is_active
     if (body.password) store.db.passwords[target.id] = body.password
-    return HttpResponse.json(target)
+    return HttpResponse.json(userOut(target))
   }),
 
   http.delete(`${API}/users/:id`, async ({ request, params }) => {
@@ -650,7 +804,8 @@ export const handlers = [
     await wait()
     const user = guard(request)
     if (user instanceof Response) return user
-    const { products, categories, orders, voice } = store.db
+    const { products, categories, voice } = store.db
+    const orders = visibleOrders(user)
     const used = new Set(products.map((product) => product.category?.id))
     return HttpResponse.json({
       categories: categories.filter((category) => used.has(category.id)).map(({ id, name_uz, name_ru }) => ({ id, name_uz, name_ru })),
@@ -669,8 +824,9 @@ export const handlers = [
         frozen: product.frozen,
       })),
       recent: orders.filter((order) => order.source === 'admin').reverse().slice(0, 8).map(saleSummary),
-      stats: salesStats(),
+      stats: salesStats(user),
       voice,
+      branches: branchesOn() && !isBranchStaff(user) ? activeBranches().map(({ id, name }) => ({ id, name })) : [],
     })
   }),
 
@@ -687,9 +843,19 @@ export const handlers = [
       payment_method?: string
       status?: string
       comment?: string
+      branch_id?: number | null
     }
     const items = body.items ?? []
     if (!items.length) return fail(400, 'empty')
+    // The head office names the branch — it must while orders are dispatched; branch staff always sell for their own.
+    const chosen = isBranchStaff(user) || body.branch_id === undefined || body.branch_id === null ? null : Number(body.branch_id)
+    if (chosen === null && !isBranchStaff(user) && dispatching()) return validation({ branch_id: ['required'] })
+    if (chosen !== null && branchesOn()) {
+      const branch = store.db.branches.find((item) => item.id === chosen)
+      if (!branch) return validation({ branch_id: ['does_not_exist'] })
+      if (!branch.is_active) return validation({ branch_id: ['inactive'] })
+    }
+    const branchId = saleBranch(user, branchesOn() ? chosen : null)
     const missing = items.filter((item) => !store.db.products.some((product) => product.id === item.product_id))
     if (missing.length) return fail(400, 'product_not_found', { detail: missing.map((item) => item.product_id) })
     const delivery = body.delivery_type === 'delivery' ? 'delivery' : 'pickup'
@@ -710,7 +876,7 @@ export const handlers = [
       }
     })
     const now = new Date().toISOString()
-    const order: OrderDetail = {
+    const order: MockOrder = {
       id: store.db.nextId++,
       status,
       source: 'admin',
@@ -730,9 +896,120 @@ export const handlers = [
       created_by: { id: user.id, name: `${user.first_name} ${user.last_name}`.trim() },
       client: null,
       items: lines,
+      branch_id: branchId,
+      assigned_at: branchId === null ? null : now,
+      assigned_by: chosen !== null && branchId !== null ? { id: user.id, name: `${user.first_name} ${user.last_name}`.trim() } : null,
     }
     store.db.orders.push(order)
-    return HttpResponse.json({ order: saleSummary(order), stats: salesStats() }, { status: 201 })
+    return HttpResponse.json({ order: saleSummary(order), stats: salesStats(user) }, { status: 201 })
+  }),
+
+  // ---------------------------------------------------------------- branches
+  http.get(`${API}/branches`, async ({ request }) => {
+    await wait()
+    const user = guard(request)
+    if (user instanceof Response) return user
+    if (!branchesOn()) return fail(403, 'branches_disabled')
+    const rows = isBranchStaff(user) ? store.db.branches.filter((branch) => branch.id === user.branch_id) : store.db.branches
+    return HttpResponse.json(sortedBranches(rows).map(branchOut))
+  }),
+
+  http.get(`${API}/branches/:id`, async ({ request, params }) => {
+    await wait()
+    const user = guard(request)
+    if (user instanceof Response) return user
+    if (!branchesOn()) return fail(403, 'branches_disabled')
+    const branch = store.db.branches.find((item) => item.id === Number(params.id))
+    if (!branch || (isBranchStaff(user) && branch.id !== user.branch_id)) return fail(404, 'not_found')
+    return HttpResponse.json(branchOut(branch))
+  }),
+
+  ...(['post', 'patch'] as const).map((method) =>
+    http[method](method === 'post' ? `${API}/branches` : `${API}/branches/:id`, async ({ request, params }) => {
+      await wait()
+      const user = guard(request, { adminOnly: true })
+      if (user instanceof Response) return user
+      if (!branchesOn()) return fail(403, 'branches_disabled')
+      const existing = method === 'patch' ? store.db.branches.find((item) => item.id === Number(params.id)) : undefined
+      if (method === 'patch' && !existing) return fail(404, 'not_found')
+      const body = (await request.json()) as Record<string, unknown>
+      const errors: Record<string, string[]> = {}
+      const text = (key: string, max: number, required: boolean) => {
+        if (body[key] === undefined && !(required && method === 'post')) return undefined
+        const value = typeof body[key] === 'string' ? body[key].trim() : ''
+        if (required && !value) errors[key] = ['required']
+        else if (value.length > max) errors[key] = ['max_length']
+        return value
+      }
+      const name = text('name', 100, true)
+      const address = text('address', 255, true)
+      const phone = text('phone', 30, false)
+      // The point always comes whole: it is how the nearest branch is found.
+      const hasLat = body.lat !== undefined
+      const hasLng = body.lng !== undefined
+      if (method === 'post' || hasLat || hasLng) {
+        if (!hasLat || body.lat === null) errors.lat = ['required']
+        else if (!isNumber(body.lat) || Math.abs(body.lat) > 90) errors.lat = ['invalid']
+        if (!hasLng || body.lng === null) errors.lng = ['required']
+        else if (!isNumber(body.lng) || Math.abs(body.lng) > 180) errors.lng = ['invalid']
+      }
+      if (body.is_active !== undefined && typeof body.is_active !== 'boolean') errors.is_active = ['invalid']
+      if (Object.keys(errors).length) return validation(errors)
+      const round = (value: unknown) => Math.round(Number(value) * 1e6) / 1e6
+      const branch: MockBranch = {
+        id: existing?.id ?? store.db.nextId++,
+        name: name ?? existing?.name ?? '',
+        address: address ?? existing?.address ?? '',
+        lat: hasLat ? round(body.lat) : (existing?.lat ?? null),
+        lng: hasLng ? round(body.lng) : (existing?.lng ?? null),
+        phone: phone === undefined ? (existing?.phone ?? '') : phone && normalizePhone(phone),
+        is_active: typeof body.is_active === 'boolean' ? body.is_active : (existing?.is_active ?? true),
+        created_at: existing?.created_at ?? new Date().toISOString(),
+      }
+      if (existing) Object.assign(existing, branch)
+      else store.db.branches.push(branch)
+      return HttpResponse.json(branchOut(branch), { status: existing ? 200 : 201 })
+    }),
+  ),
+
+  http.delete(`${API}/branches/:id`, async ({ request, params }) => {
+    await wait()
+    const user = guard(request, { adminOnly: true })
+    if (user instanceof Response) return user
+    if (!branchesOn()) return fail(403, 'branches_disabled')
+    const id = Number(params.id)
+    if (!store.db.branches.some((item) => item.id === id)) return fail(404, 'not_found')
+    // A branch with orders or staff stays (deactivate it instead).
+    if (store.db.orders.some((order) => order.branch_id === id) || store.db.users.some((item) => item.branch_id === id)) {
+      return fail(409, 'branch_in_use')
+    }
+    store.db.branches = store.db.branches.filter((item) => item.id !== id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ---------------------------------------------------------------- map (the branch form)
+  http.get(`${API}/geo/reverse`, async ({ request }) => {
+    await wait()
+    const user = guard(request)
+    if (user instanceof Response) return user
+    if (store.db.geoDown) return fail(503, 'geocoder_unavailable')
+    const url = new URL(request.url)
+    const lat = Number(url.searchParams.get('lat'))
+    const lng = Number(url.searchParams.get('lng'))
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return validation({ lat: ['invalid'] })
+    }
+    return HttpResponse.json({ address: reverseGeocode({ lat, lng }) })
+  }),
+
+  http.get(`${API}/geo/search`, async ({ request }) => {
+    await wait()
+    const user = guard(request)
+    if (user instanceof Response) return user
+    if (store.db.geoDown) return fail(503, 'geocoder_unavailable')
+    const query = new URL(request.url).searchParams.get('q')?.trim() ?? ''
+    if (query.length < 2) return validation({ q: ['min_length'] })
+    return HttpResponse.json({ results: searchPlaces(query) })
   }),
 
   // ---------------------------------------------------------------- voice

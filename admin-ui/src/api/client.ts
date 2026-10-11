@@ -185,6 +185,8 @@ export const api = {
     request<T>('POST', path, { ...options, json }),
   patch: <T>(path: string, json?: unknown, options?: Omit<RequestOptions, 'json'>) =>
     request<T>('PATCH', path, { ...options, json }),
+  put: <T>(path: string, json?: unknown, options?: Omit<RequestOptions, 'json'>) =>
+    request<T>('PUT', path, { ...options, json }),
   delete: <T = void>(path: string, options?: RequestOptions) => request<T>('DELETE', path, options),
   upload: <T>(method: 'POST' | 'PATCH', path: string, form: FormData) => request<T>(method, path, { form }),
 }

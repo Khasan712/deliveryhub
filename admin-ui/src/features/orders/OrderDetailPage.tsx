@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { isApiError } from '../../api/client'
 import { useOrder } from '../../api/queries'
 import { ORDER_STATUSES, type OrderDetail, type OrderStatus } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { Money, SourceBadge, StatusBadge } from '../../components/badges'
 import {
   IconArrowRight,
@@ -16,12 +17,14 @@ import {
   IconMapPin,
   IconMessage,
   IconPhone,
+  IconStore,
   IconTruck,
   IconUser,
   IconXCircle,
 } from '../../components/icons'
 import { STATUS_KEYS, STATUS_TONES } from '../../components/statusMeta'
 import { Avatar } from '../../components/ui/Avatar'
+import { Badge } from '../../components/ui/Badge'
 import { ButtonLink } from '../../components/ui/Button'
 import { Card, CardHeader, InfoRow } from '../../components/ui/Card'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -35,11 +38,14 @@ import { cn } from '../../lib/cn'
 import { formatFullDateTime, formatPhone, fullName, mapLinks, phoneHref } from '../../lib/format'
 import { SIDEBAR_QUERY, useMediaQuery } from '../../lib/useMediaQuery'
 import { useToastOffset } from '../../lib/useToastOffset'
+import { BranchDispatch, SendChoice } from './BranchDispatch'
+import { useBranchChoice, waitsForBranch, type BranchChoice } from './dispatch'
 import { nextStatus, nextStatusLabel, statusSteps, useStatusChange } from './orderFlow'
 
 export function OrderDetailPage() {
   const { id = '' } = useParams()
   const { t, lang } = useI18n()
+  const { branchStaff } = useAuthed()
   const { data: order, isLoading, error, refetch } = useOrder(id)
   const desktop = useMediaQuery(SIDEBAR_QUERY)
 
@@ -73,39 +79,91 @@ export function OrderDetailPage() {
           </>
         }
         meta={
-          <div className="flex items-center gap-2">
+          <div className={cn('flex items-center gap-2', branchStaff && 'flex-wrap')}>
             <StatusBadge status={order.status} size="md" />
             <SourceBadge source={order.source} size="sm" />
+            {/* Branch staff: the order is their branch's. */}
+            {branchStaff && order.branch && (
+              <Badge tone="teal" size="sm">
+                <IconStore size={13} className="shrink-0" />
+                {order.branch.name}
+              </Badge>
+            )}
           </div>
         }
         description={formatFullDateTime(order.created_at, lang)}
       />
 
-      {desktop ? (
+      <OrderLayout order={order} desktop={desktop} />
+    </>
+  )
+}
+
+function OrderLayout({ order, desktop }: { order: OrderDetail; desktop: boolean }) {
+  const { branchesOn, headOffice, dispatch } = useAuthed()
+  const choice = useBranchChoice(order)
+  // A phone in dispatch mode: an order waiting for its branch is sent there from the bottom bar.
+  const barSends = !desktop && headOffice && waitsForBranch(order, dispatch) && choice.options.length > 0
+  // Keyed by the branch: a strip again once the order has moved.
+  const dispatchUi = headOffice && (
+    <BranchDispatch
+      key={order.branch?.id ?? 'none'}
+      order={order}
+      choice={choice}
+      layout={desktop ? 'wide' : 'stacked'}
+      showSend={!barSends}
+    />
+  )
+
+  if (desktop && !branchesOn) {
+    return (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <ItemsCard order={order} />
+          <DeliveryCard order={order} />
+        </div>
+        <div className="space-y-6">
+          <StatusCard order={order} />
+          <CustomerCard order={order} />
+          <ExtraCard order={order} />
+        </div>
+      </div>
+    )
+  }
+
+  if (desktop) {
+    // With branches: the branch (the head office's map and list, or its strip) across the page under its header;
+    // the extra facts go in a row under the delivery, so the two columns end about together.
+    return (
+      <>
+        {dispatchUi}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <ItemsCard order={order} />
             <DeliveryCard order={order} />
+            <ExtraCard order={order} wide />
           </div>
           <div className="space-y-6">
             <StatusCard order={order} />
             <CustomerCard order={order} />
-            <ExtraCard order={order} />
           </div>
         </div>
-      ) : (
-        // A phone: where the order is first, then who to call; the next step waits at the bottom of the screen.
-        <div className="space-y-4 pb-28">
-          <ProgressCard order={order} />
-          <CustomerCard order={order} />
-          <ItemsCard order={order} />
-          <DeliveryCard order={order} />
-          <StatusCard order={order} />
-          <ExtraCard order={order} />
-          <NextStepBar order={order} />
-        </div>
-      )}
-    </>
+      </>
+    )
+  }
+
+  return (
+    // A phone: where the order is first (and its branch), then who to call; the next step waits at the bottom.
+    <div className="space-y-4 pb-28">
+      <ProgressCard order={order} />
+      {dispatchUi}
+      <CustomerCard order={order} />
+      <ItemsCard order={order} />
+      <DeliveryCard order={order} />
+      <StatusCard order={order} />
+      <ExtraCard order={order} />
+      <NextStepBar order={order} choice={barSends ? choice : null} />
+    </div>
   )
 }
 
@@ -162,8 +220,11 @@ function ProgressCard({ order }: { order: OrderDetail }) {
   )
 }
 
-/** The phone's bottom bar: the usual next step in one tap, and rejecting (asks first). */
-function NextStepBar({ order }: { order: OrderDetail }) {
+/**
+ * The phone's bottom bar: the usual next step in one tap, and rejecting (asks first). `choice` — in dispatch mode an
+ * order without a branch: sending it to the branch chosen on the page instead of the next step.
+ */
+function NextStepBar({ order, choice }: { order: OrderDetail; choice: BranchChoice | null }) {
   const { t } = useI18n()
   const { change, pending, busy } = useStatusChange({ ...order, notify: !!order.client })
   const next = nextStatus(order)
@@ -185,11 +246,15 @@ function NextStepBar({ order }: { order: OrderDetail }) {
           {pending === 'rejected' && <Spinner size={16} />}
           {t('reject_order')}
         </button>
-        <button type="button" className={buttonClass('primary', 'lg', 'flex-1')} disabled={busy} onClick={() => void change(next)}>
-          {pending === next && <Spinner size={16} />}
-          {t(label)}
-          <IconArrowRight size={18} />
-        </button>
+        {choice ? (
+          <SendChoice order={order} choice={choice} className="min-w-0 flex-1" />
+        ) : (
+          <button type="button" className={buttonClass('primary', 'lg', 'flex-1')} disabled={busy} onClick={() => void change(next)}>
+            {pending === next && <Spinner size={16} />}
+            {t(label)}
+            <IconArrowRight size={18} />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -391,6 +456,8 @@ function StatusCard({ order }: { order: OrderDetail }) {
 
 function CustomerCard({ order }: { order: OrderDetail }) {
   const { t } = useI18n()
+  // Branch staff see the customer inside the order, not the customers' pages (the head office's).
+  const { branchStaff } = useAuthed()
   const client = order.client
 
   return (
@@ -417,9 +484,11 @@ function CustomerCard({ order }: { order: OrderDetail }) {
                 )}
               </InfoRow>
             </dl>
-            <ButtonLink to={`/clients/${client.id}`} size="sm" variant="secondary" className="mt-5 w-full" icon={<IconUser size={16} />}>
-              {t('view_client_profile')}
-            </ButtonLink>
+            {!branchStaff && (
+              <ButtonLink to={`/clients/${client.id}`} size="sm" variant="secondary" className="mt-5 w-full" icon={<IconUser size={16} />}>
+                {t('view_client_profile')}
+              </ButtonLink>
+            )}
           </>
         ) : order.customer_name || order.phone ? (
           <>
@@ -444,12 +513,15 @@ function CustomerCard({ order }: { order: OrderDetail }) {
   )
 }
 
-function ExtraCard({ order }: { order: OrderDetail }) {
+/** `wide` — in the wide column: the facts side by side. */
+function ExtraCard({ order, wide }: { order: OrderDetail; wide?: boolean }) {
   const { t, lang } = useI18n()
+  const { branchStaff } = useAuthed()
   return (
     <Card>
       <CardHeader title={t('order_extra')} />
-      <dl className="space-y-4 p-5">
+      {/* Four in a row once they fit without wrapping. */}
+      <dl className={wide ? 'grid grid-cols-2 gap-x-6 gap-y-4 p-5 min-[1360px]:grid-cols-4' : 'space-y-4 p-5'}>
         <InfoRow label={t('source')}>
           <SourceBadge source={order.source} size="sm" />
         </InfoRow>
@@ -458,19 +530,20 @@ function ExtraCard({ order }: { order: OrderDetail }) {
             <span className="font-medium">{order.created_by.name}</span>
           </InfoRow>
         )}
-        <InfoRow label={t('created')} icon={<IconCalendar size={16} />}>
+        {/* Side by side the facts keep to their text: no icons. */}
+        <InfoRow label={t('created')} icon={wide ? undefined : <IconCalendar size={16} />}>
           <time dateTime={order.created_at} className="tabular">
             {formatFullDateTime(order.created_at, lang)}
           </time>
         </InfoRow>
         {order.updated_at && (
-          <InfoRow label={t('last_updated')} icon={<IconClock size={16} />}>
+          <InfoRow label={t('last_updated')} icon={wide ? undefined : <IconClock size={16} />}>
             <time dateTime={order.updated_at} className="tabular">
               {formatFullDateTime(order.updated_at, lang)}
             </time>
           </InfoRow>
         )}
-        {order.client_id && !order.client && (
+        {order.client_id && !order.client && !branchStaff && (
           <Link to={`/clients/${order.client_id}`} className="text-[13px] font-semibold text-primary-600 hover:underline">
             {t('view_client_profile')}
           </Link>

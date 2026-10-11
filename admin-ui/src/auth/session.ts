@@ -1,12 +1,39 @@
 import { createContext, use } from 'react'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/endpoints'
-import type { Business, MeResponse, StaffUser } from '../api/types'
+import type { BranchRef, Business, MeResponse, StaffUser } from '../api/types'
 import { STORAGE_KEYS, storage } from '../lib/storage'
 
 export type SessionStatus = 'loading' | 'authenticated' | 'anonymous' | 'error'
 
-export interface SessionValue {
+/** What branches mean for the signed-in staff member (docs/api.md → Branches). */
+export interface BranchAccess {
+  /** Our panel lets the business have branches. Off: everything as before (branch data is kept but ignored). */
+  branchesOn: boolean
+  /** The staff of one branch (the role `branch` with branches on): its orders only, the menu read only, no customers. */
+  branchStaff: boolean
+  /** The head office of a business with branches on (staff without a branch): every order, sends them to branches. */
+  headOffice: boolean
+  /** The head office while 2+ branches are active: delivery orders wait for it to pick their branch. */
+  dispatch: boolean
+  /** The branch of a branch staff member (`null` for everyone else). */
+  branch: BranchRef | null
+}
+
+export function branchAccess(user: StaffUser | null | undefined, business: Business | null | undefined): BranchAccess {
+  const branchesOn = !!business?.branches_enabled
+  // With branches off a `branch` user acts like a manager.
+  const branchStaff = branchesOn && user?.role === 'branch'
+  return {
+    branchesOn,
+    branchStaff,
+    headOffice: branchesOn && !branchStaff,
+    dispatch: branchesOn && !branchStaff && !!business?.dispatch,
+    branch: branchStaff ? (user?.branch ?? null) : null,
+  }
+}
+
+export interface SessionValue extends BranchAccess {
   status: SessionStatus
   user: StaffUser | null
   business: Business | null
@@ -30,11 +57,11 @@ export function useSession(): SessionValue {
   return value
 }
 
-/** Signed-in user and business (inside protected routes). */
-export function useAuthed(): { user: StaffUser; business: Business; isAdmin: boolean } {
-  const { user, business, isAdmin } = useSession()
+/** Signed-in user and business (inside protected routes), with what branches mean for them. */
+export function useAuthed(): BranchAccess & { user: StaffUser; business: Business; isAdmin: boolean } {
+  const { user, business, isAdmin, branchesOn, branchStaff, headOffice, dispatch, branch } = useSession()
   if (!user || !business) throw new Error('useAuthed must be used inside protected routes')
-  return { user, business, isAdmin }
+  return { user, business, isAdmin, branchesOn, branchStaff, headOffice, dispatch, branch }
 }
 
 /** `GET /auth/me`; `null` when not signed in. */

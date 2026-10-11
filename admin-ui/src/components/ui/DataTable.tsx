@@ -12,7 +12,7 @@ export interface Column<T> {
   className?: string
   align?: 'left' | 'right' | 'center'
   /** Hide the column on narrow screens. */
-  hideBelow?: 'sm' | 'md' | 'lg' | 'xl'
+  hideBelow?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   /** Skeleton width while loading. */
   skeleton?: string
 }
@@ -44,6 +44,7 @@ const HIDE: Record<NonNullable<Column<unknown>['hideBelow']>, string> = {
   md: 'hidden md:table-cell',
   lg: 'hidden lg:table-cell',
   xl: 'hidden xl:table-cell',
+  '2xl': 'hidden 2xl:table-cell',
 }
 
 const ALIGN = { left: 'text-left', right: 'text-right', center: 'text-center' }

@@ -94,8 +94,8 @@ export function SessionErrorScreen({ error, onRetry }: { error: unknown; onRetry
   )
 }
 
-/** In-layout "no access" (e.g. staff users page for managers). */
-export function NoAccess() {
+/** In-layout "no access" (e.g. staff users page for managers); `text` says why (default: admins only). */
+export function NoAccess({ text }: { text?: string }) {
   const { t } = useI18n()
   return (
     <div className="flex flex-col items-center px-6 py-20 text-center">
@@ -103,7 +103,7 @@ export function NoAccess() {
         <IconLock size={28} />
       </div>
       <h1 className="text-xl font-semibold text-fg">{t('no_access_title')}</h1>
-      <p className="mt-2 max-w-sm text-sm text-muted">{t('no_access_text')}</p>
+      <p className="mt-2 max-w-sm text-sm text-muted">{text ?? t('no_access_text')}</p>
       <ButtonLink to="/" variant="secondary" className="mt-6">
         {t('go_home')}
       </ButtonLink>

@@ -1,22 +1,28 @@
 import { Link } from 'react-router'
 import type { OrderSummary } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { Money, StatusBadge } from '../../components/badges'
-import { IconBag, IconMapPin, IconPhone } from '../../components/icons'
+import { IconBag, IconMapPin, IconPhone, IconStore } from '../../components/icons'
 import { SOURCE_KEYS } from '../../components/statusMeta'
 import { Spinner } from '../../components/ui/Spinner'
 import { buttonClass } from '../../components/ui/styles'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime, formatPhone, phoneHref } from '../../lib/format'
+import { waitsForBranch } from './dispatch'
 import { nextStatus, nextStatusLabel, useStatusChange } from './orderFlow'
+import { DispatchStrip } from './SendToBranch'
 
 /**
  * An order on a phone: who, what, where and how much at a glance, a call button, and its next step («Yo'lga
- * chiqarish», «Yetkazildi», «Bajarildi») without opening it.
+ * chiqarish», «Yetkazildi», «Bajarildi») without opening it. The head office sees its branch too; in dispatch mode an
+ * order without one is sent to the nearest branch from here instead of moving on.
  */
 export function OrderCard({ order }: { order: OrderSummary }) {
   const { t, name, lang } = useI18n()
+  const { headOffice, dispatch } = useAuthed()
   const delivery = order.delivery_type === 'delivery'
   const what = order.lines.map((line) => `${line.quantity}× ${name(line)}`).join(', ')
+  const waiting = waitsForBranch(order, dispatch)
 
   return (
     <article className="overflow-hidden rounded-2xl border border-line bg-card shadow-card">
@@ -41,7 +47,14 @@ export function OrderCard({ order }: { order: OrderSummary }) {
             <span className="truncate">{delivery ? order.address || t('delivery') : t('pickup')}</span>
           </span>
         )}
+        {headOffice && order.branch && (
+          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-teal-700 dark:text-teal-300">
+            <IconStore size={15} className="shrink-0" />
+            <span className="truncate">{order.branch.name}</span>
+          </span>
+        )}
       </Link>
+      {waiting && <DispatchStrip order={order} />}
       <div className="flex items-center gap-2 border-t border-line py-2.5 pl-4 pr-3">
         <p className="min-w-0 flex-1 leading-tight">
           <Money value={order.total} className="block truncate font-bold text-fg" />
@@ -56,7 +69,7 @@ export function OrderCard({ order }: { order: OrderSummary }) {
             <IconPhone size={19} />
           </a>
         )}
-        <NextStep order={order} />
+        {!waiting && <NextStep order={order} />}
       </div>
     </article>
   )

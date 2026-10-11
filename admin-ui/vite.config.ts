@@ -56,6 +56,8 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: 'es2022',
+    // The map (MapLibre, ~1 MB) is its own chunk, loaded only where a map is shown.
+    chunkSizeWarningLimit: 1100,
     rolldownOptions: {
       output: {
         // Libraries change rarely: keep them apart from the app code so they stay cached across deploys.

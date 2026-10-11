@@ -739,3 +739,37 @@ export function IconLoader(props: IconProps) {
     </Svg>
   )
 }
+
+/** A branch of the business (a shop front). */
+export function IconStore(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+      <path d="M2 7h20" />
+      <path d="M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" />
+    </Svg>
+  )
+}
+
+/** A folded map (the branches on a map). */
+export function IconMap(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14.11 5.45a2 2 0 0 0 1.79 0l3.65-1.83A1 1 0 0 1 21 4.52v12.86a1 1 0 0 1-.55.9l-4.55 2.27a2 2 0 0 1-1.79 0l-4.22-2.11a2 2 0 0 0-1.79 0l-3.65 1.83A1 1 0 0 1 3 19.38V6.52a1 1 0 0 1 .55-.9L8.1 3.35a2 2 0 0 1 1.79 0z" />
+      <path d="M15 5.76v15" />
+      <path d="M9 3.24v15" />
+    </Svg>
+  )
+}
+
+/** Switching a branch off / on. */
+export function IconPower(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 2v10" />
+      <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+    </Svg>
+  )
+}

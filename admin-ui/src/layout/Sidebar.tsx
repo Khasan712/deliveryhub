@@ -6,7 +6,7 @@ import { IconPanelClose, IconPanelOpen } from '../components/icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { useI18n } from '../i18n/context'
 import { cn } from '../lib/cn'
-import { NAV, type NavItem } from './nav'
+import { NAV, navAllows, type NavItem } from './nav'
 
 interface SidebarProps {
   collapsed: boolean
@@ -15,7 +15,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { t } = useI18n()
-  const { isAdmin } = useSession()
+  const session = useSession()
   const newOrders = useNewOrdersCount(true).data ?? 0
 
   return (
@@ -32,7 +32,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
 
       <nav aria-label={t('app_admin_panel')} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {NAV.map((group, index) => {
-          const items = group.items.filter((item) => !item.adminOnly || isAdmin)
+          const items = group.items.filter((item) => navAllows(item, session))
           if (!items.length) return null
           return (
             <div key={group.label} className={cn(index > 0 && 'mt-5')}>

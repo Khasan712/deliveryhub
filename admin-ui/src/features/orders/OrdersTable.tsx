@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { OrderSummary } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { Money, SourceBadge, StatusBadge } from '../../components/badges'
 import { IconOrders } from '../../components/icons'
 import { Avatar } from '../../components/ui/Avatar'
@@ -9,8 +10,9 @@ import { EmptyState } from '../../components/ui/States'
 import { useI18n } from '../../i18n/context'
 import { formatDateTime, formatFullDateTime, formatPhone } from '../../lib/format'
 import { OrderCard } from './OrderCard'
+import { BranchCell } from './SendToBranch'
 
-type ColumnKey = 'id' | 'customer' | 'phone' | 'items' | 'total' | 'status' | 'date'
+type ColumnKey = 'id' | 'customer' | 'phone' | 'items' | 'total' | 'status' | 'branch' | 'date'
 
 interface OrdersTableProps {
   orders: OrderSummary[] | undefined
@@ -41,6 +43,7 @@ export function OrdersTable({
   mobileListClassName = 'space-y-3',
 }: OrdersTableProps) {
   const { t, tn, lang } = useI18n()
+  const { headOffice } = useAuthed()
 
   const columns: Array<Column<OrderSummary> & { key: ColumnKey }> = [
     {
@@ -75,7 +78,8 @@ export function OrdersTable({
     {
       key: 'phone',
       header: t('phone'),
-      hideBelow: 'lg',
+      // The head office's branch column takes its room on all but the widest screens (the phone is on the order).
+      hideBelow: headOffice ? '2xl' : 'lg',
       skeleton: 'w-28',
       cell: (order) => <span className="whitespace-nowrap text-muted tabular">{formatPhone(order.phone) || '—'}</span>,
     },
@@ -100,6 +104,12 @@ export function OrdersTable({
       cell: (order) => <StatusBadge status={order.status} />,
     },
     {
+      key: 'branch',
+      header: t('branch'),
+      skeleton: 'w-28',
+      cell: (order) => <BranchCell order={order} />,
+    },
+    {
       key: 'date',
       header: t('created'),
       hideBelow: 'sm',
@@ -119,7 +129,10 @@ export function OrdersTable({
   return (
     <DataTable
       caption={caption}
-      columns={columns.filter((column) => !hide.includes(column.key))}
+      // The branch column is the head office's (branches on); the number of items gives way to it.
+      columns={columns.filter(
+        (column) => !hide.includes(column.key) && (headOffice ? column.key !== 'items' : column.key !== 'branch'),
+      )}
       rows={orders}
       rowKey={(order) => order.id}
       rowHref={(order) => `/orders/${order.id}`}

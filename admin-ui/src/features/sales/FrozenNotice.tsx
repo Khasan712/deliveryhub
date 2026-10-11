@@ -1,4 +1,5 @@
 import type { SalesProduct } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { IconSnowflake, IconUndo } from '../../components/icons'
 import { Button } from '../../components/ui/Button'
 import { Callout } from '../../components/ui/States'
@@ -7,26 +8,29 @@ import { useFreezeProduct } from '../products/useFreezeProduct'
 
 /**
  * Frozen products in the order being built. Customers cannot order them right now, but staff may still sell them:
- * a calm warning (never a blocker) with a one-tap «Sotuvga qaytarish» per product.
+ * a calm warning (never a blocker) with a one-tap «Sotuvga qaytarish» per product — not for branch staff, who do not
+ * change the menu (one for every branch).
  */
 export function FrozenNotice({ products }: { products: SalesProduct[] }) {
   const { t, name } = useI18n()
   const { setFrozen, isPending } = useFreezeProduct()
+  const { branchStaff } = useAuthed()
 
-  const unfreezeButton = (product: SalesProduct) => (
-    <Button
-      variant="secondary"
-      size="xs"
-      icon={<IconUndo size={14} />}
-      aria-label={`${t('unfreeze')}: ${name(product)}`}
-      aria-disabled={isPending(product.id) || undefined}
-      onClick={() => {
-        if (!isPending(product.id)) setFrozen(product, false)
-      }}
-    >
-      {t('unfreeze')}
-    </Button>
-  )
+  const unfreezeButton = (product: SalesProduct) =>
+    branchStaff ? null : (
+      <Button
+        variant="secondary"
+        size="xs"
+        icon={<IconUndo size={14} />}
+        aria-label={`${t('unfreeze')}: ${name(product)}`}
+        aria-disabled={isPending(product.id) || undefined}
+        onClick={() => {
+          if (!isPending(product.id)) setFrozen(product, false)
+        }}
+      >
+        {t('unfreeze')}
+      </Button>
+    )
 
   // The live region stays in the page, so screen readers announce the warning when it appears.
   return (
@@ -47,7 +51,7 @@ export function FrozenNotice({ products }: { products: SalesProduct[] }) {
                 {t('pos_frozen_one')}: {name(products[0])}
               </p>
               <p className="mt-0.5 text-[13px] leading-snug opacity-90">{t('pos_frozen_text_one')}</p>
-              <div className="mt-2.5">{unfreezeButton(products[0])}</div>
+              {!branchStaff && <div className="mt-2.5">{unfreezeButton(products[0])}</div>}
             </>
           ) : (
             <>

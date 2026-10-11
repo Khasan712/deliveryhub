@@ -1,8 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { errorMessage } from '../../api/errors'
+import { isApiError } from '../../api/client'
+import { errorMessage, fieldErrorMessage } from '../../api/errors'
 import { voiceApi } from '../../api/endpoints'
-import { useCreateSale, useSales } from '../../api/queries'
+import { queryKeys, useCreateSale, useSales } from '../../api/queries'
 import type { SalesProduct, VoiceState } from '../../api/types'
+import { useAuthed } from '../../auth/session'
 import { Money } from '../../components/badges'
 import { useToast } from '../../components/feedback/feedback'
 import { IconCheck, IconChevronDown } from '../../components/icons'
@@ -18,6 +21,7 @@ import { MobileSale, type DoneSale } from './MobileSale'
 import { OrderPanel } from './OrderPanel'
 import { ProductPicker } from './ProductPicker'
 import { RecentSales } from './RecentSales'
+import { SALE_BRANCH_ID } from './SaleBranch'
 import { INITIAL_SALE, saleReducer, type SaleAction, type SaleState } from './saleState'
 import './sales.css'
 import { SalesKpis } from './SalesKpis'
@@ -30,6 +34,8 @@ import { applyVoiceResult, voiceErrorKey, type Snapshot } from './voiceResult'
 export function SalesPage() {
   const { t, tn, lang } = useI18n()
   const toast = useToast()
+  const { branch: ownBranch } = useAuthed()
+  const queryClient = useQueryClient()
   const sales = useSales()
   const create = useCreateSale()
   const { flash, isFlashed } = useFlash()
@@ -37,6 +43,8 @@ export function SalesPage() {
   // Phones and tablets sell in steps (MobileSale); a wide screen has everything side by side.
   const desktop = useMediaQuery(SIDEBAR_QUERY)
   const [done, setDone] = useState<DoneSale | null>(null)
+  // «Filialni tanlang»: while orders are dispatched the head office names the branch of every sale.
+  const [branchError, setBranchError] = useState<string | null>(null)
 
   // The state is mirrored in a ref synchronously: the voice session and keyboard shortcuts read it between renders.
   const [state, setState] = useState<SaleState>(INITIAL_SALE)
@@ -58,9 +66,11 @@ export function SalesPage() {
   const controllerRef = useRef<VoiceController | null>(null)
 
   // Latest values for callbacks that outlive a render (voice session, global shortcuts).
-  const latest = useRef({ t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending, phone: !desktop })
+  const branches = sales.data?.branches
+  const values = { t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending, phone: !desktop }
+  const latest = useRef({ ...values, branches, ownBranch })
   useEffect(() => {
-    latest.current = { t, lang, byId, voice: sales.data?.voice, flash, creating: create.isPending, phone: !desktop }
+    latest.current = { ...values, branches, ownBranch }
   })
 
   const understand = useCallback(
@@ -147,7 +157,25 @@ export function SalesPage() {
     const controller = controllerRef.current
     if (controller?.phase === 'listening') void controller.stop(true)
     dispatch({ type: 'reset' })
+    setBranchError(null)
   }, [dispatch])
+
+  const chooseBranch = useCallback(
+    (id: number) => {
+      dispatch({ type: 'branch', value: id })
+      setBranchError(null)
+    },
+    [dispatch],
+  )
+
+  /** The branch chips of the sale, in view and focused (their error says what is missing). */
+  const showBranchChoice = useCallback(() => {
+    requestAnimationFrame(() => {
+      const first = document.getElementById(SALE_BRANCH_ID)
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first?.focus({ preventScroll: true })
+    })
+  }, [])
 
   const createOrder = useCallback(() => {
     if (latest.current.creating) return
@@ -161,24 +189,46 @@ export function SalesPage() {
     }
     const controller = controllerRef.current
     if (controller?.phase === 'listening') void controller.stop(true)
+    // While orders are dispatched (2+ active branches) the head office names the branch of every sale; with one
+    // active branch, or for branch staff (their own), the sale gets it by itself.
+    const choices = latest.current.branches ?? []
+    const chosen = choices.find((item) => item.id === current.branch) ?? null
+    if (choices.length >= 2 && !chosen) {
+      setBranchError(translate('user_branch_required'))
+      showBranchChoice()
+      return
+    }
+    const branch = chosen ? { branch_id: chosen.id } : {}
+    const branchName = chosen?.name ?? (choices.length === 1 ? choices[0].name : latest.current.ownBranch?.name) ?? null
     create.mutate(
-      { items, ...current.form },
+      { items, ...current.form, ...branch },
       {
         onSuccess: (data) => {
           latest.current.flash(`sale-${data.order.id}`)
           // A phone shows a whole screen for it; a wide screen a toast beside the next sale.
-          if (latest.current.phone) setDone({ order: data.order, lines: sold, form: current.form })
+          if (latest.current.phone) setDone({ order: data.order, lines: sold, form: current.form, branch: branchName })
           else {
             toast.success(`${translate('sale_created')} · #${data.order.id}`, {
               action: { label: translate('open'), to: `/orders/${data.order.id}` },
             })
           }
           dispatch({ type: 'reset' })
+          setBranchError(null)
         },
-        onError: (error) => toast.error(errorMessage(error, translate, { empty: 'add_items_first' })),
+        onError: (error) => {
+          // The branch is missing, or was stopped meanwhile (the choice is refreshed).
+          const code = isApiError(error, 'validation') ? error.fields.branch_id?.[0] : undefined
+          if (code) {
+            setBranchError(code === 'required' ? translate('user_branch_required') : fieldErrorMessage(code, translate))
+            void queryClient.invalidateQueries({ queryKey: queryKeys.sales })
+            showBranchChoice()
+            return
+          }
+          toast.error(errorMessage(error, translate, { empty: 'add_items_first' }))
+        },
       },
     )
-  }, [create, dispatch, toast])
+  }, [create, dispatch, toast, queryClient, showBranchChoice])
 
   // Keyboard: Space — start/stop, Esc — cancel, "/" — search, Ctrl/⌘+Enter — create the order.
   const shortcuts = useRef({ createOrder })
@@ -302,6 +352,8 @@ export function SalesPage() {
           const controller = controllerRef.current
           if (controller?.phase === 'listening') void controller.stop(true)
         }}
+        onBranch={chooseBranch}
+        branchError={branchError}
       />
     )
   }
@@ -335,6 +387,10 @@ export function SalesPage() {
               onCreate={createOrder}
               onReset={reset}
               creating={create.isPending}
+              branches={data.branches ?? []}
+              ownBranch={ownBranch?.name ?? null}
+              onBranch={chooseBranch}
+              branchError={branchError}
             />
           </div>
         </div>

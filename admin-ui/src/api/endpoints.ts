@@ -1,6 +1,8 @@
 /* Admin API endpoints (docs/api.md → Admin API). */
 import { api, ensureCsrf, request } from './client'
 import type {
+  Branch,
+  BranchInput,
   Category,
   ClientDetail,
   ClientSummary,
@@ -13,8 +15,10 @@ import type {
   OrderSummary,
   OrdersQuery,
   Paginated,
+  Place,
   Product,
   ProductsQuery,
+  SaleCreate,
   SaleCreateResponse,
   SalesData,
   StaffUser,
@@ -26,8 +30,6 @@ import type {
   VoiceParseResponse,
   VoiceState,
   VoiceToken,
-  CartItem,
-  SaleForm,
   Week,
   WorkingHours,
 } from './types'
@@ -59,6 +61,27 @@ export const ordersApi = {
   list: (query: OrdersQuery) => api.get<Paginated<OrderSummary>>('/orders', { ...query }),
   get: (id: number | string) => api.get<OrderDetail>(`/orders/${id}`),
   setStatus: (id: number | string, status: OrderStatus) => api.patch<OrderDetail>(`/orders/${id}`, { status }),
+  /** The head office sends the order to a branch (or moves it to another one); the staff bot tells that branch. */
+  setBranch: (id: number | string, branchId: number) =>
+    api.put<OrderDetail>(`/orders/${id}/branch`, { branch_id: branchId }),
+}
+
+/** Branches (only with branches on — `403 branches_disabled` otherwise); changes — the admin role. */
+export const branchesApi = {
+  list: () => api.get<Branch[]>('/branches'),
+  get: (id: number | string) => api.get<Branch>(`/branches/${id}`),
+  create: (body: BranchInput) => api.post<Branch>('/branches', body),
+  update: (id: number | string, body: Partial<BranchInput>) => api.patch<Branch>(`/branches/${id}`, body),
+  /** `409 branch_in_use` while it has orders or staff (deactivate it instead). */
+  remove: (id: number | string) => api.delete(`/branches/${id}`),
+}
+
+/** Addresses ⇄ points for the branch form's map (a Nominatim server behind our API). */
+export const geoApi = {
+  reverse: (lat: number, lng: number, lang: 'uz' | 'ru', signal?: AbortSignal) =>
+    request<{ address: string }>('GET', '/geo/reverse', { query: { lat, lng, lang }, signal }),
+  search: (query: string, lang: 'uz' | 'ru', signal?: AbortSignal) =>
+    request<{ results: Place[] }>('GET', '/geo/search', { query: { q: query, lang }, signal }),
 }
 
 export const clientsApi = {
@@ -107,7 +130,7 @@ export const usersApi = {
 
 export const salesApi = {
   get: () => api.get<SalesData>('/sales'),
-  create: (body: { items: CartItem[] } & SaleForm) => api.post<SaleCreateResponse>('/sales', body),
+  create: (body: SaleCreate) => api.post<SaleCreateResponse>('/sales', body),
 }
 
 /** `lang` is the language of the AI `reply`. */

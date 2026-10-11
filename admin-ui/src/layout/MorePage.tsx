@@ -13,14 +13,15 @@ import { cn } from '../lib/cn'
 import { formatPhone, fullName } from '../lib/format'
 import { SIDEBAR_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { useTheme } from '../theme/theme'
-import { NAV, TAB_PATHS } from './nav'
+import { NAV, navAllows, tabPaths } from './nav'
 
 /** «Yana» of the phone's bottom menu: the side menu's other pages, the language and the theme, signing out. */
 export function MorePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const desktop = useMediaQuery(SIDEBAR_QUERY)
-  const { user, business, isAdmin } = useAuthed()
+  const access = useAuthed()
+  const { user, business, branch } = access
   const { logout } = useSession()
   const { theme, toggleTheme } = useTheme()
   const hours = useWorkingHours().data
@@ -28,9 +29,10 @@ export function MorePage() {
   // A wide screen has all of it in the side menu and the header.
   if (desktop) return <Navigate to="/" replace />
 
+  const tabs = tabPaths(access.branchStaff)
   const groups = NAV.map((group) => ({
     label: group.label,
-    items: group.items.filter((item) => !TAB_PATHS.includes(item.to) && (!item.adminOnly || isAdmin)),
+    items: group.items.filter((item) => !tabs.includes(item.to) && navAllows(item, access)),
   })).filter((group) => group.items.length > 0)
 
   return (
@@ -41,7 +43,10 @@ export function MorePage() {
           <Avatar name={user.first_name || user.phone_number} secondary={user.last_name} size="lg" />
           <div className="min-w-0">
             <p className="truncate font-semibold text-fg">{fullName(user.first_name, user.last_name) || formatPhone(user.phone_number)}</p>
-            <p className="truncate text-[13px] text-muted">{business.name}</p>
+            <p className="truncate text-[13px] text-muted">
+              {business.name}
+              {branch && ` · ${t('branch_of', { name: branch.name })}`}
+            </p>
             <div className="mt-1.5">
               <RoleBadge role={user.role} />
             </div>

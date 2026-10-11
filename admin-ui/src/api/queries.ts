@@ -7,6 +7,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import {
+  branchesApi,
   businessApi,
   categoriesApi,
   clientsApi,
@@ -19,6 +20,7 @@ import {
   usersApi,
 } from './endpoints'
 import type {
+  BranchInput,
   ClientUpdate,
   NamePair,
   OrderDetail,
@@ -40,6 +42,7 @@ export const queryKeys = {
   orders: ['orders'] as const,
   orderList: (query: OrdersQuery) => ['orders', 'list', query] as const,
   newOrdersCount: ['orders', 'new-count'] as const,
+  unassignedCount: ['orders', 'unassigned-count'] as const,
   order: (id: string | number) => ['orders', 'detail', String(id)] as const,
   clients: ['clients'] as const,
   clientList: (query: object) => ['clients', 'list', query] as const,
@@ -58,6 +61,9 @@ export const queryKeys = {
   user: (id: string | number) => ['users', 'detail', String(id)] as const,
   sales: ['sales'] as const,
   telegram: ['telegram'] as const,
+  branches: ['branches'] as const,
+  branchList: ['branches', 'list'] as const,
+  branch: (id: string | number) => ['branches', 'detail', String(id)] as const,
 }
 
 export const PAGE_SIZE = 20
@@ -125,7 +131,43 @@ export function useUpdateOrderStatus(id: string | number) {
       void client.invalidateQueries({ queryKey: queryKeys.orders, refetchType: 'none' })
       void client.invalidateQueries({ queryKey: queryKeys.dashboard })
       void client.invalidateQueries({ queryKey: queryKeys.newOrdersCount })
+      void client.invalidateQueries({ queryKey: queryKeys.unassignedCount })
       if (order.client?.id) void client.invalidateQueries({ queryKey: queryKeys.client(order.client.id) })
+    },
+  })
+}
+
+/** Orders waiting for the head office to send them to a branch (dispatch mode) — the «Filial tanlanmagan» shortcut. */
+export function useUnassignedCount(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.unassignedCount,
+    queryFn: () => ordersApi.list({ status: 'ordered', branch: 'none', page: 1, page_size: 1 }),
+    select: (data) => data.count,
+    refetchInterval: 30_000,
+    enabled,
+  })
+}
+
+/** Sends an order to a branch (or moves it to another one): its page and every list show the branch at once. */
+export function useSetOrderBranch(id: string | number) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (branchId: number) => ordersApi.setBranch(id, branchId),
+    onSuccess: (order: OrderDetail) => {
+      client.setQueryData(queryKeys.order(id), order)
+      client.setQueriesData<Paginated<OrderSummary>>({ queryKey: [...queryKeys.orders, 'list'] }, (data) =>
+        data && {
+          ...data,
+          results: data.results.map((row) =>
+            row.id === order.id ? { ...row, branch: order.branch, suggested_branch: null } : row,
+          ),
+        },
+      )
+      // A list filtered by branch keeps the row (now with its branch) until it refreshes; the counts follow at once.
+      void client.invalidateQueries({ queryKey: queryKeys.orders, refetchType: 'none' })
+      void client.invalidateQueries({ queryKey: queryKeys.unassignedCount })
+      void client.invalidateQueries({ queryKey: queryKeys.dashboard })
+      void client.invalidateQueries({ queryKey: queryKeys.branches })
     },
   })
 }
@@ -323,6 +365,8 @@ export function useSaveUser(id?: string | number) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.users })
       void client.invalidateQueries({ queryKey: queryKeys.telegram })
+      // A branch's staff count.
+      void client.invalidateQueries({ queryKey: queryKeys.branches })
     },
   })
 }
@@ -334,8 +378,54 @@ export function useDeleteUser() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.users })
       void client.invalidateQueries({ queryKey: queryKeys.telegram })
+      void client.invalidateQueries({ queryKey: queryKeys.branches })
     },
   })
+}
+
+// ------------------------------------------------------------------ branches
+/** The branches (not paginated). Only with branches on — the API answers 403 otherwise. */
+export function useBranches(enabled = true) {
+  return useQuery({ queryKey: queryKeys.branchList, queryFn: branchesApi.list, enabled, staleTime: 30_000 })
+}
+
+export function useBranch(id: string | number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.branch(id ?? 'new'),
+    queryFn: () => branchesApi.get(id as string | number),
+    enabled: id !== undefined,
+  })
+}
+
+/**
+ * After a branch changes: the session too (`business.dispatch` follows the number of active branches), the orders
+ * (their branch names, the suggestions), the dashboard, the point of sale's branches and the staff list.
+ */
+function useBranchInvalidation() {
+  const client = useQueryClient()
+  return () => {
+    void client.invalidateQueries({ queryKey: queryKeys.branches })
+    void client.invalidateQueries({ queryKey: queryKeys.me })
+    void client.invalidateQueries({ queryKey: queryKeys.orders })
+    void client.invalidateQueries({ queryKey: queryKeys.dashboard })
+    void client.invalidateQueries({ queryKey: queryKeys.sales })
+    void client.invalidateQueries({ queryKey: queryKeys.users })
+  }
+}
+
+/** Creates (no `id`) or changes a branch — also its active state. */
+export function useSaveBranch() {
+  const invalidate = useBranchInvalidation()
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number | string; body: Partial<BranchInput> }) =>
+      id === undefined ? branchesApi.create(body as BranchInput) : branchesApi.update(id, body),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteBranch() {
+  const invalidate = useBranchInvalidation()
+  return useMutation({ mutationFn: (id: number) => branchesApi.remove(id), onSuccess: invalidate })
 }
 
 // ------------------------------------------------------------------ sales
@@ -353,6 +443,7 @@ export function useCreateSale() {
       )
       void client.invalidateQueries({ queryKey: queryKeys.orders })
       void client.invalidateQueries({ queryKey: queryKeys.dashboard })
+      void client.invalidateQueries({ queryKey: queryKeys.branches })
     },
   })
 }

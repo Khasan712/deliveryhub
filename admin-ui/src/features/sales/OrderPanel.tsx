@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react'
-import { SALE_STATUSES, type SaleForm, type SaleStatus } from '../../api/types'
+import { SALE_STATUSES, type BranchRef, type SaleForm, type SaleStatus } from '../../api/types'
 import { FrozenBadge, Money } from '../../components/badges'
 import { IconBag, IconCard, IconCart, IconCash, IconCheck, IconMinus, IconPlus, IconTrash, IconTruck } from '../../components/icons'
 import { STATUS_KEYS } from '../../components/statusMeta'
@@ -11,6 +11,7 @@ import { cn } from '../../lib/cn'
 import { ProductThumb } from '../products/ProductThumb'
 import type { CartLine } from './cart'
 import { FrozenNotice } from './FrozenNotice'
+import { SaleBranch } from './SaleBranch'
 import type { SaleAction, SaleState } from './saleState'
 import type { FormField } from './voiceResult'
 
@@ -24,9 +25,30 @@ interface OrderPanelProps {
   onCreate: () => void
   onReset: () => void
   creating: boolean
+  /** The head office with branches on: the branches the sale can be for. */
+  branches: BranchRef[]
+  /** Branch staff: the branch every sale of theirs is for. */
+  ownBranch: string | null
+  onBranch: (id: number) => void
+  /** «Filialni tanlang»: a sale in dispatch mode without its branch. */
+  branchError: string | null
 }
 
-export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, onCreate, onReset, creating }: OrderPanelProps) {
+export function OrderPanel({
+  state,
+  lines,
+  count,
+  total,
+  dispatch,
+  isFlashed,
+  onCreate,
+  onReset,
+  creating,
+  branches,
+  ownBranch,
+  onBranch,
+  branchError,
+}: OrderPanelProps) {
   const { t, tn, name } = useI18n()
   const { form, aiFields } = state
   const badge = (field: FormField) => (aiFields[field] ? <AiBadge /> : null)
@@ -103,6 +125,13 @@ export function OrderPanel({ state, lines, count, total, dispatch, isFlashed, on
       <FrozenNotice products={frozen} />
 
       <div className="@container space-y-4 border-t border-line px-5 py-4">
+        <SaleBranch
+          branches={branches}
+          ownBranch={ownBranch}
+          value={state.branch}
+          onChange={onBranch}
+          error={branchError}
+        />
         <p className="text-xs font-semibold uppercase tracking-wider text-faint">{t('customer_optional')}</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={t('customer_name')} labelBadge={badge('customer_name')}>
