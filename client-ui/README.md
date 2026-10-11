@@ -52,15 +52,18 @@ business. React 19 · Vite 8 · TypeScript 6 (strict) · React Router 7 · TanSt
   street/landmark and the address under the pin through `GET /geo/*`; "my location": Telegram `LocationManager`
   inside Telegram, browser geolocation elsewhere; in Telegram the MainButton picks the place) and the address text
   (an empty one takes the map's address, a typed one stays and the map's is offered with one tap). Pickup: the
-  business's address with a map link. Name, phone (`+998` mask, "share my Telegram number" in the Mini App),
-  cash/card, comment.
+  business's address with a map link — a business with branches (`business.branches`): its only branch, or with 2+
+  «Qaysi filialdan olib ketasiz?» (name, address, map link; the nearest to the customer's last known point first,
+  with straight-line km; required, `branch_id`, remembered with the form; delivery sends none). Name, phone (`+998`
+  mask, "share my Telegram number" in the Mini App), cash/card, comment.
   Client-side validation, server `validation` errors mapped to fields, `min_order`, `product_not_found` (removed
   from the cart), `401` (sign-in again). Contact details are remembered for the next order.
 - Sign-in: automatic in Telegram (`initData`); on the website phone + SMS code (resend timer, attempts left,
   `debug_code` shown in development) or "Telegram orqali kirish" (deep link + polling every 2 s). A new account is
   asked for its name. Token in localStorage per host; any `401` signs out.
 - Orders: active orders and history, order page with a live tracker (delivery: accepted → on the way → delivered;
-  pickup: accepted → handed over; rejected banner with a call button), polling while active, reorder.
+  pickup: accepted → handed over; rejected banner with a call button), polling while active, reorder. The order's
+  branch: where a pickup is collected (instead of the business address), «Filial» for a delivery.
 - Profile: name, language (uz/ru, saved on the account), theme (auto/light/dark on the website), support phone.
 - Telegram Mini App: `ready`/`expand`, Telegram theme → CSS variables, MainButton for the primary action (cart,
   checkout, add to cart, reorder), BackButton for sheets and screens, haptics, safe areas, header/background colours.

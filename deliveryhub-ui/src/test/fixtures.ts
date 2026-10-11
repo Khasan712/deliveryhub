@@ -31,6 +31,8 @@ export function makeBusiness(overrides: Partial<BusinessDetail> = {}): BusinessD
     owner: { name: 'Aziz', phone: '+998901112233' },
     platform_bot: { username: 'deliveryhub_bot' },
     missing_roles: ['admin'],
+    branches_enabled: false,
+    branches: { total: 0, active: 0 },
     ...overrides,
   }
 }

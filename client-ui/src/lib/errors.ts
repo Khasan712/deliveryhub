@@ -24,6 +24,10 @@ export function errorMessageKey(error: unknown): MessageKey {
 /** Field error codes of `{"error": "validation", "fields": {...}}` → dictionary keys. */
 export function fieldErrorKey(field: string, codes: string[] | string | undefined): MessageKey {
   const code = Array.isArray(codes) ? codes[0] : codes
+  // A pickup from a business with 2+ branches: none chosen, or one that no longer takes orders.
+  if (field === 'branch_id') {
+    return code === undefined || code === 'required' || code === 'blank' || code === 'null' ? 'branchRequired' : 'branchUnavailable'
+  }
   if (code === 'required' || code === 'blank' || code === 'null') return 'required'
   if (code === 'max_length') return 'tooLong'
   if (field === 'phone') return 'invalidPhone'

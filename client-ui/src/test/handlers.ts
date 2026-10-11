@@ -3,7 +3,7 @@
  * exercise real request/response shapes (including error bodies).
  */
 import { http, HttpResponse, type JsonBodyType } from 'msw'
-import type { Business, Category, Client, NewOrder, Order, Place, Product, Shift } from '../api/types'
+import type { Branch, Business, Category, Client, NewOrder, Order, Place, Product, Shift } from '../api/types'
 import { openStatus } from '../lib/hours'
 import * as fixtures from './fixtures'
 
@@ -62,6 +62,8 @@ interface Db {
   frozen: Set<number>
   /** Working hours set by a test (undefined: those of the data). */
   week?: (Shift | null)[] | null
+  /** The active branches set by a test (undefined: those of the data). */
+  branches?: Branch[]
   requests: LoggedRequest[]
   nextOrderId: number
 }
@@ -77,6 +79,7 @@ function createDb(data: MockData): Db {
     frozen: new Set(),
     // Set explicitly: resetDb() assigns over the shared object, so a key left out would keep a test's value.
     week: undefined,
+    branches: undefined,
     requests: [],
     nextOrderId: 200,
   }
@@ -125,11 +128,12 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
     const status = openStatus(hours)
     return { ...hours, open: status?.open ?? true, opens_at: null, closes_at: null }
   }
+  const activeBranches = () => db.branches ?? business.branches ?? []
   return [
     http.get(`${API}/shop`, async ({ request }) => {
       await log(db, request)
       return HttpResponse.json({
-        business: { ...business, min_order: db.minOrder, working_hours: workingHours() },
+        business: { ...business, min_order: db.minOrder, working_hours: workingHours(), branches: activeBranches() },
         bot_username: 'burger_house_bot',
         categories,
         products: products(),
@@ -253,6 +257,13 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
       if (!body.name?.trim()) fields.name = ['required']
       if (!/^\+998\d{9}$/.test(body.phone ?? '')) fields.phone = ['invalid']
       if (body.delivery_type === 'delivery' && !body.address && body.lat === null) fields.address = ['required']
+      // Like the backend: pickup with 2+ branches names one; with 1 it is that one (delivery too); else none.
+      const branches = activeBranches()
+      let branch: Branch | null = branches.length === 1 ? branches[0]! : null
+      if (body.delivery_type === 'pickup' && branches.length > 1) {
+        branch = branches.find((each) => each.id === body.branch_id) ?? null
+        if (!branch) fields.branch_id = [body.branch_id == null ? 'required' : 'invalid']
+      }
       if (Object.keys(fields).length) return error(400, 'validation', { fields })
       const items = body.items.map((item) => {
         const product = all.find((candidate) => candidate.id === item.product_id)!
@@ -284,6 +295,7 @@ export function createHandlers(data: MockData, state: Db = createDb(data)) {
         delivery_type: body.delivery_type,
         payment_method: body.payment_method,
         comment: body.comment,
+        branch: branch && { name: branch.name, address: branch.address, lat: branch.lat, lng: branch.lng },
       }
       db.orders = [order, ...db.orders]
       return HttpResponse.json({ order }, { status: 201 })

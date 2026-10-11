@@ -15,7 +15,7 @@ import type {
   BusinessCreateInput,
   BusinessDetail,
   BusinessList,
-  BusinessProfilePatch,
+  BusinessPatch,
   BusinessStatus,
   Landing,
   LeadCounts,
@@ -177,7 +177,7 @@ function useStoreBusiness() {
 export function useUpdateBusiness(slug: string) {
   const store = useStoreBusiness()
   return useMutation({
-    mutationFn: ({ patch, logo }: { patch: BusinessProfilePatch; logo: File | null }) =>
+    mutationFn: ({ patch, logo }: { patch: BusinessPatch; logo: File | null }) =>
       businessesApi.update(slug, patch, logo),
     onSuccess: store,
   })

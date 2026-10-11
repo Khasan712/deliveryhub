@@ -3,7 +3,9 @@
 Our platform panel (`deliveryhub.<domain>`): sign in, see all businesses, open a new one (shop, admin panel, owner
 account, its place on the map) and manage it — status, profile, location, owner password and both Telegram bots
 (two-tap setup link with QR, or a @BotFather token), and its working hours — read-only here, the business sets
-them in its admin panel. Uzbek UI. The place of a business is picked on a map (MapLibre
+them in its admin panel. **Filiallar**: a switch lets a business open branches (`branches_enabled`; its owner adds
+them in the admin panel), with their count and a link there; turning it off while branches exist asks first (they
+are kept; orders are no longer split); the list marks such businesses. Uzbek UI. The place of a business is picked on a map (MapLibre
 GL + OpenFreeMap tiles, loaded only on those pages): a click or a dragged pin, a search (an address through
 `GET /geo/search`, or coordinates / a Yandex or Google Maps link pasted in); the address fills in from the point
 (`GET /geo/reverse`) and can be edited — customers see it for pickup. **Mobil ilova** (`/mobile`): which business
@@ -54,7 +56,7 @@ Fallbacks: `VITE_PLATFORM_DOMAIN` at build time, the links of existing businesse
 | `/login?next=…` | phone + password; any `401` leads here and back to `next` afterwards |
 | `/` | totals, search/filter, business cards (status, address, numbers, bots with alive dot) |
 | `/new` | new business: address from the name (Uzbek Cyrillic → Latin), live availability, brand color, logo, owner |
-| `/b/<slug>` | header actions, numbers, bots (setup link + QR, token, disconnect), addresses, profile, owner password, delete (a suspended business; its slug typed to confirm) |
+| `/b/<slug>` | header actions, numbers, bots (setup link + QR, token, disconnect), addresses, profile, branches permission, owner password, delete (a suspended business; its slug typed to confirm) |
 | `/leads?status=…&page=…` | applications from the landing page: status tabs with counts (new ones by default), phone, language, message, status buttons («Bog'lanildi» at hand for a new one), our note; 20 a page; the «Sayt» card above them picks the landing's sample shop |
 
 The owner's credentials after creating a business travel in the history state and are shown once (gone after a

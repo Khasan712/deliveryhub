@@ -34,6 +34,17 @@ export interface BusinessCard {
   links: { shop: string; admin: string }
   stats: BusinessStats
   bots: Record<BotRole, Bot | null>
+  /**
+   * Our staff let the business have branches (Filiallar): its owner opens them in the admin panel. Off: everything
+   * works as without branches; the branches are kept and come back when it is turned on again.
+   */
+  branches_enabled: boolean
+}
+
+/** How many branches a business has (kept while branches are off). */
+export interface BranchCounts {
+  total: number
+  active: number
 }
 
 /** One shift, "HH:MM"; a close that is not after the open is on the next day. */
@@ -64,6 +75,8 @@ export interface BusinessDetail extends BusinessCard {
   owner: { name: string; phone: string } | null
   platform_bot: { username: string } | null
   missing_roles: BotRole[]
+  /** Its branches (see `branches_enabled`). */
+  branches: BranchCounts
 }
 
 export interface BusinessTotals {
@@ -108,6 +121,9 @@ export interface BusinessLocation {
 
 /** PATCH body: any profile fields; `logo: null` removes the logo (a new logo goes as a file, multipart). */
 export type BusinessProfilePatch = Partial<BusinessProfileInput & BusinessLocation> & { logo?: null }
+
+/** PATCH /businesses/{slug}: profile fields, the place on the map and the branches permission, alone or together. */
+export type BusinessPatch = BusinessProfilePatch & { branches_enabled?: boolean }
 
 export interface BusinessCreateInput extends BusinessProfileInput, BusinessLocation {
   slug: string

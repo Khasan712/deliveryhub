@@ -25,6 +25,7 @@ import { EmptyState, ErrorState } from '../../components/ui/States'
 import { cx } from '../../lib/cx'
 import { formatDate, formatNumber } from '../../lib/format'
 import { AddressesCard } from './AddressesCard'
+import { BranchesCard } from './BranchesCard'
 import { LocationCard } from './LocationCard'
 import { HoursCard } from './HoursCard'
 import { BotsSection } from './bots'
@@ -144,6 +145,7 @@ function BusinessView({ slug }: { slug: string }) {
         <div className="min-w-0 space-y-5 lg:col-span-2">
           <ProfileForm business={business} />
           <HoursCard business={business} />
+          <BranchesCard business={business} />
           <OwnerCard business={business} />
         </div>
       </div>

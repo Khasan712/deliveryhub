@@ -2,7 +2,7 @@
  * A richer menu for `npm run dev:mock` (the UI without a backend). Images are served from
  * MOCK_MEDIA_DIR when it is set (see README); without it the shop shows its letter placeholders.
  */
-import type { Order, Product } from '../api/types'
+import type { Branch, Order, Product } from '../api/types'
 import { GEO, type MockData } from './handlers'
 
 const img = (file: string) => `/media/demo/${file}`
@@ -40,6 +40,13 @@ const products: Product[] = [
   product(17, 5, 'Limonad', 'Лимонад', 15000, null, 'Uy limonadi, yalpiz bilan.', 'Домашний лимонад с мятой.', ['stakan', 'стакан']),
 ]
 
+/** The demo business works with three branches: a pickup asks which one, the nearest to the customer first. */
+const branches: Branch[] = [
+  { id: 1, name: 'Yunusobod', address: "Amir Temur ko'chasi, 15, Yunusobod tumani", lat: 41.311081, lng: 69.279737 },
+  { id: 2, name: 'Chilonzor', address: "Bunyodkor ko'chasi, 3, Chilonzor tumani", lat: 41.275, lng: 69.204 },
+  { id: 3, name: 'Sergeli', address: "Yangi Sergeli ko'chasi, 11, Sergeli tumani", lat: 41.229, lng: 69.22 },
+]
+
 const now = Date.now()
 const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
 
@@ -63,6 +70,7 @@ const orders = (): Order[] => [
     delivery_type: 'delivery',
     payment_method: 'cash',
     comment: 'Domofon 25',
+    branch: { name: 'Chilonzor', address: "Bunyodkor ko'chasi, 3, Chilonzor tumani", lat: 41.275, lng: 69.204 },
   },
   {
     id: 987,
@@ -83,6 +91,7 @@ const orders = (): Order[] => [
     delivery_type: 'pickup',
     payment_method: 'card',
     comment: '',
+    branch: { name: 'Yunusobod', address: "Amir Temur ko'chasi, 15, Yunusobod tumani", lat: 41.311081, lng: 69.279737 },
   },
 ]
 
@@ -111,6 +120,7 @@ export const demoData: MockData = {
     min_order: 50000,
     brand_color: '#ff6b00',
     logo: null,
+    branches,
   },
   categories: [
     { id: 1, name_uz: 'Burgerlar', name_ru: 'Бургеры' },
@@ -130,8 +140,9 @@ export const demoData: MockData = {
     tg_nick: 'aziz',
     lang: '',
     address: 'Chilonzor 9-kvartal, 12-uy',
-    lat: null,
-    lng: null,
+    // The last delivery point: the checkout measures the branches from here.
+    lat: 41.2856,
+    lng: 69.2034,
   },
   token: 'demo-token',
   orders,

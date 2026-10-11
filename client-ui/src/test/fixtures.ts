@@ -1,4 +1,4 @@
-import type { Business, Category, Client, Order, Product } from '../api/types'
+import type { Branch, Business, Category, Client, Order, Product } from '../api/types'
 
 export const TOKEN = 'token-aziz'
 
@@ -17,7 +17,18 @@ export const business: Business = {
   min_order: 50000,
   brand_color: '#ff6b00',
   logo: null,
+  branches: [],
 }
+
+/**
+ * Three branches as the shop gets them (a test turns them on with `db.branches`): one without a point on the map.
+ * From the customer's point MAP_MOVE (Chilonzor 9): Chilonzor 1.2 km, Yunusobod 9.2 km.
+ */
+export const branches: Branch[] = [
+  { id: 1, name: 'Yunusobod', address: "Amir Temur ko'chasi, 108", lat: 41.3409, lng: 69.2862 },
+  { id: 2, name: 'Sergeli', address: "Yangi Sergeli ko'chasi, 11", lat: null, lng: null },
+  { id: 3, name: 'Chilonzor', address: "Bunyodkor ko'chasi, 3", lat: 41.275, lng: 69.204 },
+]
 
 export const categories: Category[] = [
   { id: 1, name_uz: 'Burgerlar', name_ru: 'Бургеры' },
@@ -128,6 +139,7 @@ export function makeOrder(overrides: Partial<Order> = {}): Order {
     delivery_type: 'delivery',
     payment_method: 'card',
     comment: 'Domofon 25',
+    branch: null,
     ...overrides,
   }
 }

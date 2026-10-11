@@ -1,6 +1,7 @@
-import type { Client, DeliveryType, Lang, NewOrder, PaymentMethod } from '../../api/types'
+import type { Branch, Client, DeliveryType, Lang, NewOrder, PaymentMethod } from '../../api/types'
 import type { MessageKey } from '../../i18n/messages'
 import { isCompleteLocalPhone, localDigits, toE164, toNumber } from '../../lib/format'
+import { distanceKm, type Coordinates } from '../../lib/geo'
 import { readSession, readStorage, removeSession, writeSession, writeStorage } from '../../lib/storage'
 import type { CartLine } from '../../state/cart'
 
@@ -14,9 +15,11 @@ export interface CheckoutForm {
   lng: number | null
   payment_method: PaymentMethod
   comment: string
+  /** The branch chosen for pickup (a business with 2+ branches); remembered with the rest of the form. */
+  branch_id: number | null
 }
 
-export type CheckoutField = 'name' | 'phone' | 'address'
+export type CheckoutField = 'name' | 'phone' | 'address' | 'branch_id'
 export type CheckoutErrors = Partial<Record<CheckoutField, MessageKey>>
 
 export const EMPTY_FORM: CheckoutForm = {
@@ -28,6 +31,7 @@ export const EMPTY_FORM: CheckoutForm = {
   lng: null,
   payment_method: 'cash',
   comment: '',
+  branch_id: null,
 }
 
 const DRAFT_KEY = 'checkout-draft'
@@ -44,6 +48,9 @@ function sanitize(raw: unknown): Partial<CheckoutForm> {
   if (value.lng !== undefined) form.lng = toNumber(value.lng as string | number | null)
   if (value.payment_method === 'cash' || value.payment_method === 'card') form.payment_method = value.payment_method
   if (typeof value.comment === 'string') form.comment = value.comment
+  if (value.branch_id === null || (typeof value.branch_id === 'number' && Number.isInteger(value.branch_id))) {
+    form.branch_id = value.branch_id
+  }
   if ((form.lat !== undefined || form.lng !== undefined) && (form.lat == null || form.lng == null)) {
     form.lat = null
     form.lng = null
@@ -95,17 +102,62 @@ export function fillFromClient(
   return next
 }
 
-export function validate(form: CheckoutForm): CheckoutErrors {
+/** A branch to collect a pickup order at, with its straight-line distance from the customer. */
+export interface BranchChoice {
+  branch: Branch
+  /** km from the customer's last known point; null when either point is unknown. */
+  km: number | null
+  /** The nearest one (marked only when the distances are known). */
+  nearest: boolean
+}
+
+/** The branches to choose from: the nearest first when the customer's point is known, the others in their order. */
+export function branchChoices(branches: readonly Branch[], from: Coordinates | null): BranchChoice[] {
+  const measured = branches.map((branch, index) => ({
+    branch,
+    index,
+    km: from && branch.lat !== null && branch.lng !== null ? distanceKm(from, { lat: branch.lat, lng: branch.lng }) : null,
+  }))
+  measured.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity) || a.index - b.index)
+  return measured.map(({ branch, km }, position) => ({
+    branch,
+    km,
+    nearest: position === 0 && km !== null && measured.length > 1,
+  }))
+}
+
+/**
+ * Where a pickup order is collected: the only branch, or the one chosen among 2+ (null until chosen — a choice
+ * remembered from before that is no longer among them does not count). Null without branches.
+ */
+export function pickupBranch(form: CheckoutForm, branches: readonly Branch[]): Branch | null {
+  if (branches.length === 1) return branches[0]!
+  return branches.find((branch) => branch.id === form.branch_id) ?? null
+}
+
+export function validate(form: CheckoutForm, branches: readonly Branch[] = []): CheckoutErrors {
   const errors: CheckoutErrors = {}
   if (!form.name.trim()) errors.name = 'required'
   if (!form.phone) errors.phone = 'required'
   else if (!isCompleteLocalPhone(form.phone)) errors.phone = 'invalidPhone'
   if (form.delivery_type === 'delivery' && !form.address.trim() && form.lat === null) errors.address = 'addressOrLocation'
+  if (form.delivery_type === 'pickup' && branches.length > 1 && !pickupBranch(form, branches)) {
+    errors.branch_id = 'branchRequired'
+  }
   return errors
 }
 
-export function orderBody(form: CheckoutForm, lines: CartLine[], lang: Lang, platform: NewOrder['platform']): NewOrder {
+export function orderBody(
+  form: CheckoutForm,
+  lines: CartLine[],
+  lang: Lang,
+  platform: NewOrder['platform'],
+  branches: readonly Branch[] = [],
+): NewOrder {
   const delivery = form.delivery_type === 'delivery'
+  // Pickup names its branch — the only one too: should a second one open meanwhile, the order still goes where the
+  // customer was told to come. Delivery never does (the business sends it to a branch).
+  const branch = delivery ? null : pickupBranch(form, branches)
   return {
     items: lines.map((line) => ({ product_id: line.product.id, quantity: line.qty })),
     name: form.name.trim(),
@@ -118,5 +170,6 @@ export function orderBody(form: CheckoutForm, lines: CartLine[], lang: Lang, pla
     comment: form.comment.trim(),
     platform,
     lang,
+    ...(branch ? { branch_id: branch.id } : {}),
   }
 }

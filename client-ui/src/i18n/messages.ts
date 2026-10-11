@@ -104,6 +104,17 @@ export const uz = {
   mapAddressSuggestion: 'Xaritadagi manzil: {address}',
   useIt: 'Qo‘yish',
 
+  // branches (filiallar)
+  pickupBranch: 'Qaysi filialdan olib ketasiz?',
+  branchRequired: 'Filialni tanlang',
+  branchUnavailable: 'Bu filial hozir buyurtma qabul qilmayapti — boshqasini tanlang',
+  branchesChanged: 'Filiallar ro‘yxati yangilandi — tekshirib, qaytadan yuboring',
+  nearest: 'Eng yaqin',
+  km: '{km} km',
+  distanceNote: 'Masofa — oxirgi manzilingizdan to‘g‘ri chiziqda',
+  branchOnMap: '{name} — xaritada ko‘rish',
+  branch: 'Filial',
+
   // frozen products
   unavailableBadge: 'Mavjud emas',
   unavailableLine: 'Hozir mavjud emas',
@@ -384,6 +395,17 @@ export const ru: Record<MessageKey, string> = {
   locationOnMap: 'Отмечено на карте',
   mapAddressSuggestion: 'Адрес по карте: {address}',
   useIt: 'Подставить',
+
+  // branches
+  pickupBranch: 'Из какого филиала заберёте?',
+  branchRequired: 'Выберите филиал',
+  branchUnavailable: 'Этот филиал сейчас не принимает заказы — выберите другой',
+  branchesChanged: 'Список филиалов обновился — проверьте и отправьте ещё раз',
+  nearest: 'Ближайший',
+  km: '{km} км',
+  distanceNote: 'Расстояние — по прямой от вашего последнего адреса',
+  branchOnMap: '{name} — показать на карте',
+  branch: 'Филиал',
 
   // frozen products
   unavailableBadge: 'Нет в наличии',

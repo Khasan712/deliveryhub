@@ -7,7 +7,7 @@ import { errorMessage, fieldErrors } from './errors'
 import { formatDateTime, formatPrice, hostOf, initialOf } from './format'
 import { hoursStatus } from './hours'
 import { parsePoint } from './map'
-import { loginPath, safeNext } from './paths'
+import { adminPageUrl, loginPath, safeNext } from './paths'
 import { formatPhone, normalizePhone } from './phone'
 import { svgDataUrl } from './svg'
 
@@ -60,6 +60,11 @@ describe('paths', () => {
     expect(safeNext('https://evil.example')).toBe('/')
     expect(safeNext('/login?next=/')).toBe('/')
     expect(safeNext(null)).toBe('/')
+  })
+  it('builds the address of a page of a business admin panel', () => {
+    expect(adminPageUrl('https://burger-admin.portex.uz/', '/branches')).toBe('https://burger-admin.portex.uz/branches')
+    expect(adminPageUrl('https://burger-admin.portex.uz', '/branches')).toBe('https://burger-admin.portex.uz/branches')
+    expect(adminPageUrl('burger-admin/', '/branches')).toBe('burger-admin/branches')
   })
 })
 

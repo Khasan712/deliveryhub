@@ -18,7 +18,7 @@ import { Segmented } from '../../components/Segmented'
 import { useI18n } from '../../i18n/i18n'
 import { cn } from '../../lib/cn'
 import { errorMessageKey, fieldErrorKey } from '../../lib/errors'
-import { mapUrl } from '../../lib/format'
+import { mapUrl, toNumber } from '../../lib/format'
 import type { Coordinates } from '../../lib/geo'
 import { closedNotice, statusLabel } from '../../lib/hours'
 import { confirmClosing, haptic, telegram } from '../../lib/telegram'
@@ -31,10 +31,13 @@ import { useCheckoutBlock, useDocumentTitle } from '../../state/hooks'
 import { useNav } from '../../state/nav'
 import { orderKey, ordersKey } from '../../state/orders'
 import { useToast } from '../../state/toast'
+import { BranchPicker } from './BranchPicker'
 import {
+  branchChoices,
   fillFromClient,
   initialForm,
   orderBody,
+  pickupBranch,
   rememberContact,
   saveDraft,
   validate,
@@ -136,6 +139,8 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const filledByMap = useRef('')
   const filledFromClient = useRef(false)
   const block = useCheckoutBlock()
+  // The business's active branches: 2+ — a pickup order names one; 1 — pickup orders are collected there.
+  const branches = catalog.business?.branches ?? []
   const touched = useRef(new Set<keyof CheckoutForm>())
   const fields = useRef<Partial<Record<CheckoutField, HTMLElement | null>>>({})
   // A wide screen shows the order beside the form; a phone or a tablet sums it up in one line above it.
@@ -168,12 +173,14 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const set = <K extends keyof CheckoutForm>(key: K, value: CheckoutForm[K]) => {
     touched.current.add(key)
     setForm((current) => ({ ...current, [key]: value }))
-    if (key === 'name' || key === 'phone' || key === 'address') setErrors((current) => ({ ...current, [key]: undefined }))
+    if (key === 'name' || key === 'phone' || key === 'address' || key === 'branch_id') {
+      setErrors((current) => ({ ...current, [key]: undefined }))
+    }
     setFormErrorState('')
   }
 
   const focusFirstError = (found: CheckoutErrors) => {
-    const first = (['address', 'name', 'phone'] as const).find((key) => found[key])
+    const first = (['branch_id', 'address', 'name', 'phone'] as const).find((key) => found[key])
     const element = first ? fields.current[first] : null
     element?.focus({ preventScroll: true })
     element?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
@@ -209,7 +216,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault()
     if (placing) return
-    const found = validate(form)
+    const found = validate(form, branches)
     setErrors(found)
     if (Object.keys(found).length) {
       haptic('error')
@@ -235,7 +242,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
     setFormError('')
     try {
       attemptKey.current ??= checkoutKey()
-      const body = orderBody(form, cart.lines, lang, inTelegram ? 'miniapp' : 'web')
+      const body = orderBody(form, cart.lines, lang, inTelegram ? 'miniapp' : 'web', branches)
       const { order } = await createOrder(token, body, attemptKey.current)
       attemptKey.current = null
       onPlaced()
@@ -269,9 +276,17 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
         for (const key of ['name', 'phone', 'address'] as const) {
           if (fieldsWithErrors[key]) found[key] = fieldErrorKey(key, fieldsWithErrors[key])
         }
+        const branchCodes = fieldsWithErrors.branch_id
+        if (branchCodes) {
+          // The branches changed since the menu was loaded: the fresh ones come with it.
+          catalog.refetch()
+          // Their list is on the screen: the error goes there. Without one (0–1 branches) the form says what happened.
+          if (branches.length > 1) found.branch_id = fieldErrorKey('branch_id', branchCodes)
+        }
         setErrors(found)
         if (Object.keys(found).length) focusFirstError(found)
-        else setFormError(t('checkFields'))
+        if (branchCodes && !found.branch_id) setFormError(t('branchesChanged'))
+        else if (!Object.keys(found).length) setFormError(t('checkFields'))
         return
       }
       case 'empty':
@@ -310,6 +325,23 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
 
   const delivery = form.delivery_type === 'delivery'
   const hasLocation = form.lat !== null && form.lng !== null
+  // Pickup: the branches nearest the customer's last known point first (the one on the form, else the account's).
+  const clientLat = toNumber(client?.lat)
+  const clientLng = toNumber(client?.lng)
+  const customerPoint = hasLocation
+    ? { lat: form.lat!, lng: form.lng! }
+    : clientLat !== null && clientLng !== null
+      ? { lat: clientLat, lng: clientLng }
+      : null
+  const choosing = !delivery && branches.length > 1
+  const choices = choosing ? branchChoices(branches, customerPoint) : []
+  // Where to come: the only branch, or the business itself (none).
+  const onlyBranch = branches.length === 1 ? branches[0]! : null
+  const pickupPlace = onlyBranch
+    ? { name: onlyBranch.name, address: onlyBranch.address, lat: onlyBranch.lat, lng: onlyBranch.lng }
+    : catalog.business?.address
+      ? { name: '', address: catalog.business.address, lat: catalog.business.lat, lng: catalog.business.lng }
+      : null
 
   const submitButton = (
     <Button type="submit" form="checkout-form" block loading={placing} disabled={cannotOrder}>
@@ -359,7 +391,7 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
               value={form.delivery_type}
               onChange={(value) => {
                 set('delivery_type', value)
-                setErrors((current) => ({ ...current, address: undefined }))
+                setErrors((current) => ({ ...current, address: undefined, branch_id: undefined }))
               }}
               options={[
                 { value: 'delivery', label: t('delivery'), icon: 'truck' },
@@ -449,25 +481,47 @@ function CheckoutFormView({ token, onPlaced }: { token: string; onPlaced: () => 
               </>
             ) : (
               <>
-                {catalog.business?.address && (
-                  <div className="mt-4 flex items-start gap-3 rounded-2xl bg-surface-2 p-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
-                      <Icon name="store" className="size-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12.5px] font-bold text-muted">{t('pickupFrom')}</p>
-                      <p className="text-[15px] leading-snug font-extrabold">{catalog.business.address}</p>
-                      {catalog.business.lat !== null && catalog.business.lng !== null && (
-                        <ExternalLink
-                          href={mapUrl(catalog.business.lat, catalog.business.lng)}
-                          className="mt-1 inline-flex items-center gap-1 text-[13px] font-extrabold text-brand-text hover:underline"
-                        >
-                          <Icon name="map" className="size-3.5" />
-                          {t('onMap')}
-                        </ExternalLink>
-                      )}
+                {choosing ? (
+                  <BranchPicker
+                    choices={choices}
+                    value={pickupBranch(form, branches)?.id ?? null}
+                    onChange={(id) => set('branch_id', id)}
+                    error={errors.branch_id && t(errors.branch_id)}
+                    firstRef={(element) => {
+                      fields.current.branch_id = element
+                    }}
+                  />
+                ) : (
+                  pickupPlace && (
+                    <div className="mt-4 flex items-start gap-3 rounded-2xl bg-surface-2 p-3">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
+                        <Icon name="store" className="size-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12.5px] font-bold text-muted">{t('pickupFrom')}</p>
+                        {pickupPlace.name && <p className="text-[15px] leading-snug font-extrabold">{pickupPlace.name}</p>}
+                        {pickupPlace.address && (
+                          <p
+                            className={cn(
+                              'leading-snug',
+                              pickupPlace.name ? 'mt-0.5 text-[13.5px] font-semibold text-ink-2' : 'text-[15px] font-extrabold',
+                            )}
+                          >
+                            {pickupPlace.address}
+                          </p>
+                        )}
+                        {pickupPlace.lat !== null && pickupPlace.lng !== null && (
+                          <ExternalLink
+                            href={mapUrl(pickupPlace.lat, pickupPlace.lng)}
+                            className="mt-1 inline-flex items-center gap-1 text-[13px] font-extrabold text-brand-text hover:underline"
+                          >
+                            <Icon name="map" className="size-3.5" />
+                            {t('onMap')}
+                          </ExternalLink>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
                 <p className="mt-3 flex items-start gap-2 rounded-xl bg-blue-soft px-3 py-2.5 text-[13px] font-bold text-blue">
                   <Icon name="info" className="mt-px size-4" />

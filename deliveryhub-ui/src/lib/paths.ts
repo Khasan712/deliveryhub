@@ -2,6 +2,15 @@
 
 export const businessPath = (slug: string) => `/b/${encodeURIComponent(slug)}`
 
+/** A page of a business's admin panel: ('https://x-admin.portex.uz/', '/branches') → 'https://x-admin.portex.uz/branches'. */
+export function adminPageUrl(adminUrl: string, path: string): string {
+  try {
+    return new URL(path, adminUrl).href
+  } catch {
+    return `${adminUrl.replace(/\/+$/, '')}${path}`
+  }
+}
+
 /** The login page address that brings the user back to `pathname` afterwards. */
 export function loginPath(pathname: string, search = ''): string {
   const back = pathname + search

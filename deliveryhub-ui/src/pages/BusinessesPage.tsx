@@ -7,6 +7,7 @@ import { BotLine } from '../components/BotStatus'
 import {
   ArrowRightIcon,
   BagIcon,
+  BranchesIcon,
   BuildingIcon,
   CheckCircleIcon,
   PlusIcon,
@@ -240,7 +241,15 @@ function BusinessTile({ business }: { business: BusinessCard }) {
             </h2>
             <StatusBadge status={business.status} size="sm" />
           </div>
-          <p className="truncate text-sm text-slate-500">{hostOf(business.links.shop)}</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm text-slate-500">{hostOf(business.links.shop)}</p>
+            {business.branches_enabled && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 ring-1 ring-sky-600/20 ring-inset">
+                <BranchesIcon size={12} />
+                Filiallar
+              </span>
+            )}
+          </div>
         </div>
         <ArrowRightIcon
           size={18}

@@ -104,6 +104,32 @@ describe('orders', () => {
     expect(screen.getByRole('link', { name: uz.onMap })).toHaveAttribute('href', 'https://maps.google.com/?q=41.311081,69.279737')
   })
 
+  it('shows the branch a pickup order is collected at instead of the business address', async () => {
+    const branch = { name: 'Chilonzor', address: "Bunyodkor ko'chasi, 3", lat: 41.275, lng: 69.204 }
+    db.orders = [makeOrder({ delivery_type: 'pickup', address: '', lat: null, lng: null, branch })]
+    renderApp({ route: '/orders/131', signedIn: true })
+
+    const details = within(await screen.findByRole('region', { name: uz.orderDetails }))
+    expect(details.getByText(uz.pickup).nextElementSibling).toHaveTextContent(
+      `Chilonzor${"Bunyodkor ko'chasi, 3"}${uz.onMap}`,
+    )
+    expect(details.getByRole('link', { name: uz.onMap })).toHaveAttribute('href', 'https://maps.google.com/?q=41.275000,69.204000')
+    expect(screen.queryByText("Amir Temur ko'chasi, 15, Toshkent")).not.toBeInTheDocument()
+    expect(details.queryByText(uz.branch)).not.toBeInTheDocument()
+  })
+
+  it('names the branch that delivers an order', async () => {
+    const branch = { name: 'Yunusobod', address: "Amir Temur ko'chasi, 108", lat: 41.3409, lng: 69.2862 }
+    db.orders = [makeOrder({ branch })]
+    renderApp({ route: '/orders/131', signedIn: true })
+
+    const details = within(await screen.findByRole('region', { name: uz.orderDetails }))
+    expect(details.getByText(uz.branch).nextElementSibling).toHaveTextContent('Yunusobod')
+    // Where it goes stays the customer's address.
+    expect(details.getByText(uz.delivery).nextElementSibling).toHaveTextContent('Chilonzor 9')
+    expect(details.getByRole('link', { name: uz.onMap })).toHaveAttribute('href', 'https://maps.google.com/?q=41.310000,69.270000')
+  })
+
   it('shows a banner instead of the tracker for a rejected order', async () => {
     db.orders = [makeOrder({ status: 'rejected' })]
     renderApp({ route: '/orders/131', signedIn: true })

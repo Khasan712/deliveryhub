@@ -117,22 +117,27 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
   const pageButtons = !inTelegram || tabBar
   useMainButton(active || pageButtons ? null : { text: t('reorder'), onClick: reorder })
 
-  // Pickup: where to come (the business's place); delivery: where the order goes.
+  // Pickup: where to come (the order's branch, else the business's place); delivery: where the order goes.
+  const branch = order.branch ?? null
   const place = pickup
-    ? { address: business?.address ?? '', lat: business?.lat ?? null, lng: business?.lng ?? null }
-    : { address: order.address, lat, lng }
+    ? (branch ?? { name: '', address: business?.address ?? '', lat: business?.lat ?? null, lng: business?.lng ?? null })
+    : { name: '', address: order.address, lat, lng }
   const details: { icon: IconName; label: string; value: ReactNode }[] = [
     {
       icon: pickup ? 'store' : 'pin',
       label: pickup ? t('pickup') : t('delivery'),
       value:
-        pickup && !place.address ? null : (
+        pickup && !place.name && !place.address ? null : (
           <>
-            {place.address || (place.lat !== null ? t('locationSet') : '—')}
+            {place.name && <span className="block font-extrabold">{place.name}</span>}
+            {place.address || (place.name ? null : place.lat !== null ? t('locationSet') : '—')}
             {place.lat !== null && place.lng !== null && (
               <ExternalLink
                 href={mapUrl(place.lat, place.lng)}
-                className="ml-1.5 inline-flex items-center gap-1 font-bold text-brand-text hover:underline"
+                className={cn(
+                  'inline-flex items-center gap-1 font-bold text-brand-text hover:underline',
+                  (place.address || !place.name) && 'ml-1.5',
+                )}
               >
                 <Icon name="map" className="size-3.5" />
                 {t('onMap')}
@@ -142,6 +147,8 @@ function OrderView({ order, refreshing, onRefresh }: { order: Order; refreshing:
         ),
     },
   ]
+  // A delivery a branch makes: which one.
+  if (!pickup && branch) details.push({ icon: 'store', label: t('branch'), value: branch.name })
   if (order.phone) details.push({ icon: 'phone', label: t('phone'), value: displayPhone(order.phone) })
   if (order.payment_method) {
     details.push({

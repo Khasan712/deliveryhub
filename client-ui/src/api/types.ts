@@ -16,6 +16,21 @@ export interface Business {
   min_order: number
   brand_color: string
   logo: string | null
+  /**
+   * The active branches while the business works with branches ([] otherwise). 2+: a pickup order names the one it
+   * is collected at (`branch_id`); exactly 1: pickup orders are collected there (its address, not `address`).
+   * Missing from a menu saved on this device before branches existed.
+   */
+  branches?: Branch[]
+}
+
+/** A branch of the business (filial) where pickup orders are collected. */
+export interface Branch {
+  id: number
+  name: string
+  address: string
+  lat: number | null
+  lng: number | null
 }
 
 /** One shift, "HH:MM"; a close that is not after the open is on the next day ("18:00"–"02:00"). */
@@ -114,7 +129,15 @@ export interface Order {
   delivery_type: DeliveryType | ''
   payment_method: PaymentMethod | ''
   comment: string
+  /**
+   * Where a pickup order is collected (or which branch delivers it); null — no branch (none yet, or the business
+   * works without branches). Missing from orders served before branches existed.
+   */
+  branch?: OrderBranch | null
 }
+
+/** The branch of an order. */
+export type OrderBranch = Omit<Branch, 'id'>
 
 export interface AuthResult {
   token: string
@@ -154,6 +177,8 @@ export interface NewOrder {
   comment: string
   platform: 'web' | 'miniapp'
   lang: Lang
+  /** Pickup from a business with branches: where it is collected (required with 2+). Never sent for delivery. */
+  branch_id?: number
 }
 
 export interface ProfilePatch {

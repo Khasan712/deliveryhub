@@ -5,6 +5,24 @@ export interface Coordinates {
   lng: number
 }
 
+const EARTH_RADIUS_KM = 6371
+
+/** The straight-line distance in km (haversine on a sphere of 6371 km — the backend's formula). */
+export function distanceKm(a: Coordinates, b: Coordinates): number {
+  const rad = (degrees: number) => (degrees * Math.PI) / 180
+  const h =
+    Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+/** 2.14 → "2,1" (tenths with a decimal comma, as both languages write it; never "0,0"). */
+export function formatKm(km: number): string {
+  return Math.max(0.1, Math.round(km * 10) / 10)
+    .toFixed(1)
+    .replace('.', ',')
+}
+
 export type LocationErrorCode = 'unsupported' | 'denied' | 'unavailable'
 
 export class LocationError extends Error {

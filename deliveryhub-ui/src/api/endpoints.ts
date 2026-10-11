@@ -6,7 +6,7 @@ import type {
   BusinessCreateInput,
   BusinessDetail,
   BusinessList,
-  BusinessProfilePatch,
+  BusinessPatch,
   BusinessStatus,
   Credentials,
   Landing,
@@ -56,7 +56,7 @@ export const businessesApi = {
   create: (input: BusinessCreateInput, logo?: File | null) =>
     request<BusinessCreated>('POST', '/businesses', body(input, logo)),
   get: (slug: string, signal?: AbortSignal) => request<BusinessDetail>('GET', business(slug), { signal }),
-  update: (slug: string, patch: BusinessProfilePatch, logo?: File | null) =>
+  update: (slug: string, patch: BusinessPatch, logo?: File | null) =>
     request<BusinessDetail>('PATCH', business(slug), body(patch, logo)),
   setStatus: (slug: string, status: BusinessStatus) =>
     request<BusinessDetail>('POST', `${business(slug)}/status`, { json: { status } }),

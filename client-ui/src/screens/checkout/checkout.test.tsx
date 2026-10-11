@@ -1,7 +1,7 @@
 import { act, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { business, TOKEN } from '../../test/fixtures'
+import { branches, business, MAP_MOVE, TOKEN } from '../../test/fixtures'
 import { db, GEO, requestsTo } from '../../test/handlers'
 import { location, pattern, renderApp, screen, som, uz, within } from '../../test/render'
 import { server } from '../../test/server'
@@ -308,5 +308,228 @@ describe('placing an order on a bad network', () => {
     await screen.findByDisplayValue('Aziz Karimov')
     await user.click(screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!)
     await waitFor(() => expect(location.current?.pathname).toMatch(/^\/orders\/\d+$/), { timeout: 8000 })
+  })
+})
+
+describe('pickup from a branch', () => {
+  const open = async () => {
+    const view = renderApp({ route: '/checkout', signedIn: true, cart: [{ id: 1, qty: 2 }] })
+    await screen.findByDisplayValue('Aziz Karimov')
+    return view
+  }
+  const placeOrder = () => screen.getAllByRole('button', { name: pattern(uz.placeOrder) })[0]!
+  const branchList = () => screen.getByRole('radiogroup', { name: uz.pickupBranch })
+  /** The names of the branches in the order the list shows them. */
+  const names = () =>
+    within(branchList())
+      .getAllByRole('radio')
+      .map((radio) => document.getElementById(radio.getAttribute('aria-labelledby') ?? '')?.textContent)
+  /** The account's last delivery point: Chilonzor 9. */
+  const knownPoint = () => db.clients.set(TOKEN, { ...db.clients.get(TOKEN)!, lat: MAP_MOVE.lat, lng: MAP_MOVE.lng })
+
+  it('asks which branch, the nearest first, and sends the choice', async () => {
+    db.branches = branches
+    knownPoint()
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+
+    const list = within(branchList())
+    expect(names()).toEqual(['Chilonzor', 'Yunusobod', 'Sergeli'])
+    expect(list.getByRole('radio', { name: 'Chilonzor' })).toHaveAccessibleDescription(
+      `Bunyodkor ko'chasi, 3, 1,2 km, ${uz.nearest}`,
+    )
+    expect(list.getByRole('radio', { name: 'Yunusobod' })).toHaveAccessibleDescription("Amir Temur ko'chasi, 108, 9,2 km")
+    // No point on the map: no distance.
+    expect(list.getByRole('radio', { name: 'Sergeli' })).toHaveAccessibleDescription("Yangi Sergeli ko'chasi, 11")
+    expect(list.getByText('1,2 km')).toBeInTheDocument()
+    expect(list.getByText(uz.nearest)).toBeInTheDocument()
+    expect(screen.getByText(uz.distanceNote)).toBeInTheDocument()
+    expect(list.getByRole('link', { name: 'Chilonzor — xaritada ko‘rish' })).toHaveAttribute(
+      'href',
+      'https://maps.google.com/?q=41.275000,69.204000',
+    )
+    expect(list.queryByRole('link', { name: 'Sergeli — xaritada ko‘rish' })).not.toBeInTheDocument()
+    // The business's own address is not where to come any more.
+    expect(screen.queryByText(uz.pickupFrom)).not.toBeInTheDocument()
+    expect(screen.queryByText(business.address)).not.toBeInTheDocument()
+
+    // Nothing chosen: the list says so and takes the focus.
+    await user.click(placeOrder())
+    expect(await screen.findByText(uz.branchRequired)).toBeInTheDocument()
+    expect(branchList()).toHaveAttribute('aria-invalid', 'true')
+    expect(list.getByRole('radio', { name: 'Chilonzor' })).toHaveFocus()
+    expect(requestsTo('POST', 'orders')).toHaveLength(0)
+
+    await user.click(list.getByRole('radio', { name: 'Yunusobod' }))
+    expect(list.getByRole('radio', { name: 'Yunusobod' })).toBeChecked()
+    expect(screen.queryByText(uz.branchRequired)).not.toBeInTheDocument()
+    await user.click(placeOrder())
+
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({
+      delivery_type: 'pickup',
+      branch_id: 1,
+      address: '',
+      lat: null,
+      lng: null,
+    })
+    // The order says where to come.
+    expect(screen.getByText('Yunusobod')).toBeInTheDocument()
+    expect(screen.getByText("Amir Temur ko'chasi, 108")).toBeInTheDocument()
+    // Remembered with the contact details for the next order.
+    expect(JSON.parse(localStorage.getItem(`dh:${window.location.host}:contact`)!)).toMatchObject({
+      delivery_type: 'pickup',
+      branch_id: 1,
+    })
+  })
+
+  it('keeps the branches in their order until the customer’s point is known', async () => {
+    db.branches = branches
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+
+    expect(names()).toEqual(['Yunusobod', 'Sergeli', 'Chilonzor'])
+    expect(within(branchList()).queryByText(/km$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(uz.nearest)).not.toBeInTheDocument()
+    expect(screen.queryByText(uz.distanceNote)).not.toBeInTheDocument()
+
+    // A delivery point put on the map is the customer's point too.
+    await user.click(screen.getByRole('radio', { name: uz.delivery }))
+    await user.click(screen.getByRole('button', { name: pattern(uz.pickOnMap) }))
+    const map = within(await screen.findByRole('dialog', { name: uz.mapTitle }))
+    expect(await map.findByText(GEO.address)).toBeInTheDocument()
+    await user.click(map.getByRole('button', { name: 'Xaritani surish' }))
+    await waitFor(() => expect(requestsTo('GET', 'geo/reverse')).toHaveLength(2))
+    await user.click(map.getByRole('button', { name: uz.pickThisPlace }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: uz.mapTitle })).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('radio', { name: uz.pickup }))
+    expect(names()).toEqual(['Chilonzor', 'Yunusobod', 'Sergeli'])
+    expect(within(branchList()).getByText(uz.nearest)).toBeInTheDocument()
+  })
+
+  it('collects at the only branch: shows it instead of the business address', async () => {
+    db.branches = [branches[2]!]
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+
+    expect(screen.queryByRole('radiogroup', { name: uz.pickupBranch })).not.toBeInTheDocument()
+    expect(screen.getByText(uz.pickupFrom)).toBeInTheDocument()
+    expect(screen.getByText('Chilonzor')).toBeInTheDocument()
+    expect(screen.getByText("Bunyodkor ko'chasi, 3")).toBeInTheDocument()
+    expect(screen.queryByText(business.address)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: pattern(uz.onMap) })).toHaveAttribute(
+      'href',
+      'https://maps.google.com/?q=41.275000,69.204000',
+    )
+
+    await user.click(placeOrder())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({ delivery_type: 'pickup', branch_id: 3 })
+  })
+
+  it('leaves a delivery to the business: no question, no branch sent', async () => {
+    db.branches = branches
+    const { user } = await open()
+
+    expect(screen.queryByRole('radiogroup', { name: uz.pickupBranch })).not.toBeInTheDocument()
+    await user.click(placeOrder())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).not.toHaveProperty('branch_id')
+    // Waiting for the business to send it to a branch: none named yet.
+    expect(screen.queryByText(uz.branch)).not.toBeInTheDocument()
+  })
+
+  it('a branch that stopped taking orders: says so and offers the fresh list', async () => {
+    db.branches = branches
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+    const list = within(branchList())
+    await user.click(list.getByRole('radio', { name: 'Sergeli' }))
+    // Meanwhile the business deactivates it.
+    db.branches = [branches[0]!, branches[2]!]
+    const menus = requestsTo('GET', 'shop').length
+    await user.click(placeOrder())
+
+    expect(await screen.findByText(uz.branchUnavailable)).toBeInTheDocument()
+    expect(branchList()).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(list.queryByRole('radio', { name: 'Sergeli' })).not.toBeInTheDocument())
+    expect(requestsTo('GET', 'shop').length).toBeGreaterThan(menus)
+    expect(list.getAllByRole('radio').filter((radio) => (radio as HTMLInputElement).checked)).toHaveLength(0)
+
+    await user.click(list.getByRole('radio', { name: 'Chilonzor' }))
+    expect(screen.queryByText(uz.branchUnavailable)).not.toBeInTheDocument()
+    await user.click(placeOrder())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders').at(-1)?.body).toMatchObject({ branch_id: 3 })
+  })
+
+  it('branches opened meanwhile: the form says so and the list comes with the fresh menu', async () => {
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+    expect(screen.getByText(business.address)).toBeInTheDocument()
+    db.branches = branches
+    await user.click(placeOrder())
+
+    expect(await screen.findByText(uz.branchesChanged)).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).not.toHaveProperty('branch_id')
+    const list = within(await screen.findByRole('radiogroup', { name: uz.pickupBranch }))
+    await user.click(list.getByRole('radio', { name: 'Yunusobod' }))
+    expect(screen.queryByText(uz.branchesChanged)).not.toBeInTheDocument()
+    await user.click(placeOrder())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders').at(-1)?.body).toMatchObject({ branch_id: 1 })
+  })
+
+  it('maps the server’s branch_id error to the list', async () => {
+    db.branches = branches
+    server.use(
+      http.post('/api/v1/orders', () =>
+        HttpResponse.json({ error: 'validation', fields: { branch_id: ['required'] } }, { status: 400 }),
+      ),
+    )
+    const { user } = await open()
+    await user.click(await screen.findByRole('radio', { name: uz.pickup }))
+    await user.click(within(branchList()).getByRole('radio', { name: 'Chilonzor' }))
+    await user.click(placeOrder())
+    expect(await screen.findByText(uz.branchRequired)).toBeInTheDocument()
+    expect(branchList()).toHaveAttribute('aria-describedby', 'checkout-branch-error')
+  })
+
+  it('brings the branch chosen last time back', async () => {
+    db.branches = branches
+    localStorage.setItem(
+      `dh:${window.location.host}:contact`,
+      JSON.stringify({ name: 'Aziz Karimov', phone: '901234567', delivery_type: 'pickup', branch_id: 3 }),
+    )
+    const { user } = await open()
+    expect(within(branchList()).getByRole('radio', { name: 'Chilonzor' })).toBeChecked()
+    await user.click(placeOrder())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({ delivery_type: 'pickup', branch_id: 3 })
+  })
+
+  it('in Telegram, the MainButton asks for the branch before sending', async () => {
+    const telegram = installTelegram()
+    db.branches = branches
+    const { user } = await open()
+    // Signed in with Telegram: the account has no phone yet.
+    await user.type(screen.getByLabelText(uz.phone), '901234567')
+    await user.click(screen.getByRole('radio', { name: uz.pickup }))
+    await waitFor(() => expect(telegram.mainButton.text).toMatch(pattern(uz.placeOrder)))
+
+    act(() => telegram.mainButton.click())
+    expect(await screen.findByText(uz.branchRequired)).toBeInTheDocument()
+    expect(telegram.haptics.notification).toHaveBeenCalledWith('error')
+    expect(requestsTo('POST', 'orders')).toHaveLength(0)
+
+    await user.click(within(branchList()).getByRole('radio', { name: 'Chilonzor' }))
+    act(() => telegram.mainButton.click())
+    expect(await screen.findByRole('heading', { name: uz.orderPlaced })).toBeInTheDocument()
+    expect(requestsTo('POST', 'orders')[0]?.body).toMatchObject({
+      platform: 'miniapp',
+      delivery_type: 'pickup',
+      branch_id: 3,
+    })
   })
 })

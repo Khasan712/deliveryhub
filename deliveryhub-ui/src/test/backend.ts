@@ -113,8 +113,8 @@ function uzPhone(value: unknown): string | null {
 }
 
 function card(business: BusinessDetail): BusinessCard {
-  const { slug, name, status, logo, brand_color, tagline, created_at, links, stats, bots } = business
-  return { slug, name, status, logo, brand_color, tagline, created_at, links, stats, bots }
+  const { slug, name, status, logo, brand_color, tagline, created_at, links, stats, bots, branches_enabled } = business
+  return { slug, name, status, logo, brand_color, tagline, created_at, links, stats, bots, branches_enabled }
 }
 
 function slugProblem(slug: string): string | null {
@@ -202,6 +202,7 @@ function profileErrors(body: Body, { create }: { create: boolean }): Record<stri
   }
   if ('min_order' in body && !/^\d+$/.test(String(body.min_order))) fields.min_order = ['invalid']
   else if (Number(body.min_order) > 100_000_000) fields.min_order = ['max_value']
+  if ('branches_enabled' in body && typeof body.branches_enabled !== 'boolean') fields.branches_enabled = ['invalid']
   return fields
 }
 
@@ -213,6 +214,8 @@ function applyProfile(business: BusinessDetail, body: Body) {
   if ('address' in body) business.address = String(body.address)
   if ('lat' in body) business.lat = coordinate(body.lat)
   if ('lng' in body) business.lng = coordinate(body.lng)
+  // Off keeps the branches (their counts stay): they work again when it is turned back on.
+  if (typeof body.branches_enabled === 'boolean') business.branches_enabled = body.branches_enabled
   // A file sets the logo; `logo: null` (JSON) or an empty multipart field removes it.
   const logo = body.logo as { name?: string } | string | null | undefined
   if (logo === null || logo === '') business.logo = null
@@ -370,6 +373,8 @@ export const handlers = [
       owner: { name: String(body.owner_name), phone: ownerPhone ?? '' },
       platform_bot: backend.state.platformBot,
       missing_roles: ['client', 'admin'],
+      branches_enabled: false,
+      branches: { total: 0, active: 0 },
     }
     applyProfile(business, body)
     backend.state.businesses.unshift(business)
