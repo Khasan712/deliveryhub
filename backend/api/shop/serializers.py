@@ -2,6 +2,7 @@
 build plain dicts in to_representation: the catalog is sent whole on every visit, so this path stays fast."""
 from rest_framework import serializers
 
+from apps.core import branches
 from apps.core.enums import DeliveryTypeEnum, LanguageEnum, OrderSourceEnum, PaymentMethodEnum
 from apps.core.utils import parse_price, parse_quantity
 from ..common.hours import WorkingHoursSerializer, hours_payload
@@ -9,6 +10,19 @@ from ..common.representations import (business_point, file_url, iso, order_addre
                                       product_thumb_url)
 
 LANGS = tuple(lang.value for lang in LanguageEnum)
+
+
+class BranchSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    address = serializers.CharField()
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
+
+    def to_representation(self, branch):
+        point = branches.branch_point(branch)
+        return {'id': branch.pk, 'name': branch.name, 'address': branch.address,
+                'lat': point[0] if point else None, 'lng': point[1] if point else None}
 
 
 class BusinessSerializer(serializers.Serializer):
@@ -23,6 +37,9 @@ class BusinessSerializer(serializers.Serializer):
     min_order = serializers.IntegerField()
     brand_color = serializers.CharField()
     logo = serializers.CharField(allow_null=True)
+    branches = BranchSerializer(many=True, help_text=(
+        'Active branches while the business has them on ([] otherwise): with 2+ a pickup order names one '
+        '(branch_id); with 1 pickup orders are collected there'))
 
     def to_representation(self, business):
         return {
@@ -36,6 +53,8 @@ class BusinessSerializer(serializers.Serializer):
             'min_order': business.min_order,
             'brand_color': business.brand_color,
             'logo': file_url(business.logo),
+            'branches': [BranchSerializer().to_representation(branch) for branch in branches.active_branches()]
+            if branches.enabled(business) else [],
         }
 
 
@@ -129,6 +148,13 @@ class OrderItemSerializer(serializers.Serializer):
         }
 
 
+class OrderBranchSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    address = serializers.CharField()
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
+
+
 class OrderSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
@@ -145,6 +171,8 @@ class OrderSerializer(serializers.Serializer):
     delivery_type = serializers.CharField()
     payment_method = serializers.CharField()
     comment = serializers.CharField()
+    branch = OrderBranchSerializer(allow_null=True, help_text='Where a pickup order is collected (or which branch '
+                                                              'delivers it)')
 
     def to_representation(self, order):
         items = [OrderItemSerializer().to_representation(item) for item in order.order_items.all()]
@@ -164,7 +192,14 @@ class OrderSerializer(serializers.Serializer):
             'delivery_type': order.delivery_type or '',
             'payment_method': order.payment_method or '',
             'comment': order.comment or '',
+            'branch': self.branch_of(order.branch) if order.branch_id else None,
         }
+
+    @staticmethod
+    def branch_of(branch):
+        point = branches.branch_point(branch)
+        return {'name': branch.name, 'address': branch.address,
+                'lat': point[0] if point else None, 'lng': point[1] if point else None}
 
 
 class AuthResultSerializer(serializers.Serializer):
@@ -215,3 +250,5 @@ class OrderCreateSerializer(serializers.Serializer):
     comment = serializers.CharField(max_length=1000, required=False, allow_blank=True)
     platform = serializers.ChoiceField(choices=[OrderSourceEnum.web.value, OrderSourceEnum.miniapp.value])
     lang = serializers.ChoiceField(choices=LANGS, required=False)
+    branch_id = serializers.IntegerField(required=False, allow_null=True, help_text=(
+        'Pickup with 2+ branches: where the customer collects it (required then); ignored for delivery'))

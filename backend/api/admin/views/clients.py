@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from apps.core.enums import OrderEnum
 from apps.core.models import Client
+from ...common.permissions import IsHeadOffice
 from ..serializers import ClientSerializer, ClientUpdateSerializer, OrderSummarySerializer
 from .base import StaffListView, StaffView, search_term
 from .orders import orders, with_lines
@@ -17,8 +18,9 @@ def clients():
     ).order_by('-created_at')
 
 
-@extend_schema(summary='Customers, newest first', parameters=[OpenApiParameter('search', str)])
+@extend_schema(summary='Customers, newest first (head office)', parameters=[OpenApiParameter('search', str)])
 class ClientListView(StaffListView):
+    permission_classes = [IsHeadOffice]
     serializer_class = ClientSerializer
 
     def get_queryset(self):
@@ -48,6 +50,8 @@ def client_detail(client):
 
 
 class ClientDetailView(StaffView):
+    permission_classes = [IsHeadOffice]
+
     @extend_schema(summary='A customer with their orders', responses=ClientDetail)
     def get(self, request, pk):
         return Response(client_detail(get_object_or_404(clients(), pk=pk)))

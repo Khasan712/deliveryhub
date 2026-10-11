@@ -5,15 +5,16 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
 from rest_framework.response import Response
 
+from apps.core import branches
 from apps.core.enums import DeliveryTypeEnum, OrderEnum, OrderSourceEnum
-from apps.core.models import Category, Order, Product
+from apps.core.models import Branch, Category, Order, Product
 from apps.core.services import OrderError, create_order, resolve_items
 from apps.core.utils import created_on, normalize_phone
 from apps.voice import understanding as voice
 from ...common.errors import ApiError
-from ..serializers import (PosCategorySerializer, PosProductSerializer, SaleCreateSerializer, SalesStatsSerializer,
-                           SaleSummarySerializer)
-from .base import StaffView
+from ..serializers import (BranchRefSerializer, PosCategorySerializer, PosProductSerializer, SaleCreateSerializer,
+                           SalesStatsSerializer, SaleSummarySerializer, branch_ref, field_error)
+from .base import StaffView, branch_staff, scoped
 
 SALE_STATUSES = (OrderEnum.ordered.value, OrderEnum.on_the_way.value, OrderEnum.completed.value)
 RECENT_SALES = 8
@@ -23,21 +24,49 @@ def catalog_products():
     return Product.objects.light().select_related('measure').order_by('category_id', 'id')
 
 
-def sales():
-    return Order.objects.filter(source=OrderSourceEnum.admin.value).select_related('client').prefetch_related(
-        'order_items')
+def sales(request):
+    """The point of sale's orders the signed-in user may see (branch staff: their branch's)."""
+    return scoped(request, Order.objects.filter(source=OrderSourceEnum.admin.value)).select_related(
+        'client').prefetch_related('order_items')
 
 
-def today_stats():
+def today_stats(request):
     today = timezone.localdate()
-    today_sales = list(sales().filter(**created_on(today)).exclude(status=OrderEnum.rejected.value))
+    today_sales = list(sales(request).filter(**created_on(today)).exclude(status=OrderEnum.rejected.value))
     revenue = sum(order.get_total() for order in today_sales)
     return {
         'count': len(today_sales),
         'revenue': revenue,
         'average': revenue // len(today_sales) if today_sales else 0,
-        'all_orders_today': Order.objects.filter(**created_on(today)).exclude(status=OrderEnum.new.value).count(),
+        'all_orders_today': scoped(request, Order.objects.filter(**created_on(today))).exclude(
+            status=OrderEnum.new.value).count(),
     }
+
+
+def sale_branches(request):
+    """The branches the head office may sell for (branch staff always sell for their own)."""
+    if branch_staff(request) or not branches.enabled(request.tenant):
+        return []
+    return list(branches.active_branches())
+
+
+def branch_of_sale(request, raw):
+    """The branch a new sale is for: branch staff — their own; the head office — the one picked (it must pick one
+    among two or more; the only one is taken by itself)."""
+    if branch_staff(request):
+        return request.user.branch
+    if not branches.enabled(request.tenant):
+        return None
+    if raw in (None, ''):
+        if branches.dispatching(request.tenant):
+            raise field_error('branch_id', 'required')
+        return branches.branch_for_new_order(request.tenant)
+    branch = Branch.objects.filter(pk=raw).first() if str(raw).isdigit() else None
+    if branch is None:
+        raise field_error('branch_id', 'does_not_exist')
+    if not branch.is_active:
+        raise field_error('branch_id', 'inactive')
+    return branch
 
 
 def voice_features():
@@ -56,7 +85,9 @@ class SalesView(StaffView):
         'stats': SalesStatsSerializer(),
         'voice': inline_serializer('VoiceFeatures', {'gemini': serializers.BooleanField(),
                                                      'live': serializers.BooleanField()}),
-    }))
+        'branches': BranchRefSerializer(many=True, help_text=(
+            'Head office with branches on: the active branches a sale can be for; [] otherwise')),
+    }), description='Branch staff see the sales and numbers of their branch.')
     def get(self, request):
         products = list(catalog_products())
         category_ids = {product.category_id for product in products if product.category_id}
@@ -64,9 +95,10 @@ class SalesView(StaffView):
             'categories': PosCategorySerializer(Category.objects.filter(pk__in=category_ids).order_by('id'),
                                                 many=True).data,
             'products': PosProductSerializer(products, many=True).data,
-            'recent': SaleSummarySerializer(sales().order_by('-created_at')[:RECENT_SALES], many=True).data,
-            'stats': today_stats(),
+            'recent': SaleSummarySerializer(sales(request).order_by('-created_at')[:RECENT_SALES], many=True).data,
+            'stats': today_stats(request),
             'voice': voice_features(),
+            'branches': [branch_ref(branch) for branch in sale_branches(request)],
         })
 
     @extend_schema(summary='Record a sale', request=SaleCreateSerializer, responses={201: SaleCreated})
@@ -85,6 +117,7 @@ class SalesView(StaffView):
             status = (OrderEnum.completed.value if delivery_type == DeliveryTypeEnum.pickup.value
                       else OrderEnum.ordered.value)
 
+        branch = branch_of_sale(request, data.get('branch_id'))
         raw_phone = str(data.get('phone') or '').strip()
         order = create_order(
             items=items,
@@ -97,6 +130,9 @@ class SalesView(StaffView):
             delivery_type=delivery_type,
             payment_method=data.get('payment_method'),
             comment=data.get('comment'),
+            branch=branch,
+            # Sent there by hand only when the head office picked it.
+            assigned_by=None if branch_staff(request) or not data.get('branch_id') else request.user,
         )
-        return Response({'order': SaleSummarySerializer(sales().get(pk=order.pk)).data, 'stats': today_stats()},
-                        status=201)
+        return Response({'order': SaleSummarySerializer(sales(request).get(pk=order.pk)).data,
+                         'stats': today_stats(request)}, status=201)

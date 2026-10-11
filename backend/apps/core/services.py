@@ -2,6 +2,7 @@
 import re
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.core.enums import DeliveryTypeEnum, PaymentMethodEnum, OrderEnum
 from apps.core.models import Order, OrderItem, Product
@@ -49,8 +50,9 @@ def clean_choice(value, enum):
 
 def create_order(*, items, source, status=OrderEnum.ordered.value, client=None, created_by=None,
                  customer_name=None, phone=None, address=None, latitude=None, longitude=None,
-                 delivery_type=None, payment_method=None, comment=None):
-    """Create an order with its items. Prices are always taken from the product, never from the caller."""
+                 delivery_type=None, payment_method=None, comment=None, branch=None, assigned_by=None):
+    """Create an order with its items. Prices are always taken from the product, never from the caller.
+    `branch`: the branch that makes it (apps.core.branches.branch_for_new_order), sent there by `assigned_by`."""
     location = (address or '').strip()[:255] or None
     if not location and latitude and longitude:
         # Same "lat lon" format the bot stores when a location pin is shared.
@@ -70,6 +72,9 @@ def create_order(*, items, source, status=OrderEnum.ordered.value, client=None, 
             payment_method=clean_choice(payment_method, PaymentMethodEnum),
             comment=(comment or '').strip() or None,
             created_by=created_by,
+            branch=branch,
+            assigned_at=timezone.now() if branch else None,
+            assigned_by=assigned_by if branch else None,
         )
         OrderItem.objects.bulk_create([
             OrderItem(order=order, product=product, quantity=str(quantity), price=product.price)

@@ -1,6 +1,7 @@
 from django_tenants.utils import get_public_schema_name
 from rest_framework.permissions import BasePermission
 
+from apps.core import branches
 from apps.core.enums import UserRole
 
 
@@ -23,6 +24,13 @@ class IsBusinessAdmin(IsStaff):
 
     def has_permission(self, request, view):
         return super().has_permission(request, view) and request.user.role == UserRole.admin.value
+
+
+class IsHeadOffice(IsStaff):
+    """Staff who see the whole business: everyone but the staff of one branch (apps.core.branches)."""
+
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and not branches.is_branch_staff(request.user, request.tenant)
 
 
 class IsPlatformStaff(BasePermission):

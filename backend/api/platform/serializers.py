@@ -8,7 +8,7 @@ from apps.platform import provisioning
 from apps.platform.bots import is_alive, missing_roles, platform_bot
 from apps.platform.current import url_for
 from apps.platform.models import Business, BusinessBot, Domain, Lead
-from apps.platform.overview import business_stats, owner_of
+from apps.platform.overview import branch_counts, business_stats, owner_of
 from ..common.fields import ColorField, LimitedImageField, PhoneField
 from ..common.hours import WorkingHoursSerializer, hours_payload
 from ..common.representations import business_point, file_url, iso, person_name
@@ -52,6 +52,7 @@ class BusinessCardSerializer(serializers.Serializer):
     links = LinksSerializer()
     stats = StatsSerializer()
     bots = BotsSerializer()
+    branches_enabled = serializers.BooleanField(help_text='We let the business have branches (its admin opens them)')
 
     def to_representation(self, business):
         request = self.context['request']
@@ -69,6 +70,7 @@ class BusinessCardSerializer(serializers.Serializer):
             'stats': business_stats(business),
             'bots': {role: BotSerializer(bots[role]).data if role in bots else None
                      for role in (BusinessBot.ROLE_CLIENT, BusinessBot.ROLE_ADMIN)},
+            'branches_enabled': business.branches_enabled,
         }
 
 
@@ -79,6 +81,11 @@ class OwnerSerializer(serializers.Serializer):
 
 class PlatformBotSerializer(serializers.Serializer):
     username = serializers.CharField()
+
+
+class BranchCountsSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    active = serializers.IntegerField()
 
 
 class BusinessDetailSerializer(BusinessCardSerializer):
@@ -92,6 +99,7 @@ class BusinessDetailSerializer(BusinessCardSerializer):
     owner = OwnerSerializer(allow_null=True)
     platform_bot = PlatformBotSerializer(allow_null=True)
     missing_roles = serializers.ListField(child=serializers.ChoiceField(choices=list(BusinessBot.ROLE_CHOICES)))
+    branches = BranchCountsSerializer(help_text='Its branches (kept while branches are off)')
 
     def to_representation(self, business):
         owner = owner_of(business)
@@ -107,6 +115,7 @@ class BusinessDetailSerializer(BusinessCardSerializer):
             'owner': {'name': person_name(owner), 'phone': owner.phone_number} if owner else None,
             'platform_bot': {'username': me['username']} if me and me.get('username') else None,
             'missing_roles': missing_roles(business),
+            'branches': branch_counts(business),
         }
 
 
@@ -213,6 +222,8 @@ class BusinessProfileSerializer(serializers.Serializer):
     min_order = serializers.IntegerField(min_value=0, max_value=100_000_000, required=False)
     brand_color = ColorField(required=False)
     logo = LimitedImageField(max_mb=2, required=False, allow_null=True)
+    branches_enabled = serializers.BooleanField(required=False, help_text=(
+        'Let the business have branches; off keeps them but no longer splits the orders'))
 
     def validate_delivery_time(self, value):
         return value or '30–45'

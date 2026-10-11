@@ -64,8 +64,8 @@ paths:
   /api/v1/auth/me:
     get:
       operationId: auth_me_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: The signed-in staff member and their business
       tags:
       - auth
@@ -108,11 +108,129 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffMe'
           description: ''
+  /api/v1/branches:
+    get:
+      operationId: branches_list
+      description: 'Errors: 403 branches_disabled (our panel has not allowed branches).'
+      summary: 'Branches (head office: all; branch staff: their own)'
+      tags:
+      - branches
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Branch'
+          description: ''
+    post:
+      operationId: branches_create
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
+      summary: Open a branch (admin role)
+      tags:
+      - branches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BranchWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BranchWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BranchWriteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+          description: ''
+  /api/v1/branches/{id}:
+    get:
+      operationId: branches_retrieve
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - branches
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+          description: ''
+    patch:
+      operationId: branches_partial_update
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
+      summary: 'Edit a branch, or stop (is_active: false) and resume it (admin role)'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - branches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBranchWriteRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+          description: ''
+    delete:
+      operationId: branches_destroy
+      description: 'Errors: 409 branch_in_use — stop it instead (is_active: false).'
+      summary: Delete a branch that has no orders and no staff (admin role)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - branches
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/business:
     get:
       operationId: business_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Working hours and whether the business is open now
       tags:
       - business
@@ -155,8 +273,9 @@ paths:
   /api/v1/categories:
     get:
       operationId: categories_list
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       summary: All categories (not paginated)
       parameters:
       - in: query
@@ -178,8 +297,9 @@ paths:
           description: ''
     post:
       operationId: categories_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       tags:
       - categories
       requestBody:
@@ -206,8 +326,9 @@ paths:
   /api/v1/categories/{id}:
     get:
       operationId: categories_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       parameters:
       - in: path
         name: id
@@ -227,8 +348,9 @@ paths:
           description: ''
     patch:
       operationId: categories_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       parameters:
       - in: path
         name: id
@@ -259,8 +381,9 @@ paths:
           description: ''
     delete:
       operationId: categories_destroy
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       summary: Delete a category (its products stay, without a category)
       parameters:
       - in: path
@@ -279,7 +402,7 @@ paths:
     get:
       operationId: clients_list
       description: A paginated list for staff; subclasses filter in get_queryset().
-      summary: Customers, newest first
+      summary: Customers, newest first (head office)
       parameters:
       - name: page
         in: query
@@ -312,8 +435,8 @@ paths:
   /api/v1/clients/{id}:
     get:
       operationId: clients_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: A customer with their orders
       parameters:
       - in: path
@@ -334,8 +457,8 @@ paths:
           description: ''
     patch:
       operationId: clients_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Edit a customer
       parameters:
       - in: path
@@ -368,8 +491,7 @@ paths:
   /api/v1/dashboard:
     get:
       operationId: dashboard_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: Branch staff get the numbers of their branch.
       summary: Key numbers of the business
       tags:
       - dashboard
@@ -382,12 +504,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/Dashboard'
           description: ''
+  /api/v1/geo/reverse:
+    get:
+      operationId: geo_reverse_retrieve
+      description: 'Errors: 503 geocoder_unavailable (out of reach or switched off:
+        the address is typed instead).'
+      summary: The address at a point of the map
+      parameters:
+      - in: query
+        name: lang
+        schema:
+          enum:
+          - uz
+          - ru
+          type: string
+          default: uz
+          minLength: 1
+        description: |-
+          * `uz` - uz
+          * `ru` - ru
+      - in: query
+        name: lat
+        schema:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        required: true
+      - in: query
+        name: lng
+        schema:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        required: true
+      tags:
+      - geo
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReverseGeocode'
+          description: ''
+  /api/v1/geo/search:
+    get:
+      operationId: geo_search_retrieve
+      description: 'Errors: 503 geocoder_unavailable (out of reach or switched off:
+        the address is typed instead).'
+      summary: Places for a typed address (up to 5)
+      parameters:
+      - in: query
+        name: lang
+        schema:
+          enum:
+          - uz
+          - ru
+          type: string
+          default: uz
+          minLength: 1
+        description: |-
+          * `uz` - uz
+          * `ru` - ru
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 200
+        required: true
+      tags:
+      - geo
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeoSearch'
+          description: ''
   /api/v1/orders:
     get:
       operationId: orders_list
       description: A paginated list for staff; subclasses filter in get_queryset().
       summary: Orders, newest first
       parameters:
+      - in: query
+        name: branch
+        schema:
+          type: string
+        description: 'Head office: a branch id, or `none` for orders without a branch'
       - name: page
         in: query
         required: false
@@ -428,8 +638,8 @@ paths:
   /api/v1/orders/{id}:
     get:
       operationId: orders_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: One order
       parameters:
       - in: path
@@ -450,8 +660,8 @@ paths:
           description: ''
     patch:
       operationId: orders_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Change the status (the customer gets a Telegram message)
       parameters:
       - in: path
@@ -481,10 +691,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderDetail'
           description: ''
+  /api/v1/orders/{id}/branch:
+    put:
+      operationId: orders_branch_update
+      description: 'Also moves it to another branch. Errors: 400 branches_disabled,
+        400 validation (branch_id: does_not_exist, inactive), 403 for branch staff.'
+      summary: Send the order to a branch (head office; the staff bot tells the branch)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderBranchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderBranchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderBranchRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+          description: ''
   /api/v1/products:
     get:
       operationId: products_list
-      description: A paginated list for staff; subclasses filter in get_queryset().
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       parameters:
       - in: query
         name: category
@@ -525,7 +772,9 @@ paths:
           description: ''
     post:
       operationId: products_create
-      description: A paginated list for staff; subclasses filter in get_queryset().
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       summary: Add a product
       parameters:
       - in: query
@@ -567,8 +816,9 @@ paths:
   /api/v1/products/{id}:
     get:
       operationId: products_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       parameters:
       - in: path
         name: id
@@ -588,8 +838,9 @@ paths:
           description: ''
     patch:
       operationId: products_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       summary: Edit a product
       parameters:
       - in: path
@@ -621,8 +872,9 @@ paths:
           description: ''
     delete:
       operationId: products_destroy
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       parameters:
       - in: path
         name: id
@@ -639,8 +891,7 @@ paths:
   /api/v1/sales:
     get:
       operationId: sales_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: Branch staff see the sales and numbers of their branch.
       summary: Everything the point of sale needs
       tags:
       - sales
@@ -655,8 +906,8 @@ paths:
           description: ''
     post:
       operationId: sales_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Record a sale
       tags:
       - sales
@@ -684,8 +935,8 @@ paths:
   /api/v1/telegram:
     get:
       operationId: telegram_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: The staff bot and linked Telegram accounts
       tags:
       - telegram
@@ -701,8 +952,8 @@ paths:
   /api/v1/telegram/invites:
     post:
       operationId: telegram_invites_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: A one-time link that connects a Telegram account (yours; admins — anyone's)
       tags:
       - telegram
@@ -729,8 +980,8 @@ paths:
   /api/v1/telegram/links/{id}:
     patch:
       operationId: telegram_links_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Turn order notifications on or off
       parameters:
       - in: path
@@ -762,8 +1013,8 @@ paths:
           description: ''
     delete:
       operationId: telegram_links_destroy
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Unlink a Telegram account
       parameters:
       - in: path
@@ -781,8 +1032,9 @@ paths:
   /api/v1/units:
     get:
       operationId: units_list
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       summary: Units of measure
       tags:
       - units
@@ -799,8 +1051,9 @@ paths:
           description: ''
     post:
       operationId: units_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: |-
+        Every staff member reads; only the head office changes (the menu is one for every branch: a branch hiding a
+        dish would hide it everywhere).
       tags:
       - units
       requestBody:
@@ -893,8 +1146,8 @@ paths:
   /api/v1/users/{id}:
     get:
       operationId: users_retrieve
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       parameters:
       - in: path
         name: id
@@ -914,8 +1167,8 @@ paths:
           description: ''
     patch:
       operationId: users_partial_update
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       parameters:
       - in: path
         name: id
@@ -946,8 +1199,8 @@ paths:
           description: ''
     delete:
       operationId: users_destroy
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       parameters:
       - in: path
         name: id
@@ -964,8 +1217,8 @@ paths:
   /api/v1/voice/parse:
     post:
       operationId: voice_parse_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: Recorded clip or text → the complete updated order form
       tags:
       - voice
@@ -992,8 +1245,8 @@ paths:
   /api/v1/voice/token:
     post:
       operationId: voice_token_create
-      description: An endpoint for any signed-in staff member of the business (admin
-        or manager).
+      description: An endpoint for any signed-in staff member of the business (admin,
+        manager or branch staff).
       summary: A single-use Gemini Live session for live captions
       tags:
       - voice
@@ -1008,6 +1261,169 @@ paths:
           description: ''
 components:
   schemas:
+    Branch:
+      type: object
+      description: |-
+        `staff_count` comes annotated and `active_staff` prefetched; `today` from the context ({branch id: {orders,
+        revenue}}).
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+          nullable: true
+        lng:
+          type: number
+          format: double
+          nullable: true
+        phone:
+          type: string
+        is_active:
+          type: boolean
+          description: An inactive branch gets no new orders and is not offered to
+            customers
+        created_at:
+          type: string
+          format: date-time
+        staff_count:
+          type: integer
+          description: Active staff users of the branch
+        staff:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchStaff'
+          description: Its active staff users, by first name
+        today:
+          allOf:
+          - $ref: '#/components/schemas/BranchToday'
+          description: Today's orders of the branch (rejected ones not counted) and
+            money
+      required:
+      - address
+      - created_at
+      - id
+      - is_active
+      - lat
+      - lng
+      - name
+      - phone
+      - staff
+      - staff_count
+      - today
+    BranchOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+          nullable: true
+        lng:
+          type: number
+          format: double
+          nullable: true
+        distance_km:
+          type: number
+          format: double
+          nullable: true
+          description: As the crow flies; null without a point
+        nearest:
+          type: boolean
+      required:
+      - address
+      - distance_km
+      - id
+      - lat
+      - lng
+      - name
+      - nearest
+    BranchRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
+    BranchRefRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - name
+    BranchStaff:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone_number:
+          type: string
+      required:
+      - id
+      - name
+      - phone_number
+    BranchToday:
+      type: object
+      properties:
+        orders:
+          type: integer
+        revenue:
+          type: integer
+      required:
+      - orders
+      - revenue
+    BranchWriteRequest:
+      type: object
+      description: 'Create / update. The point on the map comes as both `lat` and
+        `lng`: it is how the nearest branch is found.'
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        lat:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        lng:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        phone:
+          type: string
+          maxLength: 30
+        is_active:
+          type: boolean
+      required:
+      - address
+      - lat
+      - lng
+      - name
     Category:
       type: object
       properties:
@@ -1161,11 +1577,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DailyCount'
+        today:
+          $ref: '#/components/schemas/DashboardToday'
         latest_orders:
           type: array
           items:
             $ref: '#/components/schemas/OrderSummary'
+        branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardBranch'
+          description: 'Head office with branches on: today''s orders and money of
+            every branch'
+        unassigned:
+          type: integer
+          description: 'Head office: new orders waiting to be sent to a branch'
       required:
+      - branches
       - by_status
       - categories
       - clients
@@ -1173,6 +1601,24 @@ components:
       - latest_orders
       - orders
       - products
+      - today
+      - unassigned
+    DashboardBranch:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        orders:
+          type: integer
+        revenue:
+          type: integer
+      required:
+      - id
+      - name
+      - orders
+      - revenue
     DashboardCategories:
       type: object
       properties:
@@ -1216,6 +1662,16 @@ components:
           type: integer
       required:
       - total
+    DashboardToday:
+      type: object
+      properties:
+        orders:
+          type: integer
+        revenue:
+          type: integer
+      required:
+      - orders
+      - revenue
     DeliveryTypeEnum:
       enum:
       - pickup
@@ -1232,6 +1688,15 @@ components:
       description: |-
         * `gemini` - gemini
         * `local` - local
+    GeoSearch:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
+      required:
+      - results
     InitDataRequest:
       type: object
       properties:
@@ -1330,6 +1795,13 @@ components:
       required:
       - password
       - phone
+    OrderBranchRequest:
+      type: object
+      properties:
+        branch_id:
+          type: integer
+      required:
+      - branch_id
     OrderClient:
       type: object
       properties:
@@ -1351,6 +1823,8 @@ components:
       - tg_nick
     OrderDetail:
       type: object
+      description: '`branch_options` in the context: the active branches the head
+        office may send the order to.'
       properties:
         id:
           type: integer
@@ -1372,18 +1846,22 @@ components:
         client_id:
           type: integer
           nullable: true
-        updated_at:
-          type: string
-          format: date-time
-        address:
-          type: string
-        lat:
-          type: string
-        lng:
-          type: string
         delivery_type:
           type: string
         payment_method:
+          type: string
+        address:
+          type: string
+        branch:
+          allOf:
+          - $ref: '#/components/schemas/BranchRef'
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+        lat:
+          type: string
+        lng:
           type: string
         comment:
           type: string
@@ -1399,8 +1877,28 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderLine'
+        assigned_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it got its branch
+        assigned_by:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+          description: 'Who sent it there; null: it got it by itself'
+        branch_options:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchOption'
+          description: 'For the head office with branches on: every active branch,
+            nearest first; [] otherwise'
       required:
       - address
+      - assigned_at
+      - assigned_by
+      - branch
+      - branch_options
       - client
       - client_id
       - comment
@@ -1442,6 +1940,19 @@ components:
       - product_id
       - quantity
       - total
+    OrderLinePreview:
+      type: object
+      properties:
+        name_uz:
+          type: string
+        name_ru:
+          type: string
+        quantity:
+          type: integer
+      required:
+      - name_ru
+      - name_uz
+      - quantity
     OrderStatusStatusEnum:
       enum:
       - ordered
@@ -1456,6 +1967,9 @@ components:
         * `rejected` - rejected
     OrderSummary:
       type: object
+      description: |-
+        `dispatch_to` in the context (the active branches, for the head office while orders are dispatched): an order
+        without a branch names the nearest one.
       properties:
         id:
           type: integer
@@ -1477,15 +1991,41 @@ components:
         client_id:
           type: integer
           nullable: true
+        delivery_type:
+          type: string
+        payment_method:
+          type: string
+        address:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLinePreview'
+        branch:
+          allOf:
+          - $ref: '#/components/schemas/BranchRef'
+          nullable: true
+        suggested_branch:
+          allOf:
+          - $ref: '#/components/schemas/SuggestedBranch'
+          nullable: true
+          description: 'Without a branch, while the head office dispatches: the nearest
+            active branch to its point (null without a point)'
       required:
+      - address
+      - branch
       - client_id
       - created_at
       - customer_name
+      - delivery_type
       - id
       - items_count
+      - lines
+      - payment_method
       - phone
       - source
       - status
+      - suggested_branch
       - total
     PaginatedClientList:
       type: object
@@ -1571,6 +2111,34 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StaffUser'
+    PatchedBranchWriteRequest:
+      type: object
+      description: 'Create / update. The point on the map comes as both `lat` and
+        `lng`: it is how the nearest branch is found.'
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        lat:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        lng:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        phone:
+          type: string
+          maxLength: 30
+        is_active:
+          type: boolean
     PatchedCategoryRequest:
       type: object
       properties:
@@ -1644,8 +2212,9 @@ components:
           type: boolean
     PatchedStaffUserRequest:
       type: object
-      description: 'Read: StaffUser. Write: password required on create (8+ characters),
-        optional on update.'
+      description: |-
+        Read: StaffUser. Write: password required on create (8+ characters), optional on update; the role `branch`
+        needs `branch_id` (an active branch) and branches on — `business` in the context.
       properties:
         phone_number:
           type: string
@@ -1666,6 +2235,10 @@ components:
           writeOnly: true
           minLength: 8
           maxLength: 128
+        branch_id:
+          type: integer
+          writeOnly: true
+          nullable: true
     PatchedWeekUpdateRequest:
       type: object
       properties:
@@ -1694,6 +2267,21 @@ components:
       required:
       - id
       - name
+    Place:
+      type: object
+      properties:
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+      required:
+      - address
+      - lat
+      - lng
     PosCategory:
       type: object
       description: A category of the point of sale (the shop's shape).
@@ -1849,14 +2437,24 @@ components:
       - name_ru
       - name_uz
       - price
+    ReverseGeocode:
+      type: object
+      properties:
+        address:
+          type: string
+          description: ''''' when the map knows no address there'
+      required:
+      - address
     RoleEnum:
       enum:
       - admin
       - manager
+      - branch
       type: string
       description: |-
         * `admin` - admin
         * `manager` - manager
+        * `branch` - branch
     SaleCreateRequest:
       type: object
       description: Documents the body of POST /sales.
@@ -1879,6 +2477,11 @@ components:
           $ref: '#/components/schemas/SaleCreateStatusEnum'
         comment:
           type: string
+        branch_id:
+          type: integer
+          nullable: true
+          description: 'Head office: the branch it is for (none: the only branch,
+            or it waits to be sent). Branch staff: always their own'
       required:
       - items
     SaleCreateStatusEnum:
@@ -1957,7 +2560,14 @@ components:
           $ref: '#/components/schemas/SalesStats'
         voice:
           $ref: '#/components/schemas/VoiceFeatures'
+        branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchRef'
+          description: 'Head office with branches on: the active branches a sale can
+            be for; [] otherwise'
       required:
+      - branches
       - categories
       - products
       - recent
@@ -2030,8 +2640,17 @@ components:
         shop_url:
           type: string
           format: uri
+        branches_enabled:
+          type: boolean
+          description: Our panel lets the business have branches
+        dispatch:
+          type: boolean
+          description: 'Branches on and 2+ active branches: delivery orders wait for
+            the head office to send them to a branch'
       required:
+      - branches_enabled
       - brand_color
+      - dispatch
       - logo
       - name
       - shop_url
@@ -2048,8 +2667,9 @@ components:
       - user
     StaffUser:
       type: object
-      description: 'Read: StaffUser. Write: password required on create (8+ characters),
-        optional on update.'
+      description: |-
+        Read: StaffUser. Write: password required on create (8+ characters), optional on update; the role `branch`
+        needs `branch_id` (an active branch) and branches on — `business` in the context.
       properties:
         id:
           type: integer
@@ -2065,6 +2685,12 @@ components:
           maxLength: 100
         role:
           $ref: '#/components/schemas/RoleEnum'
+        branch:
+          allOf:
+          - $ref: '#/components/schemas/BranchRef'
+          readOnly: true
+          nullable: true
+          description: Only for the role `branch`
         is_active:
           type: boolean
         created_at:
@@ -2072,14 +2698,16 @@ components:
           format: date-time
           readOnly: true
       required:
+      - branch
       - created_at
       - id
       - phone_number
       - role
     StaffUserRequest:
       type: object
-      description: 'Read: StaffUser. Write: password required on create (8+ characters),
-        optional on update.'
+      description: |-
+        Read: StaffUser. Write: password required on create (8+ characters), optional on update; the role `branch`
+        needs `branch_id` (an active branch) and branches on — `business` in the context.
       properties:
         phone_number:
           type: string
@@ -2100,6 +2728,10 @@ components:
           writeOnly: true
           minLength: 8
           maxLength: 128
+        branch_id:
+          type: integer
+          writeOnly: true
+          nullable: true
       required:
       - phone_number
       - role
@@ -2113,6 +2745,21 @@ components:
       required:
       - count
       - status
+    SuggestedBranch:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        distance_km:
+          type: number
+          format: double
+          description: As the crow flies
+      required:
+      - distance_km
+      - id
+      - name
     Telegram:
       type: object
       properties:

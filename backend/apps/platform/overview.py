@@ -31,3 +31,11 @@ def owner_of(business):
 
     with tenant_context(business):
         return User.objects.filter(role=UserRole.admin.value, is_deleted=False).order_by('id').first()
+
+
+def branch_counts(business):
+    """{'total', 'active'} branches of the business (they live in its schema)."""
+    from apps.core.models import Branch
+
+    with tenant_context(business):
+        return {'total': Branch.objects.count(), 'active': Branch.objects.filter(is_active=True).count()}

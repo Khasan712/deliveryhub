@@ -756,6 +756,16 @@ components:
       required:
       - admin
       - client
+    BranchCounts:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+      required:
+      - active
+      - total
     BusinessCard:
       type: object
       description: 'Needs `request` in the context (addresses follow the style of
@@ -783,8 +793,12 @@ components:
           $ref: '#/components/schemas/Stats'
         bots:
           $ref: '#/components/schemas/Bots'
+        branches_enabled:
+          type: boolean
+          description: We let the business have branches (its admin opens them)
       required:
       - bots
+      - branches_enabled
       - brand_color
       - created_at
       - links
@@ -838,6 +852,10 @@ components:
           type: string
           format: binary
           nullable: true
+        branches_enabled:
+          type: boolean
+          description: Let the business have branches; off keeps them but no longer
+            splits the orders
         slug:
           type: string
           minLength: 1
@@ -904,6 +922,9 @@ components:
           $ref: '#/components/schemas/Stats'
         bots:
           $ref: '#/components/schemas/Bots'
+        branches_enabled:
+          type: boolean
+          description: We let the business have branches (its admin opens them)
         support_phone:
           type: string
         address:
@@ -936,9 +957,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MissingRolesEnum'
+        branches:
+          allOf:
+          - $ref: '#/components/schemas/BranchCounts'
+          description: Its branches (kept while branches are off)
       required:
       - address
       - bots
+      - branches
+      - branches_enabled
       - brand_color
       - created_at
       - delivery_time
@@ -1384,6 +1411,10 @@ components:
           type: string
           format: binary
           nullable: true
+        branches_enabled:
+          type: boolean
+          description: Let the business have branches; off keeps them but no longer
+            splits the orders
     PatchedLeadUpdateRequest:
       type: object
       properties:

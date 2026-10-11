@@ -351,6 +351,29 @@ components:
       - client
       - created
       - token
+    Branch:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+          nullable: true
+        lng:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - address
+      - id
+      - lat
+      - lng
+      - name
     Business:
       type: object
       properties:
@@ -384,8 +407,16 @@ components:
         logo:
           type: string
           nullable: true
+        branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Branch'
+          description: 'Active branches while the business has them on ([] otherwise):
+            with 2+ a pickup order names one (branch_id); with 1 pickup orders are
+            collected there'
       required:
       - address
+      - branches
       - brand_color
       - delivery_time
       - lat
@@ -522,8 +553,15 @@ components:
           type: string
         comment:
           type: string
+        branch:
+          allOf:
+          - $ref: '#/components/schemas/OrderBranch'
+          nullable: true
+          description: Where a pickup order is collected (or which branch delivers
+            it)
       required:
       - address
+      - branch
       - comment
       - created_at
       - customer_name
@@ -538,6 +576,26 @@ components:
       - status
       - total
       - updated_at
+    OrderBranch:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+          format: double
+          nullable: true
+        lng:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - address
+      - lat
+      - lng
+      - name
     OrderCreateRequest:
       type: object
       description: Documents the body of POST /orders; the view checks it with the
@@ -577,6 +635,11 @@ components:
           $ref: '#/components/schemas/PlatformEnum'
         lang:
           $ref: '#/components/schemas/LangEnum'
+        branch_id:
+          type: integer
+          nullable: true
+          description: 'Pickup with 2+ branches: where the customer collects it (required
+            then); ignored for delivery'
       required:
       - delivery_type
       - items

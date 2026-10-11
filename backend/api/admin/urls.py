@@ -2,7 +2,8 @@ from django.urls import path
 
 from ..common.auth import CsrfView, LogoutView
 from ..common.views import ProductImageView
-from .views import auth, business, catalog, clients, dashboard, orders, sales, telegram, users, voice
+from .views import (auth, branches, business, catalog, clients, dashboard, geo, orders, sales, telegram, users,
+                    voice)
 
 urlpatterns = [
     path('auth/csrf', CsrfView.as_view(), name='auth-csrf'),
@@ -16,6 +17,12 @@ urlpatterns = [
 
     path('orders', orders.OrderListView.as_view(), name='orders'),
     path('orders/<int:pk>', orders.OrderDetailView.as_view(), name='order'),
+    path('orders/<int:pk>/branch', orders.OrderBranchView.as_view(), name='order-branch'),
+
+    path('branches', branches.BranchListView.as_view(), name='branches'),
+    path('branches/<int:pk>', branches.BranchDetailView.as_view(), name='branch'),
+    path('geo/reverse', geo.GeoReverseView.as_view(), name='geo-reverse'),
+    path('geo/search', geo.GeoSearchView.as_view(), name='geo-search'),
 
     path('clients', clients.ClientListView.as_view(), name='clients'),
     path('clients/<int:pk>', clients.ClientDetailView.as_view(), name='client'),

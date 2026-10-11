@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core import branches
 from apps.core.enums import DeliveryTypeEnum, LoginTokenStatusEnum, OrderEnum, OrderSourceEnum, PaymentMethodEnum
 from apps.core.models import Category, Client, Order, OrderItem, PhoneOTP, Product, TelegramLoginToken
 from apps.core.services import OrderError, create_order, resolve_items
@@ -324,9 +325,21 @@ class MeView(CustomerView):
 def client_orders(client):
     return (
         Order.objects.filter(client=client).exclude(status=OrderEnum.new.value)
-        .select_related('client').prefetch_related(Prefetch('order_items__product', Product.objects.light()))
+        .select_related('client', 'branch').prefetch_related(Prefetch('order_items__product', Product.objects.light()))
         .order_by('-created_at')
     )
+
+
+def pickup_branch(business, raw, fields):
+    """The branch a pickup order is collected at: the customer's choice among 2+ branches (an error in `fields`
+    when missing or unknown), else the only one (None: no branches)."""
+    choices = list(branches.active_branches()) if branches.enabled(business) else []
+    if len(choices) < 2:
+        return choices[0] if choices else None
+    chosen = next((branch for branch in choices if str(branch.pk) == str(raw)), None)
+    if chosen is None:
+        fields['branch_id'] = ['required' if raw in (None, '') else 'invalid']
+    return chosen
 
 
 def coordinate(value):
@@ -399,6 +412,9 @@ class OrdersView(CustomerView):
             fields['phone'] = ['required' if not data.get('phone') else 'invalid']
         if delivery_type == delivery and not address and latitude is None:
             fields['address'] = ['required']
+        # Delivery: the head office sends it to the nearest branch (the only one: at once).
+        branch = (branches.branch_for_new_order(business) if delivery_type == delivery
+                  else pickup_branch(business, data.get('branch_id'), fields))
         if fields:
             raise ApiError('validation', fields=fields)
 
@@ -426,6 +442,7 @@ class OrdersView(CustomerView):
             payment_method=payment if payment in (PaymentMethodEnum.cash.value, PaymentMethodEnum.card.value)
             else PaymentMethodEnum.cash.value,
             comment=text(data.get('comment'), 1000),
+            branch=branch,
         )
         remember_contacts(client, name, phone, is_delivery, address, latitude, longitude, data.get('lang'))
         queue_order_created(order)

@@ -4,8 +4,8 @@ from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from apps.core.models import Category, Client, Descriptions, Order, OrderItem, Product, User
-from apps.platform.models import BusinessBot
+from apps.core.models import Branch, Category, Client, Descriptions, Order, OrderItem, Product, User
+from apps.platform.models import Business, BusinessBot
 from apps.platform.testing import BusinessTestCase
 from api.shop.authentication import issue_token
 
@@ -63,4 +63,24 @@ class QueryCountTests(BusinessTestCase):
         self.add_data(2)
         few = self.counts()
         self.add_data(8)
+        self.assertEqual(self.counts(), few)
+
+    def test_branches_cost_no_query_per_order_or_branch(self):
+        """With branches on: orders in branches and waiting for one (the nearest is named), one branch or many."""
+        Business.objects.filter(pk=self.tenant.pk).update(branches_enabled=True)
+
+        def add_branches(count):
+            for _ in range(count):
+                Branch.objects.create(name='Filial', latitude='41.3', longitude='69.2')
+            branches = list(Branch.objects.all())
+            for index, order in enumerate(Order.objects.order_by('id')):
+                order.l_t, order.e_t = '41.31', '69.21'
+                order.branch = branches[index % len(branches)] if index % 2 else None
+                order.save()
+
+        self.add_data(2)
+        add_branches(2)
+        few = self.counts()
+        self.add_data(8)
+        add_branches(5)
         self.assertEqual(self.counts(), few)

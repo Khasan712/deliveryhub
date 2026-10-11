@@ -59,6 +59,8 @@ class OrderTicket(models.Model):
     order = models.OneToOneField('app.Order', on_delete=models.CASCADE, related_name='bot_ticket')
     # The order status the cards in the chats currently show.
     status_seen = models.CharField(max_length=20)
+    # The branch (app.Branch id) the cards currently show: the bot updates them when the order is sent elsewhere.
+    branch_seen_id = models.BigIntegerField(blank=True, null=True)
     accepted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name='+'
     )

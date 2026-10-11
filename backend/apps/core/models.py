@@ -8,11 +8,30 @@ from apps.core.managers import CustomManager
 from apps.core.utils import parse_price, parse_quantity
 
 
+class Branch(models.Model):
+    """A branch of the business (apps.core.branches): its own kitchen and staff, on the map. Exists only while our
+    panel lets the business have branches (Business.branches_enabled); orders are sent to the nearest one."""
+    name = models.CharField(max_length=100)
+    address = models.CharField(max_length=255, blank=True, default='')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    phone = models.CharField(max_length=30, blank=True, default='')
+    # An inactive branch gets no new orders and is not offered to customers; its history stays.
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
     phone_number = models.CharField(max_length=100, unique=True)
     role = models.CharField(max_length=10, choices=UserRole.choices())
+    # Only for the role `branch`: the branch whose orders alone this person sees.
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, blank=True, null=True, related_name='staff')
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
@@ -124,6 +143,12 @@ class Order(models.Model):
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_orders'
     )
+    # The branch that makes it (apps.core.branches): sent there by the head office, chosen by the customer for a
+    # pickup, or set by itself (the only branch, a branch's own sale). Empty: no branches, or waiting to be sent.
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, blank=True, null=True, related_name='orders')
+    assigned_at = models.DateTimeField(blank=True, null=True)
+    # Who sent it to the branch; empty when it got its branch by itself.
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

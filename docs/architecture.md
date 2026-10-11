@@ -42,6 +42,13 @@ browsers ──► OpenFreeMap (map tiles of the checkout and our panel)
   of the business; the bot service sends them from the business's customers' bot and marks them sent.
 * **Staff order cards** — the bot service watches orders of each business: new customer orders go to every staff
   chat with Accept / Reject buttons, status changes made in the admin panel update those cards.
+* **Branches** (`app_branch`, allowed per business in our panel: `hub_business.branches_enabled`) — every order may
+  belong to a branch (`app_order.branch_id`); staff users with the role `branch` belong to one (`app_user.branch_id`)
+  and see only its orders, everywhere (`apps.core.branches.scope_orders`; the bot filters its cards the same way).
+  With two or more active branches a delivery order waits without one until the head office sends it — the nearest
+  branch is a straight line on the map from the order's point — from the admin panel (`PUT /orders/{id}/branch`) or
+  with a button on its card in the staff bot; the bot then tells that branch (`adminbot_orderticket.branch_seen_id`
+  follows the branch the cards show, like `status_seen` the status). docs/api.md → Branches.
 * **Bots** are polled by the bot service (one process for all businesses); a bot connected or switched off in our
   panel is picked up within ~10 s. New bots are created by our platform bot (Telegram Managed Bots).
 * **Each UI is a static build** served by its own small Caddy container (SPA fallback, long-lived asset cache); the

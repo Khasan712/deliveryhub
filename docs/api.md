@@ -65,6 +65,23 @@ as `WorkingHours`:
   never — open around the clock); while closed, when it opens next (`null`: every day off). Back-to-back shifts
   (Monday 18:00–24:00, Tuesday 00:00–02:00) count as one.
 
+### Branches
+Our panel lets a business have branches (`branches_enabled`, off by default). Its admin then opens them in the admin
+panel — each with a name, an address, a point on the map and its own staff — and every order goes to the branch that
+makes it:
+* **Head office** — staff without a branch: roles `admin` (everything, also branches and staff) and `manager`. They see
+  every order and send orders to branches. **Branch staff** — role `branch`, tied to one branch: only its orders.
+* **One active branch**: every new order gets it at once. **Two or more** (*dispatch*): a delivery order waits for the
+  head office, which sends it to a branch — the one nearest to the order's point is suggested (a straight line on the
+  map, `distance_km`; an order with a typed address only has no distance) — and may move it to another later; a pickup
+  customer picks the branch in the shop; a sale of branch staff is their branch's, a sale of the head office names
+  its branch.
+* The staff bot sends a branch's staff the cards of its orders only, from the moment an order gets the branch; head
+  office staff get every order, and in dispatch mode they send it to a branch with a button on its card.
+* Branch staff read the menu (one for every branch, so they do not change or freeze it: that would hide a dish
+  everywhere) and do not see the customer list; the head office does all of it.
+* Branches off: the branches stay but nothing is split — orders get no branch and branch staff act like managers.
+
 ---
 
 ## Shop API
@@ -87,7 +104,9 @@ Business profile and the whole catalog in one call.
 "thumb", "frozen": bool}` (`image`: URL or `null`, `thumb`: its small copy — see [Images](#conventions); `frozen` — not
 available right now: shown, but cannot be ordered). `popular`: product ids, most ordered first. `bot_username`: the customers' bot or `null`.
 `business.address` / `lat` / `lng`: where pickup orders are collected (`""` / `null` for a business not yet put on the
-map).
+map). `business.branches`: `[{"id", "name", "address", "lat", "lng"}]` — the active [branches](#branches) while the
+business has them on (`[]` otherwise): with two or more a pickup order names the one to collect it at; with one, pickup
+orders are collected there (its address instead of `business.address`).
 
 `Client`: `{"id", "first_name", "last_name", "phone", "telegram": bool, "tg_nick", "lang": "uz"|"ru"|"", "address", "lat", "lng"}`
 (`address`/`lat`/`lng` — last delivery address, to prefill checkout).
@@ -124,12 +143,15 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
   ```json
   {"items": [{"product_id": 1, "quantity": 2}], "name": "Aziz", "phone": "+998901234567",
    "delivery_type": "delivery" | "pickup", "address": "Chilonzor 9", "lat": 41.31, "lng": 69.27,
-   "payment_method": "cash" | "card", "comment": "", "platform": "web" | "miniapp", "lang": "uz" | "ru"}
+   "payment_method": "cash" | "card", "comment": "", "platform": "web" | "miniapp", "lang": "uz" | "ru",
+   "branch_id": 3}
   ```
-  Errors: `business_closed` (`opens_at`: iso or `null` — outside the [working hours](#working-hours)), `validation`
-  with `fields.name` / `fields.phone` / `fields.address` (`required` or `invalid`; delivery needs an address or
-  coordinates), `empty` (no items), `product_not_found` (`detail`: ids), `product_unavailable` (`detail`: ids of
-  frozen products), `min_order` (`min_order`), `429 too_many_requests`. Prices always come from the catalog.
+  `branch_id` — a pickup with two or more branches: where it is collected (required then; ignored for delivery — the
+  business sends it to a branch). Errors: `business_closed` (`opens_at`: iso or `null` — outside the
+  [working hours](#working-hours)), `validation` with `fields.name` / `fields.phone` / `fields.address` /
+  `fields.branch_id` (`required` or `invalid`; delivery needs an address or coordinates), `empty` (no items),
+  `product_not_found` (`detail`: ids), `product_unavailable` (`detail`: ids of frozen products), `min_order`
+  (`min_order`), `429 too_many_requests`. Prices always come from the catalog.
 * `GET /api/v1/orders/{id}` → `{"order": Order}`.
 
 `Order`:
@@ -138,9 +160,11 @@ PATCH body (all optional): `{"first_name", "last_name", "lang": "uz"|"ru"}` → 
  "created_at": "...", "updated_at": "...", "total": 82000,
  "items": [{"product_id": 1, "name_uz": "...", "name_ru": "...", "image": "<thumb>", "quantity": 2, "price": 35000, "total": 70000}],
  "customer_name": "Aziz", "phone": "+998901234567", "address": "Chilonzor 9", "lat": "41.31", "lng": "69.27",
- "delivery_type": "delivery", "payment_method": "card", "comment": ""}
+ "delivery_type": "delivery", "payment_method": "card", "comment": "",
+ "branch": {"name": "Chilonzor", "address": "Bunyodkor 1", "lat": 41.2856, "lng": 69.2044} | null}
 ```
-Status meaning for customers: `ordered` — accepted, being prepared; `on_the_way` (delivery only); `completed` —
+`branch` — where a pickup order is collected (or the branch that delivers it); `null` without branches. Status meaning
+for customers: `ordered` — accepted, being prepared; `on_the_way` (delivery only); `completed` —
 delivered / handed over (pickup); `rejected` — cancelled.
 
 ### Map: addresses ⇄ points
@@ -160,14 +184,20 @@ typed instead).
 
 ## Admin API
 
-Staff of one business (session auth). Roles: `admin` (everything) and `manager` (everything except staff users).
+Staff of one business (session auth). Roles: `admin` (everything) and `manager` (everything except staff users and
+branches) — the head office; `branch` — the staff of one branch (see [Branches](#branches): only its orders and
+sales; the menu read only; no customers).
 
-`StaffUser`: `{"id", "phone_number", "first_name", "last_name", "role": "admin"|"manager", "is_active", "created_at"}`.
+`StaffUser`: `{"id", "phone_number", "first_name", "last_name", "role": "admin"|"manager"|"branch",
+"branch": {"id", "name"} | null, "is_active", "created_at"}` (`branch` — only for the role `branch`).
 
 ### Auth
 * `GET /api/v1/auth/csrf`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout` (see Conventions).
 * `GET /api/v1/auth/me` →
-  `{"user": StaffUser, "business": {"name", "slug", "logo", "brand_color", "shop_url"}}` (`shop_url` — the public shop address).
+  `{"user": StaffUser, "business": {"name", "slug", "logo", "brand_color", "shop_url", "branches_enabled", "dispatch"}}`
+  (`shop_url` — the public shop address; `branches_enabled` — our panel lets the business have branches; `dispatch` —
+  and it has two or more active ones: delivery orders wait for the head office). Branch staff = `branches_enabled` and
+  the role `branch`; everyone else is the head office.
 * `POST /api/v1/auth/telegram` `{"init_data"}` — sign-in from the staff bot's Mini App (Telegram account linked to
   a user) → `{"user": StaffUser}`; `403 not_linked` / `403 invalid_init_data`.
 
@@ -183,32 +213,60 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
  "by_status": [{"status": "completed", "count": 100}],
  "daily": [{"date": "2026-10-01", "count": 5}],
  "today": {"orders": 8, "revenue": 572000},
- "latest_orders": [OrderSummary]}
+ "latest_orders": [OrderSummary],
+ "branches": [{"id": 1, "name": "Chilonzor", "orders": 5, "revenue": 410000}], "unassigned": 2}
 ```
 `daily` covers the last 7 days (days without orders are included with `0`). Counts never include unfinished carts.
-`today.revenue` — the totals of today's orders from every channel, rejected ones left out.
+`today.revenue` — the totals of today's orders from every channel, rejected ones left out. Branch staff get every
+number of their branch only. `branches` — the head office with branches on: today per branch (the active ones and any
+with orders today; `[]` otherwise); `unassigned` — new orders waiting to be sent to a branch.
 
 ### Orders
-* `GET /api/v1/orders?status=&source=&search=&page=&page_size=` — *paginated* `OrderSummary`, newest first.
-  `search` matches id, customer name, phone.
+* `GET /api/v1/orders?status=&source=&branch=&search=&page=&page_size=` — *paginated* `OrderSummary`, newest first.
+  `search` matches id, customer name, phone. `branch` (head office): a branch id, or `none` — orders without a branch.
+  Branch staff get only their branch's orders here and below (another branch's order is `404`).
 * `GET /api/v1/orders/{id}` → `OrderDetail`.
 * `PATCH /api/v1/orders/{id}` `{"status": "ordered"|"on_the_way"|"completed"|"rejected"}` → `OrderDetail`
   (the customer gets a Telegram message about the change).
+* `PUT /api/v1/orders/{id}/branch` `{"branch_id": 3}` → `OrderDetail` — the head office sends the order to a branch
+  (or moves it to another one; any status), and the staff bot tells that branch. Errors: `403 forbidden` (branch
+  staff), `400 branches_disabled`, `validation` (`fields.branch_id`: `does_not_exist` / `inactive`).
 
 `OrderSummary`: `{"id", "status", "source", "created_at", "customer_name", "phone", "total", "items_count", "client_id",
 "delivery_type": "pickup"|"delivery"|"", "payment_method": "cash"|"card"|"", "address",
-"lines": [{"name_uz", "name_ru", "quantity"}]}` — `lines` names what was ordered (the phone's order cards).
-`OrderDetail`: OrderSummary without `lines` + `{"updated_at", "lat", "lng", "comment",
+"lines": [{"name_uz", "name_ru", "quantity"}], "branch": {"id", "name"} | null,
+"suggested_branch": {"id", "name", "distance_km"} | null}` — `lines` names what was ordered (the phone's order cards);
+`suggested_branch` — the head office in dispatch mode, an order without a branch: the nearest active branch to its
+point (`null` without a point).
+`OrderDetail`: OrderSummary without `lines` and `suggested_branch` + `{"updated_at", "lat", "lng", "comment",
 "created_by": {"id", "name"} | null, "client": {"id", "first_name", "last_name", "phone", "tg_nick"} | null,
-"items": [{"product_id", "name_uz", "name_ru", "quantity", "price", "total"}]}`.
+"items": [{"product_id", "name_uz", "name_ru", "quantity", "price", "total"}], "assigned_at",
+"assigned_by": {"id", "name"} | null, "branch_options": [{"id", "name", "address", "lat", "lng", "distance_km",
+"nearest": bool}]}` — `assigned_by`: who sent it to its branch (`null`: it got it by itself — the only branch, the
+customer's pickup choice, a branch's own sale); `branch_options`: the head office with branches on — every active
+branch, nearest first (`distance_km` `null` and by name when the order has no point); `[]` for branch staff.
 
-### Clients (customers)
+### Branches *(only with branches on — `403 branches_disabled` otherwise)*
+* `GET /api/v1/branches` → `[Branch]` (not paginated; active first, then by name) — the head office: all; branch
+  staff: their own. `GET /api/v1/branches/{id}`.
+* `POST /api/v1/branches` · `PATCH|DELETE /api/v1/branches/{id}` — admin role:
+  `{"name", "address", "lat", "lng", "phone", "is_active"}` (`lat` + `lng` required on create and always together —
+  the point is how the nearest branch is found). `is_active: false` stops a branch: no new orders, not offered to
+  customers, its history stays. Deleting a branch with orders or staff → `409 branch_in_use` (stop it instead).
+* `GET /api/v1/geo/reverse`, `GET /api/v1/geo/search` — the branch form's map, any staff member: the same as in the
+  [Shop API](#map-addresses--points).
+
+`Branch`: `{"id", "name", "address", "lat", "lng", "phone", "is_active", "created_at", "staff_count",
+"staff": [{"id", "name", "phone_number"}], "today": {"orders", "revenue"}}` (`staff_count` / `staff` — its active
+staff, by first name; `today` — its orders today, rejected ones left out).
+
+### Clients (customers) *(head office — `403` for branch staff)*
 * `GET /api/v1/clients?search=&page=` — *paginated*
   `{"id", "first_name", "last_name", "phone", "tg_nick", "telegram": bool, "lang", "orders_count", "created_at"}`.
 * `GET /api/v1/clients/{id}` → the same + `{"location", "orders": [OrderSummary]}`.
 * `PATCH /api/v1/clients/{id}` `{"first_name", "last_name", "phone", "location"}` → client.
 
-### Catalog
+### Catalog *(branch staff read it; changes — `403` for them)*
 * Products — `GET /api/v1/products?search=&category=&frozen=true|false&page=` (*paginated*), `POST /api/v1/products`,
   `GET|PATCH|DELETE /api/v1/products/{id}`.
   `Product` (admin): `{"id", "name_uz", "name_ru", "desc_uz", "desc_ru", "price", "unit": Unit | null,
@@ -223,8 +281,10 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
 
 ### Staff users *(admin role only — others get 403)*
 * `GET /api/v1/users?search=&page=` (*paginated* StaffUser), `POST`, `GET|PATCH|DELETE /api/v1/users/{id}`.
-  Body: `{"phone_number", "first_name", "last_name", "role", "is_active", "password"}` — `password` required on
-  create (8+ chars), optional on update. Deleting yourself → `400 cannot_delete_self`; changing your own role or
+  Body: `{"phone_number", "first_name", "last_name", "role", "is_active", "password", "branch_id"}` — `password`
+  required on create (8+ chars), optional on update. The role `branch` needs branches on (`fields.role:
+  ["branches_disabled"]`) and an active branch (`fields.branch_id`: `required` / `does_not_exist` / `inactive`);
+  `admin` and `manager` have no branch. Deleting yourself → `400 cannot_delete_self`; changing your own role or
   deactivating yourself → `400 cannot_change_self`.
 
 ### Sales (point of sale, orders without a customer account)
@@ -233,11 +293,15 @@ Staff of one business (session auth). Roles: `admin` (everything) and `manager` 
   {"categories": [{"id", "name_uz", "name_ru"}],
    "products": [{"id", "name_uz", "name_ru", "price", "unit_uz", "unit_ru", "category_id", "image", "thumb", "frozen"}],
    "recent": [SaleSummary], "stats": {"count", "revenue", "average", "all_orders_today"},
-   "voice": {"gemini": bool, "live": bool}}
+   "voice": {"gemini": bool, "live": bool}, "branches": [{"id", "name"}]}
   ```
+  Branch staff get their branch's `recent` and `stats`. `branches` — the head office with branches on: the active
+  branches a sale can be for (`[]` otherwise).
 * `POST /api/v1/sales`
   `{"items": [{"product_id", "quantity"}], "customer_name", "phone", "delivery_type", "address", "payment_method",
-  "status", "comment"}` → `201 {"order": SaleSummary, "stats"}`. Defaults: `delivery_type=pickup`; `status` —
+  "status", "comment", "branch_id"}` → `201 {"order": SaleSummary, "stats"}`. `branch_id` — the head office: the branch
+  it is for — required with two or more active branches (`validation`, `fields.branch_id`: `required` /
+  `does_not_exist` / `inactive`), the only one is taken by itself; branch staff always sell for their own. Defaults: `delivery_type=pickup`; `status` —
   `completed` for pickup, `ordered` for delivery; frozen products are sold too (the UI warns). Errors: `empty`,
   `product_not_found`.
   `SaleSummary`: `{"id", "name", "phone", "status", "total", "items_count", "created_at"}`.
@@ -292,7 +356,8 @@ Our staff only (superusers of the platform; session auth).
   `slug_reserved` / `slug_taken`; `fields.owner_phone`: `invalid`; `fields.address` / `lat` / `lng`: `required`).
 * `GET /api/v1/businesses/{slug}` → `BusinessDetail`.
 * `PATCH /api/v1/businesses/{slug}` (`name`, `tagline`, `support_phone`, `address`, `lat` + `lng` (always together),
-  `delivery_time`, `min_order`, `brand_color`, `logo`) → `BusinessDetail`.
+  `delivery_time`, `min_order`, `brand_color`, `logo`, `branches_enabled`) → `BusinessDetail`. `branches_enabled` lets
+  the business have [branches](#branches); turned off, its branches are kept but orders are no longer split.
 * `POST /api/v1/businesses/{slug}/status` `{"status": "active" | "suspended"}` → `BusinessDetail`.
 * `DELETE /api/v1/businesses/{slug}` `{"confirm": "<slug>"}` → `204` — deletes the business for good: its schema (staff,
   catalog, customers, orders), domains, bots, setup links and uploaded files; its bots are released first (Mini App
@@ -308,12 +373,13 @@ Our staff only (superusers of the platform; session auth).
  "tagline": "", "created_at": "...",
  "links": {"shop": "https://burger-house.portex.uz/", "admin": "https://burger-house-admin.portex.uz/"},
  "stats": {"orders_today": 2, "revenue_today": 505000, "orders_total": 11, "customers": 7},
- "bots": {"client": Bot | null, "admin": Bot | null}}
+ "bots": {"client": Bot | null, "admin": Bot | null}, "branches_enabled": false}
 ```
 `Bot`: `{"username", "alive": bool, "created_via": "managed" | "token"}` (`alive` — the bot service polls it now).
 `BusinessDetail` = BusinessCard + `{"support_phone", "address", "lat", "lng", "working_hours": WorkingHours,
 "delivery_time", "min_order", "owner": {"name", "phone"} | null, "platform_bot": {"username"} | null,
-"missing_roles": ["client", "admin"]}` (`working_hours` is set by the business in its admin panel — read-only here)
+"missing_roles": ["client", "admin"], "branches": {"total", "active"}}` (`working_hours` is
+set by the business in its admin panel — read-only here; `branches` — its branches, kept while branches are off)
 (`lat`/`lng` are `null` for a business opened before it was put on the map).
 
 ### Map

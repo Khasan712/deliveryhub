@@ -31,6 +31,9 @@ class Business(TenantMixin):
     logo = models.ImageField(upload_to='logos/', blank=True, storage=platform_storage)
     owner_name = models.CharField(max_length=120, blank=True)
     owner_phone = models.CharField(max_length=30, blank=True)
+    # Our panel lets the business have branches (apps.core.branches): its admin opens them in the admin panel and
+    # sends orders to them. Off: branches are kept but ignored.
+    branches_enabled = models.BooleanField(default=False, db_default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     auto_create_schema = True

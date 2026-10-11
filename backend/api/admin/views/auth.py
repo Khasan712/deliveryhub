@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core import branches
 from apps.platform.current import url_for
 from apps.platform.models import Domain
 from apps.telegram.invites import admin_bot, find_staff
@@ -22,6 +23,9 @@ Me = inline_serializer('StaffMe', {
         'name': serializers.CharField(), 'slug': serializers.CharField(),
         'logo': serializers.CharField(allow_null=True), 'brand_color': serializers.CharField(),
         'shop_url': serializers.URLField(),
+        'branches_enabled': serializers.BooleanField(help_text='Our panel lets the business have branches'),
+        'dispatch': serializers.BooleanField(help_text=(
+            'Branches on and 2+ active branches: delivery orders wait for the head office to send them to a branch')),
     }),
 })
 
@@ -36,6 +40,8 @@ def me_payload(request, user):
             'logo': file_url(business.logo),
             'brand_color': business.brand_color,
             'shop_url': url_for(request, business, Domain.KIND_SHOP),
+            'branches_enabled': branches.enabled(business),
+            'dispatch': branches.dispatching(business),
         },
     }
 

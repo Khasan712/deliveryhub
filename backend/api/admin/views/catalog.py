@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from apps.core.models import Category, Descriptions, Product
 from ..serializers import CategorySerializer, ProductSerializer, ProductWriteSerializer, UnitSerializer
-from .base import StaffListView, StaffView, search_term
+from .base import HeadOfficeWrites, StaffListView, StaffView, search_term
 
 
 def products():
@@ -14,7 +14,7 @@ def products():
 
 @extend_schema(parameters=[OpenApiParameter('search', str), OpenApiParameter('category', int),
                            OpenApiParameter('frozen', bool, description='true: only frozen, false: only on sale')])
-class ProductListView(StaffListView):
+class ProductListView(HeadOfficeWrites, StaffListView):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
@@ -37,7 +37,7 @@ class ProductListView(StaffListView):
         return Response(ProductSerializer(products().get(pk=product.pk)).data, status=201)
 
 
-class ProductDetailView(StaffView):
+class ProductDetailView(HeadOfficeWrites, StaffView):
     @extend_schema(responses=ProductSerializer)
     def get(self, request, pk):
         return Response(ProductSerializer(get_object_or_404(products(), pk=pk)).data)
@@ -60,7 +60,7 @@ def categories():
     return Category.objects.annotate(products_count=Count('product')).order_by('name_uz', 'id')
 
 
-class CategoryListView(StaffView):
+class CategoryListView(HeadOfficeWrites, StaffView):
     @extend_schema(summary='All categories (not paginated)', parameters=[OpenApiParameter('search', str)],
                    responses=CategorySerializer(many=True))
     def get(self, request):
@@ -77,7 +77,7 @@ class CategoryListView(StaffView):
         return Response(CategorySerializer(categories().get(pk=category.pk)).data, status=201)
 
 
-class CategoryDetailView(StaffView):
+class CategoryDetailView(HeadOfficeWrites, StaffView):
     @extend_schema(responses=CategorySerializer)
     def get(self, request, pk):
         return Response(CategorySerializer(get_object_or_404(categories(), pk=pk)).data)
@@ -95,7 +95,7 @@ class CategoryDetailView(StaffView):
         return Response(status=204)
 
 
-class UnitListView(StaffView):
+class UnitListView(HeadOfficeWrites, StaffView):
     @extend_schema(summary='Units of measure', responses=UnitSerializer(many=True))
     def get(self, request):
         return Response(UnitSerializer(Descriptions.objects.order_by('id'), many=True).data)

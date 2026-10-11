@@ -4,6 +4,8 @@ from enum import Enum
 class UserRole(Enum):
     admin = 'admin'
     manager = 'manager'
+    # Staff of one branch (User.branch): only that branch's orders, while the business has branches on.
+    branch = 'branch'
 
     @classmethod
     def choices(cls):

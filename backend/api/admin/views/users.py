@@ -10,7 +10,7 @@ from .base import AdminListView, AdminView, search_term
 
 
 def staff_users():
-    return User.objects.filter(is_deleted=False).order_by('-created_at', '-id')
+    return User.objects.filter(is_deleted=False).select_related('branch').order_by('-created_at', '-id')
 
 
 @extend_schema(summary='Staff users (admins only)', parameters=[OpenApiParameter('search', str)])
@@ -26,7 +26,7 @@ class UserListView(AdminListView):
 
     @extend_schema(summary='Add a staff user', request=StaffUserSerializer, responses={201: StaffUserSerializer})
     def post(self, request):
-        data = StaffUserSerializer(data=request.data)
+        data = StaffUserSerializer(data=request.data, context={'business': request.tenant})
         data.is_valid(raise_exception=True)
         return Response(StaffUserSerializer(data.save()).data, status=201)
 
@@ -39,7 +39,7 @@ class UserDetailView(AdminView):
     @extend_schema(request=StaffUserSerializer, responses=StaffUserSerializer)
     def patch(self, request, pk):
         user = get_object_or_404(staff_users(), pk=pk)
-        data = StaffUserSerializer(user, data=request.data, partial=True)
+        data = StaffUserSerializer(user, data=request.data, partial=True, context={'business': request.tenant})
         data.is_valid(raise_exception=True)
         changes = data.validated_data
         if user == request.user and (changes.get('role', user.role) != user.role or changes.get('is_active') is False):

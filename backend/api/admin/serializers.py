@@ -1,10 +1,12 @@
 """Admin API data (docs/api.md, Admin API)."""
+from decimal import Decimal
+
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.core import images
+from apps.core import branches, images
 from apps.core.enums import OrderEnum, UserRole
-from apps.core.models import Category, Client, Descriptions, User
+from apps.core.models import Branch, Category, Client, Descriptions, User
 from apps.core.utils import parse_price, parse_quantity
 from apps.telegram.models import StaffLink
 from ..common.fields import LimitedImageField, PhoneField
@@ -20,20 +22,37 @@ def blank(value):
     return value or ''
 
 
+def branch_ref(branch):
+    return {'id': branch.pk, 'name': branch.name} if branch else None
+
+
+def field_error(field, code):
+    return serializers.ValidationError({field: [serializers.ErrorDetail(code, code=code)]})
+
+
 # ---------------------------------------------------------------------------
 # staff users
 # ---------------------------------------------------------------------------
 
+class BranchRefSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
 class StaffUserSerializer(serializers.ModelSerializer):
-    """Read: StaffUser. Write: password required on create (8+ characters), optional on update."""
+    """Read: StaffUser. Write: password required on create (8+ characters), optional on update; the role `branch`
+    needs `branch_id` (an active branch) and branches on — `business` in the context."""
     phone_number = PhoneField()
     role = serializers.ChoiceField(choices=ROLES)
     password = serializers.CharField(write_only=True, required=False, min_length=8, max_length=128,
                                      trim_whitespace=False)
+    branch_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    branch = BranchRefSerializer(read_only=True, allow_null=True, help_text='Only for the role `branch`')
 
     class Meta:
         model = User
-        fields = ['id', 'phone_number', 'first_name', 'last_name', 'role', 'is_active', 'created_at', 'password']
+        fields = ['id', 'phone_number', 'first_name', 'last_name', 'role', 'branch', 'is_active', 'created_at',
+                  'password', 'branch_id']
         read_only_fields = ['id', 'created_at']
         extra_kwargs = {'first_name': {'allow_null': False}, 'last_name': {'allow_null': False}}
 
@@ -48,6 +67,27 @@ class StaffUserSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if self.instance is None and not attrs.get('password'):
             raise serializers.ValidationError({'password': serializers.ErrorDetail('required', code='required')})
+        return self.validate_branch(attrs)
+
+    def validate_branch(self, attrs):
+        """Branch staff belong to an active branch; the head office (admin, manager) to none."""
+        instance = self.instance
+        role = attrs.get('role', instance.role if instance else None)
+        branch_id = attrs.pop('branch_id', instance.branch_id if instance else None)
+        if role != UserRole.branch.value:
+            attrs['branch'] = None
+            return attrs
+        new_role = instance is None or instance.role != role
+        if new_role and not branches.enabled(self.context.get('business')):
+            raise field_error('role', 'branches_disabled')
+        if branch_id is None:
+            raise field_error('branch_id', 'required')
+        branch = Branch.objects.filter(pk=branch_id).first()
+        if branch is None:
+            raise field_error('branch_id', 'does_not_exist')
+        if not branch.is_active and (new_role or branch_id != instance.branch_id):
+            raise field_error('branch_id', 'inactive')
+        attrs['branch'] = branch
         return attrs
 
     def create(self, validated_data):
@@ -70,9 +110,83 @@ class StaffUserSerializer(serializers.ModelSerializer):
             'first_name': blank(user.first_name),
             'last_name': blank(user.last_name),
             'role': user.role,
+            'branch': branch_ref(user.branch) if user.branch_id else None,
             'is_active': user.is_active,
             'created_at': iso(user.created_at),
         }
+
+
+# ---------------------------------------------------------------------------
+# branches
+# ---------------------------------------------------------------------------
+
+class BranchTodaySerializer(serializers.Serializer):
+    orders = serializers.IntegerField()
+    revenue = serializers.IntegerField()
+
+
+class BranchStaffSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    phone_number = serializers.CharField()
+
+
+class BranchSerializer(serializers.Serializer):
+    """`staff_count` comes annotated and `active_staff` prefetched; `today` from the context ({branch id: {orders,
+    revenue}})."""
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    address = serializers.CharField()
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
+    phone = serializers.CharField()
+    is_active = serializers.BooleanField(help_text='An inactive branch gets no new orders and is not offered to '
+                                                   'customers')
+    created_at = serializers.DateTimeField()
+    staff_count = serializers.IntegerField(help_text='Active staff users of the branch')
+    staff = BranchStaffSerializer(many=True, help_text='Its active staff users, by first name')
+    today = BranchTodaySerializer(help_text="Today's orders of the branch (rejected ones not counted) and money")
+
+    def to_representation(self, branch):
+        point = branches.branch_point(branch)
+        return {
+            'id': branch.pk,
+            'name': branch.name,
+            'address': branch.address,
+            'lat': point[0] if point else None,
+            'lng': point[1] if point else None,
+            'phone': branch.phone,
+            'is_active': branch.is_active,
+            'created_at': iso(branch.created_at),
+            'staff_count': getattr(branch, 'staff_count', 0),
+            'staff': [{'id': user.pk, 'name': person_name(user), 'phone_number': user.phone_number}
+                      for user in getattr(branch, 'active_staff', [])],
+            'today': self.context.get('today', {}).get(branch.pk, {'orders': 0, 'revenue': 0}),
+        }
+
+
+class BranchWriteSerializer(serializers.Serializer):
+    """Create / update. The point on the map comes as both `lat` and `lng`: it is how the nearest branch is found."""
+    name = serializers.CharField(max_length=100)
+    address = serializers.CharField(max_length=255)
+    lat = serializers.FloatField(min_value=-90, max_value=90, source='latitude')
+    lng = serializers.FloatField(min_value=-180, max_value=180, source='longitude')
+    phone = PhoneField(required=False, allow_blank=True)
+    is_active = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        if ('latitude' in attrs) != ('longitude' in attrs):
+            raise field_error('lng' if 'latitude' in attrs else 'lat', 'required')
+        for field in ('latitude', 'longitude'):
+            if field in attrs:
+                attrs[field] = Decimal(f'{attrs[field]:.6f}')
+        return attrs
+
+    def save_to(self, branch):
+        for field, value in self.validated_data.items():
+            setattr(branch, field, value.strip() if isinstance(value, str) else value)
+        branch.save()
+        return branch
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +349,13 @@ class OrderLinePreviewSerializer(serializers.Serializer):
     quantity = serializers.IntegerField()
 
 
+class SuggestedBranchSerializer(BranchRefSerializer):
+    distance_km = serializers.FloatField(help_text='As the crow flies')
+
+
 class OrderSummarySerializer(serializers.Serializer):
+    """`dispatch_to` in the context (the active branches, for the head office while orders are dispatched): an order
+    without a branch names the nearest one."""
     id = serializers.IntegerField()
     status = serializers.CharField()
     source = serializers.CharField()
@@ -250,6 +370,10 @@ class OrderSummarySerializer(serializers.Serializer):
     address = serializers.CharField()
     # What was ordered, so a list (the phone's order cards) can show it without opening every order.
     lines = OrderLinePreviewSerializer(many=True)
+    branch = BranchRefSerializer(allow_null=True)
+    suggested_branch = SuggestedBranchSerializer(
+        allow_null=True, help_text='Without a branch, while the head office dispatches: the nearest active branch to '
+                                   'its point (null without a point)')
 
     def to_representation(self, order):
         return {
@@ -267,7 +391,15 @@ class OrderSummarySerializer(serializers.Serializer):
             'address': order_address(order),
             'lines': [{**line_names(item), 'quantity': parse_quantity(item.quantity)}
                       for item in order.order_items.all()],
+            'branch': branch_ref(order.branch) if order.branch_id else None,
+            'suggested_branch': self.suggestion(order),
         }
+
+    def suggestion(self, order):
+        candidates = self.context.get('dispatch_to')
+        found = branches.nearest(branches.order_point(order), candidates) if candidates and not order.branch_id \
+            else None
+        return {'id': found[0].pk, 'name': found[0].name, 'distance_km': found[1]} if found else None
 
 
 class OrderLineSerializer(serializers.Serializer):
@@ -292,7 +424,16 @@ class OrderClientSerializer(serializers.Serializer):
     tg_nick = serializers.CharField()
 
 
+class BranchOptionSerializer(BranchRefSerializer):
+    address = serializers.CharField()
+    lat = serializers.FloatField(allow_null=True)
+    lng = serializers.FloatField(allow_null=True)
+    distance_km = serializers.FloatField(allow_null=True, help_text='As the crow flies; null without a point')
+    nearest = serializers.BooleanField()
+
+
 class OrderDetailSerializer(OrderSummarySerializer):
+    """`branch_options` in the context: the active branches the head office may send the order to."""
     updated_at = serializers.DateTimeField()
     lat = serializers.CharField()
     lng = serializers.CharField()
@@ -300,7 +441,12 @@ class OrderDetailSerializer(OrderSummarySerializer):
     created_by = PersonRefSerializer(allow_null=True)
     client = OrderClientSerializer(allow_null=True)
     items = OrderLineSerializer(many=True)
+    assigned_at = serializers.DateTimeField(allow_null=True, help_text='When it got its branch')
+    assigned_by = PersonRefSerializer(allow_null=True, help_text='Who sent it there; null: it got it by itself')
+    branch_options = BranchOptionSerializer(many=True, help_text=(
+        'For the head office with branches on: every active branch, nearest first; [] otherwise'))
     lines = None  # the full `items` instead
+    suggested_branch = None  # `branch_options` instead
 
     def to_representation(self, order):
         client, author = order.client, order.created_by
@@ -312,12 +458,18 @@ class OrderDetailSerializer(OrderSummarySerializer):
             'total': item.get_total(),
         } for item in order.order_items.all()]
         summary = super().to_representation(order)
-        del summary['lines']
+        del summary['lines'], summary['suggested_branch']
+        assigner = order.assigned_by
+        # The point distances are measured from: picked on the map, or a shared location pin ("lat lon").
+        point = branches.order_point(order)
         return {
             **summary,
+            'assigned_at': iso(order.assigned_at),
+            'assigned_by': {'id': assigner.pk, 'name': person_name(assigner)} if assigner else None,
+            'branch_options': self.options(order),
             'updated_at': iso(order.updated_at),
-            'lat': order.l_t or '',
-            'lng': order.e_t or '',
+            'lat': order.l_t or (str(point[0]) if point else ''),
+            'lng': order.e_t or (str(point[1]) if point else ''),
             'comment': order.comment or '',
             'created_by': {'id': author.pk, 'name': person_name(author)} if author else None,
             'client': {
@@ -327,9 +479,29 @@ class OrderDetailSerializer(OrderSummarySerializer):
             'items': items,
         }
 
+    def options(self, order):
+        rows = branches.by_distance(branches.order_point(order), self.context.get('branch_options') or [])
+        return [{
+            'id': branch.pk, 'name': branch.name, 'address': branch.address,
+            **dict(zip(('lat', 'lng'), branches.branch_point(branch) or (None, None))),
+            'distance_km': km, 'nearest': index == 0 and km is not None,
+        } for index, (branch, km) in enumerate(rows)]
+
 
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=ORDER_STATUSES)
+
+
+class OrderBranchSerializer(serializers.Serializer):
+    branch_id = serializers.IntegerField()
+
+    def validate_branch_id(self, value):
+        branch = Branch.objects.filter(pk=value).first()
+        if branch is None:
+            raise serializers.ValidationError('does_not_exist', code='does_not_exist')
+        if not branch.is_active:
+            raise serializers.ValidationError('inactive', code='inactive')
+        return branch
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +559,9 @@ class SaleCreateSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=['cash', 'card'], required=False)
     status = serializers.ChoiceField(choices=['ordered', 'on_the_way', 'completed'], required=False)
     comment = serializers.CharField(required=False, allow_blank=True)
+    branch_id = serializers.IntegerField(required=False, allow_null=True, help_text=(
+        'Head office: the branch it is for (none: the only branch, or it waits to be sent). Branch staff: always '
+        'their own'))
 
 
 # ---------------------------------------------------------------------------

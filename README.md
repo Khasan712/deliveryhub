@@ -79,6 +79,15 @@ make schema         # docs/openapi/*.yaml ni koddan yangilash
    tushiradi va sozlaydi (Mini App tugmasi, buyruqlar, tavsif). Busiz ham bo'ladi: "@BotFather tokeni bilan ulash".
 3. Egasi admin panelda mahsulotlarini qo'shadi, xodimlarini **Telegram bot** sahifasidagi QR orqali ulaydi.
 
+**Filiallar:** biznes sahifasida «Filial ochishga ruxsat» yoqiladi (standart — o'chiq). Shundan keyin egasi admin
+panelning «Filiallar» bo'limida filial ochadi (nomi, manzili, xaritadagi joyi) va xodimni «Filial admini» qilib
+filialga biriktiradi. Bitta filial bo'lsa, hamma buyurtma o'shanga tushadi. Ikki va undan ko'p bo'lsa, yetkazish
+buyurtmasi avval bosh ofisga (admin, menejer) keladi: eng yaqin filial taklif qilinadi (xaritada to'g'ri chiziq
+bo'yicha), admin uni yoki boshqasini tanlab yuboradi — admin panelda yoki xodimlar botidagi kartadan; shundan keyin
+filial adminlari ko'radi va Telegram'da xabar oladi. «Olib ketish»da mijoz filialni o'zi tanlaydi. Filial admini faqat
+o'z filialining buyurtmalari, sotuvlari va raqamlarini ko'radi; menyu, narxlar, muzlatish, mijozlar bazasi, xodimlar
+va filiallar — bosh ofisda. Ruxsat o'chirilsa, filiallar saqlanadi, lekin buyurtmalar taqsimlanmaydi.
+
 **Biznesni o'chirish:** biznes sahifasining pastidagi "Biznesni o'chirish" — faqat to'xtatilgan biznes, manzilini
 (slug) qo'lda yozib tasdiqlangach. Sxemasi (buyurtmalar, mijozlar, mahsulotlar, xodimlar), domenlari, rasmlari
 o'chadi; botlar platformadan uziladi: Mini App tugmasi, buyruqlari va tavsiflari tozalanadi, botlarning o'zi

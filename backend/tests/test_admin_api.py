@@ -78,7 +78,8 @@ class AuthTests(AdminTestCase):
         self.sign_in()
         business = self.client.get('/api/v1/auth/me').json()['business']
         self.assertEqual(business, {'name': 'Test Shop', 'slug': 'test-shop', 'logo': None, 'brand_color': '',
-                                    'shop_url': 'https://test-shop.example.uz/'})
+                                    'shop_url': 'https://test-shop.example.uz/', 'branches_enabled': False,
+                                    'dispatch': False})
         local = self.make_client('test-shop-admin.localhost:5174')
         Business.objects.get(pk=self.tenant.pk).domains.create(domain='test-shop-admin.localhost', kind='admin',
                                                                is_primary=False)
