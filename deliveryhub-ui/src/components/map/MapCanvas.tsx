@@ -1,9 +1,13 @@
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { DEFAULT_CENTER, MAP_STYLE, round6, type Point } from '../../lib/map'
 
-// The map itself (MapLibre GL, WebGL): loaded only where a map is shown (React.lazy). Tests replace this module.
+// The map itself (MapLibre GL, WebGL2): loaded only where a map is shown (React.lazy). Tests replace this module.
+
+// MapLibre reads the tiles in a worker of its own; inside a bundle it cannot find the worker's file by itself.
+maplibregl.setWorkerUrl(workerUrl)
 
 /** The map's own controls, in Uzbek. */
 const LOCALE = {
@@ -19,12 +23,13 @@ const LOCALE = {
 }
 const PIN_COLOR = '#ec5b0b'
 
-function webglSupported() {
+/** The map, or null on a device without WebGL2 (an old browser, a blocked GPU). */
+function createMap(options: maplibregl.MapOptions): maplibregl.Map | null {
   try {
-    const canvas = document.createElement('canvas')
-    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'))
-  } catch {
-    return false
+    return new maplibregl.Map(options)
+  } catch (error) {
+    if (error instanceof maplibregl.GPUInitializationError) return null
+    throw error
   }
 }
 
@@ -41,7 +46,7 @@ export default function MapCanvas({ point, onPick, focusKey, label }: MapCanvasP
   const container = useRef<HTMLElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const pin = useRef<maplibregl.Marker | null>(null)
-  const [supported] = useState(webglSupported)
+  const [supported, setSupported] = useState(true)
   const start = useRef(point)
 
   const pick = useEffectEvent((lngLat: maplibregl.LngLat) => onPick({ lat: round6(lngLat.lat), lng: round6(lngLat.lng) }))
@@ -52,7 +57,7 @@ export default function MapCanvas({ point, onPick, focusKey, label }: MapCanvasP
   useEffect(() => {
     if (!supported || !container.current) return undefined
     const center = start.current ?? DEFAULT_CENTER
-    const instance = new maplibregl.Map({
+    const instance = createMap({
       container: container.current,
       style: MAP_STYLE,
       center: [center.lng, center.lat],
@@ -65,6 +70,10 @@ export default function MapCanvas({ point, onPick, focusKey, label }: MapCanvasP
       attributionControl: { compact: true },
       locale: LOCALE,
     })
+    if (!instance) {
+      setSupported(false)
+      return undefined
+    }
     instance.touchZoomRotate.disableRotation()
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     instance.on('click', (event) => pick(event.lngLat))
@@ -84,12 +93,14 @@ export default function MapCanvas({ point, onPick, focusKey, label }: MapCanvasP
       pin.current = null
       return
     }
-    if (!pin.current) {
-      const marker = new maplibregl.Marker({ color: PIN_COLOR, draggable: true })
-      marker.on('dragend', () => pick(marker.getLngLat()))
-      pin.current = marker
+    // On the map once: adding it again takes it out of the page, and a pin moved with the arrow keys loses the focus.
+    if (pin.current) {
+      pin.current.setLngLat([point.lng, point.lat])
+      return
     }
-    pin.current.setLngLat([point.lng, point.lat]).addTo(instance)
+    const marker = new maplibregl.Marker({ color: PIN_COLOR, draggable: true })
+    marker.on('dragend', () => pick(marker.getLngLat()))
+    pin.current = marker.setLngLat([point.lng, point.lat]).addTo(instance)
   }, [point])
 
   useEffect(() => {
