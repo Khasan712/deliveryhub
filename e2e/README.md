@@ -2,7 +2,9 @@
 
 Playwright tests of the whole platform: our panel opens a business (and our landing page links to it once the panel
 picks it as the sample shop), its owner fills the catalog, a customer orders in the shop, the owner completes the
-order and the customer sees it; our panel suspends, activates and finally deletes the business.
+order and the customer sees it; our panel suspends, activates and finally deletes the business. A second business
+has branches: our panel allows them, the owner opens two and a branch admin, sends a delivery order to a branch other
+than the nearest one, only that branch's admin sees it, and a pickup customer picks the branch in the shop.
 
 ```bash
 make e2e    # from the repository root

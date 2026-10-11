@@ -33,8 +33,11 @@ export async function openBusiness(page: Page, business: Business) {
   await expect(page.getByRole('heading', { name: business.name })).toBeVisible()
 }
 
-/** The shop: put the product in the cart, sign in with a phone (test-mode code) and place a pickup order. */
-export async function placeOrder(page: Page, business: Business, product: string) {
+/**
+ * The shop: put the product in the cart, sign in with a phone (test-mode code) and place a pickup order — at `branch`
+ * when the business has two or more branches (the customer picks it), else at the business's own place.
+ */
+export async function placeOrder(page: Page, business: Business, product: string, { branch }: { branch?: string } = {}) {
   await page.goto(urls.shop(business.slug))
   const card = page.getByRole('article', { name: product }).first()
   await expect(card).toBeVisible()
@@ -59,8 +62,13 @@ export async function placeOrder(page: Page, business: Business, product: string
 
   await expect(page).toHaveURL(/\/checkout$/)
   await page.getByText('Olib ketish', { exact: true }).click()
-  // Where to come: the place our panel put the business on.
-  await expect(page.getByText(business.place.address)).toBeVisible()
+  if (branch) {
+    await page.getByRole('radiogroup', { name: 'Qaysi filialdan olib ketasiz?' }).getByText(branch, { exact: true }).click()
+    await expect(page.getByRole('radio', { name: branch })).toBeChecked()
+  } else {
+    // Where to come: the place our panel put the business on.
+    await expect(page.getByText(business.place.address)).toBeVisible()
+  }
   await page.getByRole('button', { name: /Buyurtma berish/ }).click()
   await expect(page.getByText('Buyurtma qabul qilindi!')).toBeVisible()
   const heading = await page.getByRole('heading', { name: /Buyurtma #\d+/ }).textContent()
